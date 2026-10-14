@@ -3,6 +3,10 @@
 [tool.uv.workspace]
 members = ["backend", "generator"]
 
+[tool.uv.extra-build-variables]
+# PyYAML (needed by schemathesis in tests) has no Python 3.15 wheels; build it as pure Python.
+pyyaml = { PYYAML_FORCE_LIBYAML = "0" }
+
 [dependency-groups]
 dev = ["prek>=0.5", "ruff>=0.17", "ty>=0.0.87"]
 

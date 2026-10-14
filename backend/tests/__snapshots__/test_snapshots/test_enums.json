@@ -1,0 +1,678 @@
+{
+  "enums": {
+    "age_range": [
+      {
+        "code": "16-17",
+        "label": "16–17"
+      },
+      {
+        "code": "18-24",
+        "label": "18–24"
+      },
+      {
+        "code": "25-34",
+        "label": "25–34"
+      },
+      {
+        "code": "35-44",
+        "label": "35–44"
+      },
+      {
+        "code": "45-54",
+        "label": "45–54"
+      },
+      {
+        "code": "55-64",
+        "label": "55–64"
+      },
+      {
+        "code": "65+",
+        "label": "65+"
+      }
+    ],
+    "analytics_section": [
+      {
+        "code": "overview",
+        "label": "Огляд"
+      },
+      {
+        "code": "usage",
+        "label": "Використання"
+      },
+      {
+        "code": "content",
+        "label": "Контент і черги"
+      },
+      {
+        "code": "segments",
+        "label": "Сегменти"
+      },
+      {
+        "code": "search",
+        "label": "Пошук"
+      },
+      {
+        "code": "subscriptions",
+        "label": "Підписки"
+      },
+      {
+        "code": "cohorts",
+        "label": "Когорти"
+      }
+    ],
+    "campaign_arm": [
+      {
+        "code": "control",
+        "label": "Контрольна група"
+      },
+      {
+        "code": "email",
+        "label": "E-mail"
+      },
+      {
+        "code": "discount",
+        "label": "Знижка"
+      }
+    ],
+    "capability": [
+      {
+        "code": "descriptive",
+        "label": "Описова аналітика"
+      },
+      {
+        "code": "retention",
+        "label": "Утримання підписників"
+      },
+      {
+        "code": "content",
+        "label": "Закупівля контенту"
+      }
+    ],
+    "chart": [
+      {
+        "code": "activity_weekly",
+        "label": "Активність по тижнях"
+      },
+      {
+        "code": "reading_heatmap",
+        "label": "Читання за днем тижня й годиною"
+      },
+      {
+        "code": "devices",
+        "label": "Пристрої"
+      },
+      {
+        "code": "recency",
+        "label": "Давність останньої активності"
+      },
+      {
+        "code": "genres",
+        "label": "Жанри"
+      },
+      {
+        "code": "top_titles",
+        "label": "Найпопулярніші книги"
+      },
+      {
+        "code": "queues",
+        "label": "Найдовші черги"
+      },
+      {
+        "code": "age_genre",
+        "label": "Жанри за віковими групами"
+      },
+      {
+        "code": "members_by_age",
+        "label": "Читачі за віком"
+      },
+      {
+        "code": "members_by_education",
+        "label": "Читачі за освітою"
+      },
+      {
+        "code": "top_queries",
+        "label": "Найчастіші запити"
+      },
+      {
+        "code": "zero_result_queries",
+        "label": "Запити без результатів"
+      },
+      {
+        "code": "searches_weekly",
+        "label": "Пошуки по тижнях"
+      },
+      {
+        "code": "plans",
+        "label": "Тарифні плани"
+      },
+      {
+        "code": "subscribers_monthly",
+        "label": "Платні підписники по місяцях"
+      },
+      {
+        "code": "churn_monthly",
+        "label": "Продовження й відтік по місяцях"
+      },
+      {
+        "code": "activity_retention",
+        "label": "Утримання когорт"
+      }
+    ],
+    "dataset_format": [
+      {
+        "code": "tabular",
+        "label": "Табличний"
+      },
+      {
+        "code": "nested",
+        "label": "Вкладений (по користувачах)"
+      }
+    ],
+    "dataset_status": [
+      {
+        "code": "pending",
+        "label": "Очікує"
+      },
+      {
+        "code": "importing",
+        "label": "Імпортується"
+      },
+      {
+        "code": "ready",
+        "label": "Готовий"
+      },
+      {
+        "code": "failed",
+        "label": "Помилка"
+      }
+    ],
+    "device": [
+      {
+        "code": "mobile_android",
+        "label": "Android"
+      },
+      {
+        "code": "mobile_ios",
+        "label": "iPhone"
+      },
+      {
+        "code": "desktop",
+        "label": "Комп'ютер"
+      },
+      {
+        "code": "tablet",
+        "label": "Планшет"
+      },
+      {
+        "code": "e_reader",
+        "label": "Електронна книга"
+      }
+    ],
+    "dimension": [
+      {
+        "code": "week",
+        "label": "Тиждень"
+      },
+      {
+        "code": "month",
+        "label": "Місяць"
+      },
+      {
+        "code": "weekday",
+        "label": "День тижня"
+      },
+      {
+        "code": "hour",
+        "label": "Година"
+      },
+      {
+        "code": "device",
+        "label": "Пристрій"
+      },
+      {
+        "code": "recency",
+        "label": "Остання активність"
+      },
+      {
+        "code": "genre",
+        "label": "Жанр"
+      },
+      {
+        "code": "title",
+        "label": "Назва"
+      },
+      {
+        "code": "authors",
+        "label": "Автори"
+      },
+      {
+        "code": "age_range",
+        "label": "Вік"
+      },
+      {
+        "code": "education",
+        "label": "Освіта"
+      },
+      {
+        "code": "plan",
+        "label": "Тариф"
+      },
+      {
+        "code": "query",
+        "label": "Запит"
+      },
+      {
+        "code": "cohort",
+        "label": "Когорта (місяць реєстрації)"
+      },
+      {
+        "code": "month_offset",
+        "label": "Місяців після реєстрації"
+      }
+    ],
+    "education": [
+      {
+        "code": "secondary",
+        "label": "Середня"
+      },
+      {
+        "code": "student",
+        "label": "Студент(ка)"
+      },
+      {
+        "code": "bachelor",
+        "label": "Бакалавр"
+      },
+      {
+        "code": "master",
+        "label": "Магістр"
+      },
+      {
+        "code": "phd",
+        "label": "Доктор філософії"
+      }
+    ],
+    "genre": [
+      {
+        "code": "fantasy",
+        "label": "Фентезі"
+      },
+      {
+        "code": "science_fiction",
+        "label": "Наукова фантастика"
+      },
+      {
+        "code": "mystery_thriller",
+        "label": "Детективи й трилери"
+      },
+      {
+        "code": "romance",
+        "label": "Любовні романи"
+      },
+      {
+        "code": "horror",
+        "label": "Жахи"
+      },
+      {
+        "code": "historical_fiction",
+        "label": "Історична проза"
+      },
+      {
+        "code": "children",
+        "label": "Дитяча література"
+      },
+      {
+        "code": "young_adult",
+        "label": "Підліткова література"
+      },
+      {
+        "code": "poetry_drama",
+        "label": "Поезія й драматургія"
+      },
+      {
+        "code": "classics",
+        "label": "Класика"
+      },
+      {
+        "code": "fiction",
+        "label": "Сучасна проза"
+      },
+      {
+        "code": "biography",
+        "label": "Біографії й мемуари"
+      },
+      {
+        "code": "history",
+        "label": "Історія"
+      },
+      {
+        "code": "philosophy_religion",
+        "label": "Філософія й релігія"
+      },
+      {
+        "code": "self_help",
+        "label": "Психологія й саморозвиток"
+      },
+      {
+        "code": "business",
+        "label": "Бізнес і економіка"
+      },
+      {
+        "code": "technology",
+        "label": "Технології"
+      },
+      {
+        "code": "science",
+        "label": "Наука"
+      },
+      {
+        "code": "society_politics",
+        "label": "Суспільство й політика"
+      },
+      {
+        "code": "arts",
+        "label": "Мистецтво"
+      },
+      {
+        "code": "education_reference",
+        "label": "Навчальна й довідкова"
+      }
+    ],
+    "hold_outcome": [
+      {
+        "code": "open",
+        "label": "Очікує"
+      },
+      {
+        "code": "fulfilled",
+        "label": "Видано"
+      },
+      {
+        "code": "lapsed",
+        "label": "Прострочено"
+      },
+      {
+        "code": "cancelled",
+        "label": "Скасовано"
+      }
+    ],
+    "job_status": [
+      {
+        "code": "queued",
+        "label": "У черзі"
+      },
+      {
+        "code": "running",
+        "label": "Виконується"
+      },
+      {
+        "code": "succeeded",
+        "label": "Готово"
+      },
+      {
+        "code": "failed",
+        "label": "Помилка"
+      }
+    ],
+    "language": [
+      {
+        "code": "uk",
+        "label": "Українська"
+      },
+      {
+        "code": "en",
+        "label": "Англійська"
+      }
+    ],
+    "language_pref": [
+      {
+        "code": "uk",
+        "label": "Лише українською"
+      },
+      {
+        "code": "uk+en",
+        "label": "Українською й англійською"
+      }
+    ],
+    "metric": [
+      {
+        "code": "members",
+        "label": "Читачі"
+      },
+      {
+        "code": "active_members",
+        "label": "Активні читачі"
+      },
+      {
+        "code": "paying_subscribers",
+        "label": "Платні підписники"
+      },
+      {
+        "code": "mrr",
+        "label": "Щомісячний дохід (MRR)"
+      },
+      {
+        "code": "churn_rate",
+        "label": "Відтік"
+      },
+      {
+        "code": "loans",
+        "label": "Позичення"
+      },
+      {
+        "code": "reading_minutes",
+        "label": "Хвилини читання"
+      },
+      {
+        "code": "sessions",
+        "label": "Сесії читання"
+      },
+      {
+        "code": "avg_session_minutes",
+        "label": "Середня тривалість сесії"
+      },
+      {
+        "code": "minutes_per_active_member",
+        "label": "Хвилин на активного читача"
+      },
+      {
+        "code": "share",
+        "label": "Частка"
+      },
+      {
+        "code": "titles_in_catalog",
+        "label": "Назв у каталозі"
+      },
+      {
+        "code": "titles_borrowed",
+        "label": "Назв, які брали"
+      },
+      {
+        "code": "readers",
+        "label": "Читачі"
+      },
+      {
+        "code": "avg_rating",
+        "label": "Середня оцінка"
+      },
+      {
+        "code": "completion_rate",
+        "label": "Частка дочитаних"
+      },
+      {
+        "code": "holds",
+        "label": "Бронювання в черзі"
+      },
+      {
+        "code": "copies",
+        "label": "Копії"
+      },
+      {
+        "code": "holds_per_copy",
+        "label": "Бронювань на копію"
+      },
+      {
+        "code": "avg_hold_wait_days",
+        "label": "Середнє очікування в черзі"
+      },
+      {
+        "code": "hold_lapse_rate",
+        "label": "Частка прострочених бронювань"
+      },
+      {
+        "code": "searches",
+        "label": "Пошуки"
+      },
+      {
+        "code": "searchers",
+        "label": "Читачі, що шукали"
+      },
+      {
+        "code": "zero_result_share",
+        "label": "Частка пошуків без результатів"
+      },
+      {
+        "code": "zero_result_searches",
+        "label": "Пошуки без результатів"
+      },
+      {
+        "code": "trial_conversion_rate",
+        "label": "Конверсія пробного періоду"
+      },
+      {
+        "code": "discounted_share",
+        "label": "Частка підписок зі знижкою"
+      },
+      {
+        "code": "renewals",
+        "label": "Продовження"
+      },
+      {
+        "code": "churned",
+        "label": "Відтоки"
+      },
+      {
+        "code": "retention",
+        "label": "Утримання"
+      }
+    ],
+    "period_outcome": [
+      {
+        "code": "open",
+        "label": "Триває"
+      },
+      {
+        "code": "renewed",
+        "label": "Продовжено"
+      },
+      {
+        "code": "churned",
+        "label": "Відтік"
+      },
+      {
+        "code": "converted",
+        "label": "Перейшов на платний"
+      },
+      {
+        "code": "expired",
+        "label": "Завершився"
+      }
+    ],
+    "plan": [
+      {
+        "code": "trial",
+        "label": "Пробний період"
+      },
+      {
+        "code": "monthly",
+        "label": "Місячний"
+      },
+      {
+        "code": "annual",
+        "label": "Річний"
+      },
+      {
+        "code": "student",
+        "label": "Студентський"
+      }
+    ],
+    "recency": [
+      {
+        "code": "days_0_7",
+        "label": "Останні 7 днів"
+      },
+      {
+        "code": "days_8_30",
+        "label": "8–30 днів тому"
+      },
+      {
+        "code": "days_31_90",
+        "label": "31–90 днів тому"
+      },
+      {
+        "code": "days_91_plus",
+        "label": "Понад 90 днів тому"
+      },
+      {
+        "code": "never",
+        "label": "Жодної активності"
+      }
+    ],
+    "unit": [
+      {
+        "code": "count",
+        "label": "шт."
+      },
+      {
+        "code": "ratio",
+        "label": "%"
+      },
+      {
+        "code": "UAH",
+        "label": "грн"
+      },
+      {
+        "code": "minutes",
+        "label": "хв"
+      },
+      {
+        "code": "days",
+        "label": "дн."
+      },
+      {
+        "code": "rating",
+        "label": "з 5"
+      }
+    ],
+    "weekday": [
+      {
+        "code": "mon",
+        "label": "Понеділок"
+      },
+      {
+        "code": "tue",
+        "label": "Вівторок"
+      },
+      {
+        "code": "wed",
+        "label": "Середа"
+      },
+      {
+        "code": "thu",
+        "label": "Четвер"
+      },
+      {
+        "code": "fri",
+        "label": "П'ятниця"
+      },
+      {
+        "code": "sat",
+        "label": "Субота"
+      },
+      {
+        "code": "sun",
+        "label": "Неділя"
+      }
+    ]
+  }
+}

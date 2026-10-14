@@ -127,6 +127,16 @@ def test_content_numbers(mini: dict[str, Section]) -> None:
         },
     ]
     assert [row["title"] for row in chart(content, "top_titles")] == ["Dune", "Кобзар", "Тигролови"]
+    # Audit 2026-10-08: the earlier "top books" table invented authors, genres and downloads.
+    assert chart(content, "top_titles")[2] == {
+        "title": "Тигролови",
+        "authors": "Іван Багряний",
+        "genre": "mystery_thriller",
+        "loans": 1,
+        "readers": 1,
+        "avg_rating": None,
+        "completion_rate": None,
+    }
     assert chart(content, "queues")[0] == {
         "title": "Dune",
         "authors": "Frank Herbert",

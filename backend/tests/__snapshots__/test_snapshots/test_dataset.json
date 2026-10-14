@@ -1,0 +1,33 @@
+{
+  "as_of": "2026-03-31",
+  "capabilities": [
+    "descriptive"
+  ],
+  "created_at": "<created_at>",
+  "error": null,
+  "format": "tabular",
+  "id": "<id>",
+  "meta": {
+    "as_of": "2026-03-31",
+    "original_filename": "mini.json",
+    "seed": 0,
+    "timezone": "Europe/Kyiv"
+  },
+  "name": "Ручний набір",
+  "row_counts": {
+    "books": 4,
+    "campaign_assignments": 0,
+    "campaigns": 0,
+    "candidate_titles": 0,
+    "holds": 3,
+    "loans": 6,
+    "reading_sessions": 6,
+    "searches": 4,
+    "subscription_periods": 8,
+    "users": 5
+  },
+  "schema_version": 2,
+  "status": "ready",
+  "timezone": "Europe/Kyiv",
+  "updated_at": "<updated_at>"
+}

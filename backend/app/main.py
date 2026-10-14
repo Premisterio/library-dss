@@ -1,5 +1,7 @@
 """FastAPI application factory (`uvicorn app.main:create_app --factory`)."""
 
+from typing import Any
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -9,9 +11,16 @@ from scalar_fastapi import get_scalar_api_reference
 from app import __version__
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
-from app.core.errors import install_error_handlers
+from app.core.errors import document_problem_media_type, install_error_handlers
 
 API_PREFIX = "/api/v1"
+
+
+class LibraryApi(FastAPI):
+    def openapi(self) -> dict[str, Any]:
+        if self.openapi_schema is None:
+            document_problem_media_type(super().openapi())
+        return self.openapi_schema or {}
 
 
 def _operation_id(route: APIRoute) -> str:
@@ -20,7 +29,7 @@ def _operation_id(route: APIRoute) -> str:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(
+    app = LibraryApi(
         title="Library DSS API",
         summary="Decision support system for an online library",
         version=__version__,

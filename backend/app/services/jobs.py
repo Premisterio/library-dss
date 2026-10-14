@@ -5,6 +5,7 @@ workers never pick the same job. Progress is written in short separate transacti
 it visible while the job's own (long) transaction is still open.
 """
 
+import time
 import uuid
 from collections.abc import Callable
 from contextlib import AbstractContextManager
@@ -44,6 +45,20 @@ def get_for(session: Session, job_id: uuid.UUID, analyst: Analyst) -> Job:
     return job
 
 
+def _start(session: Session, job: Job) -> None:
+    job.status, job.started_at, job.heartbeat_at, job.stage = (
+        "running",
+        utc_now(),
+        utc_now(),
+        "started",
+    )
+    if job.dataset_id is not None:
+        session.execute(
+            update(Dataset).where(Dataset.id == job.dataset_id).values(status="importing")
+        )
+    session.commit()
+
+
 def claim_next(session_factory: SessionFactory) -> uuid.UUID | None:
     """Atomically take the oldest queued job and mark it running (separate transaction)."""
     with session_factory() as session:
@@ -56,18 +71,37 @@ def claim_next(session_factory: SessionFactory) -> uuid.UUID | None:
         ).first()
         if job is None:
             return None
-        job.status, job.started_at, job.heartbeat_at, job.stage = (
-            "running",
-            utc_now(),
-            utc_now(),
-            "started",
-        )
-        if job.dataset_id is not None:
-            session.execute(
-                update(Dataset).where(Dataset.id == job.dataset_id).values(status="importing")
-            )
-        session.commit()
+        _start(session, job)
         return job.id
+
+
+def claim(session_factory: SessionFactory, job_id: uuid.UUID) -> bool:
+    """Take one specific queued job; False when a worker already has it."""
+    with session_factory() as session:
+        job = session.scalars(
+            select(Job)
+            .where(Job.id == job_id, Job.status == "queued")
+            .with_for_update(skip_locked=True)
+        ).first()
+        if job is None:
+            return False
+        _start(session, job)
+        return True
+
+
+def wait(
+    session_factory: SessionFactory, job_id: uuid.UUID, *, timeout: float, poll: float = 1.0
+) -> Job:
+    """Block until a job finishes (for the CLI); TimeoutError after `timeout` seconds."""
+    deadline = time.monotonic() + timeout
+    while True:
+        with session_factory() as session:
+            job = session.get_one(Job, job_id)
+            if job.status in TERMINAL:
+                return job
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"job {job_id} did not finish in {timeout:.0f} s")
+        time.sleep(poll)
 
 
 def report(session_factory: SessionFactory, job_id: uuid.UUID, progress: float, stage: str) -> None:

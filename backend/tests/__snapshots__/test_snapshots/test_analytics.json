@@ -1,0 +1,2356 @@
+{
+  "dataset_id": "<dataset_id>",
+  "sections": [
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "week",
+              "kind": "time",
+              "order": null
+            }
+          ],
+          "key": "activity_weekly",
+          "measures": [
+            {
+              "key": "active_members",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "loans",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "reading_minutes",
+              "unit": "minutes",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "active_members": 1,
+              "loans": 1,
+              "reading_minutes": 0,
+              "week": "2025-12-15"
+            },
+            {
+              "active_members": 1,
+              "loans": 1,
+              "reading_minutes": 20,
+              "week": "2026-02-09"
+            },
+            {
+              "active_members": 1,
+              "loans": 0,
+              "reading_minutes": 0,
+              "week": "2026-02-16"
+            },
+            {
+              "active_members": 2,
+              "loans": 1,
+              "reading_minutes": 70,
+              "week": "2026-03-02"
+            },
+            {
+              "active_members": 2,
+              "loans": 2,
+              "reading_minutes": 105,
+              "week": "2026-03-16"
+            },
+            {
+              "active_members": 1,
+              "loans": 1,
+              "reading_minutes": 0,
+              "week": "2026-03-23"
+            },
+            {
+              "active_members": 1,
+              "loans": 0,
+              "reading_minutes": 50,
+              "week": "2026-03-30"
+            }
+          ],
+          "window_days": null
+        }
+      ],
+      "key": "overview",
+      "kpis": [
+        {
+          "key": "members",
+          "unit": "count",
+          "value": 5,
+          "window_days": null
+        },
+        {
+          "key": "active_members",
+          "unit": "count",
+          "value": 4,
+          "window_days": 30
+        },
+        {
+          "key": "paying_subscribers",
+          "unit": "count",
+          "value": 2,
+          "window_days": null
+        },
+        {
+          "key": "mrr",
+          "unit": "UAH",
+          "value": 226.7,
+          "window_days": null
+        },
+        {
+          "key": "churn_rate",
+          "unit": "ratio",
+          "value": 0.5,
+          "window_days": 30
+        },
+        {
+          "key": "loans",
+          "unit": "count",
+          "value": 4,
+          "window_days": 30
+        },
+        {
+          "key": "reading_minutes",
+          "unit": "minutes",
+          "value": 225.0,
+          "window_days": 30
+        }
+      ],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "weekday",
+              "key": "weekday",
+              "kind": "category",
+              "order": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ]
+            },
+            {
+              "enum": null,
+              "key": "hour",
+              "kind": "number",
+              "order": null
+            }
+          ],
+          "key": "reading_heatmap",
+          "measures": [
+            {
+              "key": "sessions",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "reading_minutes",
+              "unit": "minutes",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 50,
+              "sessions": 1,
+              "weekday": "mon"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "mon"
+            },
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 40,
+              "sessions": 1,
+              "weekday": "tue"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "tue"
+            },
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 30,
+              "sessions": 1,
+              "weekday": "wed"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "wed"
+            },
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "thu"
+            },
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "fri"
+            },
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 60,
+              "sessions": 1,
+              "weekday": "sat"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sat"
+            },
+            {
+              "hour": 0,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 1,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 2,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 3,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 4,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 5,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 6,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 7,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 8,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 9,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 10,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 11,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 12,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 13,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 14,
+              "reading_minutes": 20,
+              "sessions": 1,
+              "weekday": "sun"
+            },
+            {
+              "hour": 15,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 16,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 17,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 18,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 19,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 20,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 21,
+              "reading_minutes": 45,
+              "sessions": 1,
+              "weekday": "sun"
+            },
+            {
+              "hour": 22,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            },
+            {
+              "hour": 23,
+              "reading_minutes": 0,
+              "sessions": 0,
+              "weekday": "sun"
+            }
+          ],
+          "window_days": 90
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "device",
+              "key": "device",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "devices",
+          "measures": [
+            {
+              "key": "sessions",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "reading_minutes",
+              "unit": "minutes",
+              "window_days": null
+            },
+            {
+              "key": "share",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "device": "mobile_android",
+              "reading_minutes": 130,
+              "sessions": 3,
+              "share": 0.5
+            },
+            {
+              "device": "desktop",
+              "reading_minutes": 50,
+              "sessions": 1,
+              "share": 0.1667
+            },
+            {
+              "device": "e_reader",
+              "reading_minutes": 20,
+              "sessions": 1,
+              "share": 0.1667
+            },
+            {
+              "device": "mobile_ios",
+              "reading_minutes": 45,
+              "sessions": 1,
+              "share": 0.1667
+            }
+          ],
+          "window_days": 90
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "recency",
+              "key": "recency",
+              "kind": "category",
+              "order": [
+                "days_0_7",
+                "days_8_30",
+                "days_31_90",
+                "days_91_plus",
+                "never"
+              ]
+            }
+          ],
+          "key": "recency",
+          "measures": [
+            {
+              "key": "members",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "share",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "members": 1,
+              "recency": "days_0_7",
+              "share": 0.2
+            },
+            {
+              "members": 3,
+              "recency": "days_8_30",
+              "share": 0.6
+            },
+            {
+              "members": 0,
+              "recency": "days_31_90",
+              "share": 0.0
+            },
+            {
+              "members": 0,
+              "recency": "days_91_plus",
+              "share": 0.0
+            },
+            {
+              "members": 1,
+              "recency": "never",
+              "share": 0.2
+            }
+          ],
+          "window_days": null
+        }
+      ],
+      "key": "usage",
+      "kpis": [
+        {
+          "key": "sessions",
+          "unit": "count",
+          "value": 5,
+          "window_days": 30
+        },
+        {
+          "key": "reading_minutes",
+          "unit": "minutes",
+          "value": 225.0,
+          "window_days": 30
+        },
+        {
+          "key": "avg_session_minutes",
+          "unit": "minutes",
+          "value": 45.0,
+          "window_days": 30
+        },
+        {
+          "key": "minutes_per_active_member",
+          "unit": "minutes",
+          "value": 56.25,
+          "window_days": 30
+        }
+      ],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "genre",
+              "key": "genre",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "genres",
+          "measures": [
+            {
+              "key": "loans",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "readers",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "avg_rating",
+              "unit": "rating",
+              "window_days": null
+            },
+            {
+              "key": "completion_rate",
+              "unit": "ratio",
+              "window_days": null
+            },
+            {
+              "key": "holds",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "copies",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "holds_per_copy",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "avg_rating": 4.5,
+              "completion_rate": 1.0,
+              "copies": 3,
+              "genre": "poetry_drama",
+              "holds": 0,
+              "holds_per_copy": 0.0,
+              "loans": 2,
+              "readers": 2
+            },
+            {
+              "avg_rating": 3.0,
+              "completion_rate": 0.0,
+              "copies": 1,
+              "genre": "science_fiction",
+              "holds": 2,
+              "holds_per_copy": 2.0,
+              "loans": 2,
+              "readers": 2
+            },
+            {
+              "avg_rating": null,
+              "completion_rate": null,
+              "copies": 1,
+              "genre": "mystery_thriller",
+              "holds": 1,
+              "holds_per_copy": 1.0,
+              "loans": 1,
+              "readers": 1
+            }
+          ],
+          "window_days": 90
+        },
+        {
+          "attributes": [
+            {
+              "enum": null,
+              "key": "authors",
+              "kind": "category",
+              "order": null
+            },
+            {
+              "enum": "genre",
+              "key": "genre",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "title",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "top_titles",
+          "measures": [
+            {
+              "key": "loans",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "readers",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "avg_rating",
+              "unit": "rating",
+              "window_days": null
+            },
+            {
+              "key": "completion_rate",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "authors": "Frank Herbert",
+              "avg_rating": 3.0,
+              "completion_rate": 0.0,
+              "genre": "science_fiction",
+              "loans": 2,
+              "readers": 2,
+              "title": "Dune"
+            },
+            {
+              "authors": "Тарас Шевченко",
+              "avg_rating": 4.5,
+              "completion_rate": 1.0,
+              "genre": "poetry_drama",
+              "loans": 2,
+              "readers": 2,
+              "title": "Кобзар"
+            },
+            {
+              "authors": "Іван Багряний",
+              "avg_rating": null,
+              "completion_rate": null,
+              "genre": "mystery_thriller",
+              "loans": 1,
+              "readers": 1,
+              "title": "Тигролови"
+            }
+          ],
+          "window_days": 90
+        },
+        {
+          "attributes": [
+            {
+              "enum": null,
+              "key": "authors",
+              "kind": "category",
+              "order": null
+            },
+            {
+              "enum": "genre",
+              "key": "genre",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "title",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "queues",
+          "measures": [
+            {
+              "key": "holds",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "copies",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "holds_per_copy",
+              "unit": "ratio",
+              "window_days": null
+            },
+            {
+              "key": "avg_hold_wait_days",
+              "unit": "days",
+              "window_days": null
+            },
+            {
+              "key": "hold_lapse_rate",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "authors": "Frank Herbert",
+              "avg_hold_wait_days": null,
+              "copies": 1,
+              "genre": "science_fiction",
+              "hold_lapse_rate": 1.0,
+              "holds": 2,
+              "holds_per_copy": 2.0,
+              "title": "Dune"
+            },
+            {
+              "authors": "Іван Багряний",
+              "avg_hold_wait_days": 15.0,
+              "copies": 1,
+              "genre": "mystery_thriller",
+              "hold_lapse_rate": 0.0,
+              "holds": 1,
+              "holds_per_copy": 1.0,
+              "title": "Тигролови"
+            }
+          ],
+          "window_days": 90
+        }
+      ],
+      "key": "content",
+      "kpis": [
+        {
+          "key": "titles_in_catalog",
+          "unit": "count",
+          "value": 4,
+          "window_days": null
+        },
+        {
+          "key": "titles_borrowed",
+          "unit": "count",
+          "value": 3,
+          "window_days": null
+        },
+        {
+          "key": "loans",
+          "unit": "count",
+          "value": 6,
+          "window_days": null
+        },
+        {
+          "key": "completion_rate",
+          "unit": "ratio",
+          "value": 0.75,
+          "window_days": null
+        },
+        {
+          "key": "avg_rating",
+          "unit": "rating",
+          "value": 4.0,
+          "window_days": null
+        },
+        {
+          "key": "holds",
+          "unit": "count",
+          "value": 3,
+          "window_days": 90
+        },
+        {
+          "key": "avg_hold_wait_days",
+          "unit": "days",
+          "value": 15.0,
+          "window_days": 90
+        },
+        {
+          "key": "hold_lapse_rate",
+          "unit": "ratio",
+          "value": 0.5,
+          "window_days": 90
+        }
+      ],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "age_range",
+              "key": "age_range",
+              "kind": "category",
+              "order": [
+                "16-17",
+                "18-24",
+                "25-34",
+                "35-44",
+                "45-54",
+                "55-64",
+                "65+"
+              ]
+            },
+            {
+              "enum": "genre",
+              "key": "genre",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "age_genre",
+          "measures": [
+            {
+              "key": "loans",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "share",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "age_range": "18-24",
+              "genre": "science_fiction",
+              "loans": 1,
+              "share": 1.0
+            },
+            {
+              "age_range": "25-34",
+              "genre": "poetry_drama",
+              "loans": 2,
+              "share": 0.6667
+            },
+            {
+              "age_range": "25-34",
+              "genre": "science_fiction",
+              "loans": 1,
+              "share": 0.3333
+            },
+            {
+              "age_range": "35-44",
+              "genre": "mystery_thriller",
+              "loans": 1,
+              "share": 0.5
+            },
+            {
+              "age_range": "35-44",
+              "genre": "poetry_drama",
+              "loans": 1,
+              "share": 0.5
+            }
+          ],
+          "window_days": null
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "age_range",
+              "key": "age_range",
+              "kind": "category",
+              "order": [
+                "16-17",
+                "18-24",
+                "25-34",
+                "35-44",
+                "45-54",
+                "55-64",
+                "65+"
+              ]
+            }
+          ],
+          "key": "members_by_age",
+          "measures": [
+            {
+              "key": "members",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "active_members",
+              "unit": "count",
+              "window_days": 30
+            },
+            {
+              "key": "paying_subscribers",
+              "unit": "count",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "active_members": 1,
+              "age_range": "18-24",
+              "members": 1,
+              "paying_subscribers": 0
+            },
+            {
+              "active_members": 2,
+              "age_range": "25-34",
+              "members": 2,
+              "paying_subscribers": 1
+            },
+            {
+              "active_members": 1,
+              "age_range": "35-44",
+              "members": 1,
+              "paying_subscribers": 1
+            },
+            {
+              "active_members": 0,
+              "age_range": "65+",
+              "members": 1,
+              "paying_subscribers": 0
+            }
+          ],
+          "window_days": null
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "education",
+              "key": "education",
+              "kind": "category",
+              "order": [
+                "secondary",
+                "student",
+                "bachelor",
+                "master",
+                "phd"
+              ]
+            }
+          ],
+          "key": "members_by_education",
+          "measures": [
+            {
+              "key": "members",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "active_members",
+              "unit": "count",
+              "window_days": 30
+            },
+            {
+              "key": "paying_subscribers",
+              "unit": "count",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "active_members": 1,
+              "education": "student",
+              "members": 1,
+              "paying_subscribers": 0
+            },
+            {
+              "active_members": 2,
+              "education": "bachelor",
+              "members": 2,
+              "paying_subscribers": 1
+            },
+            {
+              "active_members": 1,
+              "education": "master",
+              "members": 1,
+              "paying_subscribers": 1
+            },
+            {
+              "active_members": 0,
+              "education": "phd",
+              "members": 1,
+              "paying_subscribers": 0
+            }
+          ],
+          "window_days": null
+        }
+      ],
+      "key": "segments",
+      "kpis": [],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "query",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "top_queries",
+          "measures": [
+            {
+              "key": "searches",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "searchers",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "zero_result_share",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "query": "Дюна",
+              "searchers": 2,
+              "searches": 2,
+              "zero_result_share": 1.0
+            },
+            {
+              "query": "Багряний",
+              "searchers": 1,
+              "searches": 1,
+              "zero_result_share": 0.0
+            },
+            {
+              "query": "Кобзар",
+              "searchers": 1,
+              "searches": 1,
+              "zero_result_share": 0.0
+            }
+          ],
+          "window_days": 90
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "query",
+              "kind": "category",
+              "order": null
+            }
+          ],
+          "key": "zero_result_queries",
+          "measures": [
+            {
+              "key": "searches",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "searchers",
+              "unit": "count",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "query": "Дюна",
+              "searchers": 2,
+              "searches": 2
+            }
+          ],
+          "window_days": 90
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "week",
+              "kind": "time",
+              "order": null
+            }
+          ],
+          "key": "searches_weekly",
+          "measures": [
+            {
+              "key": "searches",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "zero_result_searches",
+              "unit": "count",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "searches": 1,
+              "week": "2026-02-16",
+              "zero_result_searches": 0
+            },
+            {
+              "searches": 2,
+              "week": "2026-03-02",
+              "zero_result_searches": 1
+            },
+            {
+              "searches": 1,
+              "week": "2026-03-16",
+              "zero_result_searches": 1
+            }
+          ],
+          "window_days": null
+        }
+      ],
+      "key": "search",
+      "kpis": [
+        {
+          "key": "searches",
+          "unit": "count",
+          "value": 3,
+          "window_days": 30
+        },
+        {
+          "key": "searchers",
+          "unit": "count",
+          "value": 3,
+          "window_days": 30
+        },
+        {
+          "key": "zero_result_share",
+          "unit": "ratio",
+          "value": 0.6666666666666666,
+          "window_days": 30
+        }
+      ],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": "plan",
+              "key": "plan",
+              "kind": "category",
+              "order": [
+                "trial",
+                "monthly",
+                "annual",
+                "student"
+              ]
+            }
+          ],
+          "key": "plans",
+          "measures": [
+            {
+              "key": "paying_subscribers",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "mrr",
+              "unit": "UAH",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "mrr": 119.2,
+              "paying_subscribers": 1,
+              "plan": "monthly"
+            },
+            {
+              "mrr": 107.5,
+              "paying_subscribers": 1,
+              "plan": "annual"
+            }
+          ],
+          "window_days": null
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "month",
+              "kind": "time",
+              "order": null
+            },
+            {
+              "enum": "plan",
+              "key": "plan",
+              "kind": "category",
+              "order": [
+                "trial",
+                "monthly",
+                "annual",
+                "student"
+              ]
+            }
+          ],
+          "key": "subscribers_monthly",
+          "measures": [
+            {
+              "key": "paying_subscribers",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "mrr",
+              "unit": "UAH",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "month": "2026-01-01",
+              "mrr": 149.0,
+              "paying_subscribers": 1,
+              "plan": "monthly"
+            },
+            {
+              "month": "2026-01-01",
+              "mrr": 107.5,
+              "paying_subscribers": 1,
+              "plan": "annual"
+            },
+            {
+              "month": "2026-02-01",
+              "mrr": 149.0,
+              "paying_subscribers": 1,
+              "plan": "monthly"
+            },
+            {
+              "month": "2026-02-01",
+              "mrr": 107.5,
+              "paying_subscribers": 1,
+              "plan": "annual"
+            },
+            {
+              "month": "2026-02-01",
+              "mrr": 79.0,
+              "paying_subscribers": 1,
+              "plan": "student"
+            },
+            {
+              "month": "2026-03-01",
+              "mrr": 119.2,
+              "paying_subscribers": 1,
+              "plan": "monthly"
+            },
+            {
+              "month": "2026-03-01",
+              "mrr": 107.5,
+              "paying_subscribers": 1,
+              "plan": "annual"
+            }
+          ],
+          "window_days": null
+        },
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "month",
+              "kind": "time",
+              "order": null
+            },
+            {
+              "enum": "plan",
+              "key": "plan",
+              "kind": "category",
+              "order": [
+                "trial",
+                "monthly",
+                "annual",
+                "student"
+              ]
+            }
+          ],
+          "key": "churn_monthly",
+          "measures": [
+            {
+              "key": "renewals",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "churned",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "churn_rate",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "churn_rate": 0.0,
+              "churned": 0,
+              "month": "2026-02-01",
+              "plan": "monthly",
+              "renewals": 1
+            },
+            {
+              "churn_rate": 0.0,
+              "churned": 0,
+              "month": "2026-03-01",
+              "plan": "monthly",
+              "renewals": 1
+            },
+            {
+              "churn_rate": 1.0,
+              "churned": 1,
+              "month": "2026-03-01",
+              "plan": "student",
+              "renewals": 0
+            }
+          ],
+          "window_days": null
+        }
+      ],
+      "key": "subscriptions",
+      "kpis": [
+        {
+          "key": "paying_subscribers",
+          "unit": "count",
+          "value": 2,
+          "window_days": null
+        },
+        {
+          "key": "mrr",
+          "unit": "UAH",
+          "value": 226.7,
+          "window_days": null
+        },
+        {
+          "key": "churn_rate",
+          "unit": "ratio",
+          "value": 0.5,
+          "window_days": 30
+        },
+        {
+          "key": "trial_conversion_rate",
+          "unit": "ratio",
+          "value": 1.0,
+          "window_days": 90
+        },
+        {
+          "key": "discounted_share",
+          "unit": "ratio",
+          "value": 0.5,
+          "window_days": null
+        }
+      ],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [
+        {
+          "attributes": [],
+          "dimensions": [
+            {
+              "enum": null,
+              "key": "cohort",
+              "kind": "time",
+              "order": null
+            },
+            {
+              "enum": null,
+              "key": "month_offset",
+              "kind": "number",
+              "order": null
+            }
+          ],
+          "key": "activity_retention",
+          "measures": [
+            {
+              "key": "members",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "active_members",
+              "unit": "count",
+              "window_days": null
+            },
+            {
+              "key": "retention",
+              "unit": "ratio",
+              "window_days": null
+            }
+          ],
+          "rows": [
+            {
+              "active_members": 0,
+              "cohort": "2025-10-01",
+              "members": 2,
+              "month_offset": 0,
+              "retention": 0.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-10-01",
+              "members": 2,
+              "month_offset": 1,
+              "retention": 0.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-10-01",
+              "members": 2,
+              "month_offset": 2,
+              "retention": 0.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-10-01",
+              "members": 2,
+              "month_offset": 3,
+              "retention": 0.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-10-01",
+              "members": 2,
+              "month_offset": 4,
+              "retention": 0.0
+            },
+            {
+              "active_members": 1,
+              "cohort": "2025-10-01",
+              "members": 2,
+              "month_offset": 5,
+              "retention": 0.5
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-11-01",
+              "members": 1,
+              "month_offset": 0,
+              "retention": 0.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-11-01",
+              "members": 1,
+              "month_offset": 1,
+              "retention": 0.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2025-11-01",
+              "members": 1,
+              "month_offset": 2,
+              "retention": 0.0
+            },
+            {
+              "active_members": 1,
+              "cohort": "2025-11-01",
+              "members": 1,
+              "month_offset": 3,
+              "retention": 1.0
+            },
+            {
+              "active_members": 1,
+              "cohort": "2025-11-01",
+              "members": 1,
+              "month_offset": 4,
+              "retention": 1.0
+            },
+            {
+              "active_members": 0,
+              "cohort": "2026-01-01",
+              "members": 1,
+              "month_offset": 0,
+              "retention": 0.0
+            },
+            {
+              "active_members": 1,
+              "cohort": "2026-01-01",
+              "members": 1,
+              "month_offset": 1,
+              "retention": 1.0
+            },
+            {
+              "active_members": 1,
+              "cohort": "2026-01-01",
+              "members": 1,
+              "month_offset": 2,
+              "retention": 1.0
+            },
+            {
+              "active_members": 1,
+              "cohort": "2026-03-01",
+              "members": 1,
+              "month_offset": 0,
+              "retention": 1.0
+            }
+          ],
+          "window_days": null
+        }
+      ],
+      "key": "cohorts",
+      "kpis": [],
+      "notes": [],
+      "timezone": "Europe/Kyiv"
+    }
+  ]
+}
