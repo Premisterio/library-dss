@@ -33,12 +33,15 @@ If a local `HANDOFF.md` exists (gitignored), read it first: it holds the live se
 backend/app/
   api/v1/      thin HTTP adapters (routers, schemas); operation_id = handler name (snake_case, unique)
   services/    use cases: DB + domain orchestration, transaction boundaries
+  ingest/      dataset files (v2, v1) → validated Polars frames → PostgreSQL COPY
+  worker/      background job runner (`python -m app.worker`), handlers registered in runner.HANDLERS
+  utils/       small pure helpers for every layer, domain included (dates; later formatting); no app imports
   domain/      model base: analytics, dss/retention, dss/content (pure)
   models/      SQLAlchemy models (Base with naming convention) → Alembic migrations
   core/        config (env only), db (lazy engine), errors (RFC 9457 Problem Details), migrations
   cli/         `dss` Typer CLI: same use cases as the API
-backend/migrations/  Alembic
-backend/tests/       pytest (`-m db` tests need PostgreSQL)
+backend/migrations/  Alembic, revisions numbered 0001, 0002, ... (`NNNN_<slug>.py`)
+backend/tests/       pytest against PostgreSQL (`dss_test` database)
 generator/           `libsim`: library simulator (dataset v2 + ground truth), catalogue builder
 frontend/            thin React client (shadcn/ui), talks to the API only via @library-dss/api-client
 packages/api-client/ generated typed client + committed openapi.json
@@ -54,12 +57,12 @@ npm ci                          # JS workspaces
 uv run prek install             # git hooks (ruff, oxfmt, oxlint)
 
 # run
-docker compose up -d            # PostgreSQL 18 (:5433) + API (:8000, migrations on start, reload)
+docker compose up -d            # PostgreSQL 18 (:5433) + API (:8000, migrations on start, reload) + worker
 npm run dev                     # frontend :5173, proxies /api → :8000
 
 # checks (same as CI)
 uv run ruff check . && uv run ruff format --check . && uv run ty check backend generator
-(cd backend && uv run pytest)   # needs the compose db, or set DATABASE_URL
+(cd backend && uv run pytest)   # uses database dss_test on the compose server (created on first run)
 (cd generator && uv run pytest)
 npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build
 
@@ -82,12 +85,19 @@ uv run libsim schema --out docs/schema/dataset-v2.schema.json   # after changing
   - Enums as codes; labels via `meta/enums`.
   - Charts as tidy `{dimensions, measures, rows}`.
   - Lists as `{items, total, limit, offset}`.
+- **Long operations** (import, model training, ...) are jobs: the use case calls `jobs.enqueue`, and the worker runs the handler registered in `app/worker/runner.HANDLERS`.
+  - A handler does all its work in the session it gets; the runner commits it together with the job's success, or rolls it back and records `{code, detail, errors}`.
+  - Report progress through the `progress(fraction, stage)` callback; it is written in its own short transaction, so clients see it live (`GET /jobs/{id}/events`, SSE).
+  - Raise `IngestError`/`ApiError` for expected failures; anything else is recorded as `job.crashed` and logged.
+- **Time:** stored and exchanged in UTC. Use `app.utils.dates` (`utc_now`, `parse_utc`, `end_of_day_utc`, `ISO_UTC_FORMAT`) instead of `datetime.now()` or new format strings. Formats that belong to a protocol (e.g. the COPY timestamp format in `ingest/load.py`) stay next to that code.
+- **Shared helpers** go to `app/utils/` only when two or more places need them; `test_architecture.py` keeps utils free of web, DB and other app imports.
 - **Settings:** come only from environment variables (`app.core.config.Settings`). `SECRET_KEY` has no default on purpose.
 - **Domain code:** pure functions over DataFrames/dataclasses, deterministic given a seed. No `datetime.now()`: use the dataset `as_of` date.
 - **Tests:**
   - every bug fix gets a regression test;
   - backend tests run against PostgreSQL: the schema is migrated once, each test runs in a rolled-back transaction (`db_session`);
-  - `test_migrations.py` fails if models change without an Alembic migration (`uv run alembic revision --autogenerate`);
+  - the `run_jobs` fixture runs queued jobs synchronously inside that transaction; `test_worker.py` uses real committed transactions and deletes its data afterwards;
+  - `test_migrations.py` fails if models change without an Alembic migration (`uv run alembic revision --autogenerate -m "what changed"` assigns the next number), or if the revisions stop being one numbered chain;
   - slow generator signal-recovery tests are marked `@pytest.mark.slow`;
   - pytest treats warnings as errors.
 - **Simulator:**
@@ -116,6 +126,15 @@ uv run libsim schema --out docs/schema/dataset-v2.schema.json   # after changing
 
 Newest first. Add an entry for every decision that changes scope, stack or rules.
 
+- **2026-10-14 — Migration names and shared helpers.**
+  - Alembic revisions are numbered (`0001_initial_schema.py`, revision `"0001"`) instead of random hashes: readable order and `down_revision`. `migrations/env.py` assigns the number.
+  - `app/utils/` holds pure helpers shared by several layers; the first one is `dates.py`.
+- **2026-10-14 — Background jobs and dataset import.**
+  - Queue = the `jobs` table; the worker claims jobs with `SELECT … FOR UPDATE SKIP LOCKED` (no Redis/Celery). Jobs abandoned by a stopped worker are failed after `JOB_STALE_SECONDS` without a heartbeat.
+  - Live progress via FastAPI's native SSE (`EventSourceResponse`), bounded to 10 minutes per stream; clients reconnect.
+  - Uploads are stored gzip-compressed in PostgreSQL (`dataset_files`), so one `pg_dump` backs up everything; duplicates are detected by the SHA-256 of the uncompressed JSON (per analyst).
+  - Import = orjson → Polars frames → bulk validation (all problems reported at once, up to 20) → COPY, in one transaction. Measured on the 5k × 24-month demo: ~8 s, worker peak ~280 MiB.
+  - v1 files import with `capabilities=["descriptive"]`; their unmapped fields go to `lib_users.extra`.
 - **2026-10-14 — Backend analytics on Polars.** The backend computes analytics with Polars (fast, modern API; it is already used by the generator), not pandas. scikit-learn (M4) works on numpy arrays exported from Polars.
 - **2026-10-14 — Auth.**
   - PyJWT + pwdlib (argon2id). Tokens carry `type` and `ver`; refresh tokens are rejected where access is required (a v1 bug).

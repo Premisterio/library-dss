@@ -2,7 +2,7 @@
 
 from app.models.analyst import Analyst
 from app.models.base import NAMING_CONVENTION, Base
-from app.models.dataset import Dataset, DatasetAnalytics
+from app.models.dataset import Dataset, DatasetAnalytics, DatasetFile
 from app.models.job import Job
 from app.models.library import (
     Book,
@@ -27,6 +27,7 @@ __all__ = [
     "CandidateTitle",
     "Dataset",
     "DatasetAnalytics",
+    "DatasetFile",
     "Hold",
     "Job",
     "LibUser",

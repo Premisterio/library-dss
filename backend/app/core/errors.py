@@ -62,6 +62,15 @@ PROBLEM_RESPONSES: dict[int | str, dict] = {
     422: {"model": Problem, "description": "Request validation failed"},
     "default": {"model": Problem, "description": "Error (RFC 9457 Problem Details)"},
 }
+# The same for routes whose success response is not JSON (event streams, files): FastAPI would
+# otherwise document their errors under the success media type.
+PROBLEM_JSON_RESPONSES: dict[int | str, dict] = {
+    status: {
+        "description": spec["description"],
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Problem"}}},
+    }
+    for status, spec in PROBLEM_RESPONSES.items()
+}
 
 
 def _snake(phrase: str) -> str:

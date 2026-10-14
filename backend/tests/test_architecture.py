@@ -7,6 +7,7 @@ import app
 
 APP_DIR = Path(app.__file__).parent
 DOMAIN_DIR = APP_DIR / "domain"
+UTILS_DIR = APP_DIR / "utils"
 FORBIDDEN_IN_DOMAIN = (
     "fastapi",
     "starlette",
@@ -32,15 +33,28 @@ def _imported_modules(path: Path) -> set[str]:
     return modules
 
 
+def _matches(module: str, prefixes: tuple[str, ...]) -> bool:
+    return any(module == prefix or module.startswith(f"{prefix}.") for prefix in prefixes)
+
+
+def _violations(package: Path, banned: tuple[str, ...], allowed: tuple[str, ...] = ()) -> list[str]:
+    files = list(package.rglob("*.py"))
+    assert files, f"{package.name} package is missing"
+    return sorted(
+        {
+            f"{path.relative_to(APP_DIR)} imports {module}"
+            for path in files
+            for module in _imported_modules(path)
+            if _matches(module, banned) and not _matches(module, allowed)
+        }
+    )
+
+
 def test_domain_layer_is_pure() -> None:
-    files = list(DOMAIN_DIR.rglob("*.py"))
-    assert files, "domain package is missing"
-    violations = {
-        f"{path.relative_to(APP_DIR)} imports {module}"
-        for path in files
-        for module in _imported_modules(path)
-        if any(
-            module == banned or module.startswith(f"{banned}.") for banned in FORBIDDEN_IN_DOMAIN
-        )
-    }
-    assert not violations, sorted(violations)
+    assert not (violations := _violations(DOMAIN_DIR, FORBIDDEN_IN_DOMAIN)), violations
+
+
+def test_utils_depend_on_nothing_else_in_the_app() -> None:
+    """Helpers usable from every layer, the domain included."""
+    banned = (*FORBIDDEN_IN_DOMAIN, "app")
+    assert not (violations := _violations(UTILS_DIR, banned, allowed=("app.utils",))), violations

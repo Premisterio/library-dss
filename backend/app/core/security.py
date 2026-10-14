@@ -5,7 +5,7 @@ token is never accepted where an access token is required (a bug in v1), and bum
 token_version on logout revokes every token issued before.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Literal
 
 import jwt
@@ -13,6 +13,7 @@ from pwdlib import PasswordHash
 
 from app.core.config import Settings
 from app.core.errors import ApiError
+from app.utils.dates import utc_now
 
 ALGORITHM = "HS256"
 TokenType = Literal["access", "refresh"]
@@ -29,7 +30,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_token(settings: Settings, *, subject: int, version: int, kind: TokenType) -> str:
-    now = datetime.now(UTC)
+    now = utc_now()
     lifetime = (
         timedelta(minutes=settings.access_token_minutes)
         if kind == "access"
