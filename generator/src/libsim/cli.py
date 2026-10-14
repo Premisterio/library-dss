@@ -16,7 +16,7 @@ DEFAULT_CACHE = Path("data/cache")
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="libsim",
-        description="Online library simulator: generates schema-v2 datasets with ground truth.",
+        description="Online library simulator: generates datasets with ground truth.",
     )
     parser.add_argument("--version", action="version", version=f"libsim {__version__}")
     commands = parser.add_subparsers(dest="command")
@@ -39,7 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     calibrate.add_argument("--out", type=Path, default=PACKAGE_DATA)
     calibrate.add_argument("--refresh", action="store_true", help="Re-download goodbooks-10k.")
 
-    generate = commands.add_parser("generate", help="Simulate a library and write a v2 dataset.")
+    generate = commands.add_parser("generate", help="Simulate a library and write a dataset.")
     generate.add_argument("--preset", default="demo", choices=PRESETS)
     generate.add_argument("--seed", type=int, default=1)
     generate.add_argument("--users", type=int, help="Number of members (default from preset).")
@@ -47,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("--out", type=Path, default=Path("data/generated"))
     generate.add_argument("--no-gzip", action="store_true", help="Write plain JSON.")
 
-    schema = commands.add_parser("schema", help="Write the dataset v2 JSON Schema.")
+    schema = commands.add_parser("schema", help="Write the dataset JSON Schema.")
     schema.add_argument("--out", type=Path, required=True)
 
     check = commands.add_parser("validate", help="Planted vs recovered effects for a dataset.")

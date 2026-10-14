@@ -20,11 +20,11 @@ services:
       retries: 30
 
   api:
-    build:
+    build: &backend-build
       context: .
       dockerfile: backend/Dockerfile
       target: dev
-    environment:
+    environment: &backend-env
       ENVIRONMENT: dev
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dss}:${POSTGRES_PASSWORD:-dss}@db:5432/${POSTGRES_DB:-dss}
       SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-secret-key-change-me-0123456789}
@@ -52,6 +52,18 @@ services:
       interval: 3s
       timeout: 5s
       retries: 40
+
+  # Runs background jobs (dataset imports, ...); restarts when backend/app changes.
+  worker:
+    build: *backend-build
+    environment: *backend-env
+    command: watchfiles --filter python "python -m app.worker" app
+    volumes:
+      - ./backend:/srv/backend
+    stop_grace_period: 60s # lets a running job finish
+    depends_on:
+      api:
+        condition: service_healthy # migrations are applied by the api
 
 volumes:
   db_data:

@@ -168,5 +168,5 @@ def test_cli_generate_then_validate(tmp_path: Path, capsys: pytest.CaptureFixtur
 
 
 def test_committed_json_schema_is_current() -> None:
-    committed = Path(__file__).parents[2] / "docs" / "schema" / "dataset-v2.schema.json"
+    committed = Path(__file__).parents[2] / "docs" / "schema" / "dataset.schema.json"
     assert json.loads(committed.read_text(encoding="utf-8")) == schema.json_schema()

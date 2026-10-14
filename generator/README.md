@@ -1,30 +1,38 @@
-# libsim — симулятор онлайн-бібліотеки
+# libsim: an online library simulator
 
-Генерує датасети формату v2 для СППР: реальний каталог книг (Open Library) плюс поденна симуляція читачів, позик, черг, пошуку, підписок і рандомізованої кампанії утримання із **закладеними залежностями**. Поряд з датасетом пишеться `ground_truth.json`, за яким вимірюється якість рішень системи.
+Generates datasets for the DSS. It combines a real book catalogue (Open Library) with a day-by-day simulation of:
 
-Опис моделі, формули й таблиця «закладено vs відновлено»: [`docs/simulation.md`](../docs/simulation.md). Схема датасету: [`docs/schema/dataset-v2.schema.json`](../docs/schema/dataset-v2.schema.json).
+- members;
+- loans and holds;
+- searches;
+- subscriptions;
+- a randomized retention campaign.
+
+The simulation has **planted dependencies**. Next to each dataset it writes `ground_truth.json`, which is used to measure the quality of the system's decisions.
+
+Model, formulas and the "planted vs recovered" table: [`docs/simulation.md`](../docs/simulation.md). Dataset schema: [`docs/schema/dataset.schema.json`](../docs/schema/dataset.schema.json).
 
 ```bash
-uv run libsim generate --preset demo --seed 1        # 5000 читачів × 24 міс. за ~15 с, ~8 МБ gzip
-uv run libsim validate data/generated/<id>.json.gz   # закладені ефекти, виміряні з даних
-uv run pytest generator                              # структурні тести + тести відновлення сигналу
+uv run libsim generate --preset demo --seed 1        # 5000 members × 24 months in ~15 s, ~8 MB gzip
+uv run libsim validate data/generated/<id>.json.gz   # planted effects, measured from the data
+uv run pytest generator                              # structural tests + signal-recovery tests
 ```
 
-Пресети: `demo`, `weak-signal`, `no-heterogeneity`, `misspecified`, `high-scarcity`.
+Presets: `demo`, `weak-signal`, `no-heterogeneity`, `misspecified`, `high-scarcity`.
 
-## Каталог і калібрування
+## Catalogue and calibration
 
-`src/libsim/data/` містить закомічені `catalog.csv`, `catalog_meta.json` і `calibration.json`. Перебудувати їх (група залежностей `catalog`, Polars):
+`src/libsim/data/` holds the committed `catalog.csv`, `catalog_meta.json` and `calibration.json`. To rebuild them (dependency group `catalog`, Polars):
 
 ```bash
-uv run libsim catalog fetch       # ~2 ГБ колонок Open Library у data/cache (gitignored)
+uv run libsim catalog fetch       # ~2 GB of Open Library columns in data/cache (gitignored)
 uv run libsim catalog build
-uv run libsim catalog calibrate   # goodbooks-10k: лише агрегати, сирі дані не комітимо
+uv run libsim catalog calibrate   # goodbooks-10k: aggregates only, raw data is never committed
 ```
 
-**Джерела:**
+**Sources:**
 
-- Каталог — Open Library (CC0).
-- Калібрування поведінки — goodbooks-10k Zygmunt Zając (CC BY-SA 4.0).
+- Catalogue: Open Library (CC0).
+- Behaviour calibration: goodbooks-10k by Zygmunt Zając (CC BY-SA 4.0).
 
-Жодного російськомовного контенту: див. правила в `AGENTS.md` і тест `tests/test_catalog_data.py`.
+There is no Russian-language content: see the rules in `AGENTS.md` and the test `tests/test_catalog_data.py`.

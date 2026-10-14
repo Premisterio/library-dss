@@ -1,8 +1,4 @@
-"""Enumerations exposed via GET /api/v1/meta/enums: stable codes with Ukrainian labels.
-
-Clients display labels from here instead of hard-coding dictionaries. Genre codes must match
-the simulator's taxonomy (`libsim.catalog.genres.GENRES`); a test keeps them in sync.
-"""
+"""Enumerations exposed via GET /api/v1/meta/enums: stable codes with Ukrainian labels."""
 
 ENUMS: dict[str, dict[str, str]] = {
     "genre": {
@@ -73,6 +69,7 @@ ENUMS: dict[str, dict[str, str]] = {
         "e_reader": "Електронна книга",
     },
     "campaign_arm": {"control": "Контрольна група", "email": "E-mail", "discount": "Знижка"},
+    "dataset_format": {"tabular": "Табличний", "nested": "Вкладений (по користувачах)"},
     "dataset_status": {
         "pending": "Очікує",
         "importing": "Імпортується",

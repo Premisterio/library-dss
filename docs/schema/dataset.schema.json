@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Premisterio/library-dss/docs/schema/dataset-v2.schema.json",
-  "title": "Library DSS dataset v2",
+  "$id": "https://github.com/Premisterio/library-dss/docs/schema/dataset.schema.json",
+  "title": "Library DSS dataset",
   "type": "object",
   "required": ["schema_version", "meta", "tables"],
   "properties": {

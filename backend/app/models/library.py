@@ -1,4 +1,4 @@
-"""Library data of an imported dataset; tables mirror dataset format v2 one to one.
+"""Library data of an imported dataset; tables mirror the tabular dataset format one to one.
 
 Every row belongs to a dataset (`ON DELETE CASCADE`). Natural ids from the file (user_id,
 book_id, loan_id, ...) are unique per dataset. There are no foreign keys between library tables:
@@ -36,7 +36,7 @@ class LibUser(Base):
     language_pref: Mapped[str | None] = mapped_column(String(10))
     email_opt_in: Mapped[bool | None]
     interests: Mapped[list[str]] = mapped_column(ARRAY(String(40)), default=list)
-    extra: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # v1 snapshot fields
+    extra: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # nested-format fields
 
 
 class Book(Base):
@@ -51,7 +51,7 @@ class Book(Base):
     language: Mapped[str | None] = mapped_column(String(10))
     pages: Mapped[int | None]
     first_year: Mapped[int | None] = mapped_column(SmallInteger)
-    copies: Mapped[int | None]  # v1 datasets have no licence data
+    copies: Mapped[int | None]  # unknown for nested-format datasets
 
 
 class SubscriptionPeriod(Base):
@@ -128,7 +128,7 @@ class Search(Base):
     user_id: Mapped[str] = mapped_column(String(40))
     searched_at: Mapped[datetime]
     query: Mapped[str] = mapped_column(Text)
-    results_count: Mapped[int | None]  # v1 datasets do not record it
+    results_count: Mapped[int | None]  # unknown for nested-format datasets
 
 
 class Hold(Base):

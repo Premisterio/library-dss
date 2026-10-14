@@ -1,69 +1,69 @@
-# library-dss — СППР онлайн-бібліотеки
+# library-dss: a decision support system for an online library
 
-Система підтримки прийняття рішень для онлайн-бібліотеки: магістерська робота, що розвиває бакалаврську [систему аналізу даних користувачів](https://github.com/Premisterio/Diploma). Головні модулі:
+A decision support system (DSS) for an online library, built as a master's thesis. It grows out of an earlier [user data analytics system](https://github.com/Premisterio/Diploma). Main modules:
 
-- **Утримання підписників:** прогноз відтоку, оцінка ефекту дій, оптимальний план дій під бюджет.
-- **Закупівля контенту:** багатокритеріальний вибір (AHP + TOPSIS) і відбір під бюджет.
-- **Генератор `libsim`:** симулятор бібліотеки із закладеними залежностями, на якому експериментально оцінюється якість рішень.
+- **Subscriber retention:** churn prediction, the effect of actions, and the best action plan within a budget.
+- **Content acquisition:** multi-criteria choice (AHP + TOPSIS) and selection within a budget.
+- **The `libsim` generator:** a library simulator with planted dependencies, used to measure the quality of decisions experimentally.
 
-> Статус: v2 у розробці. Зараз готовий каркас проєкту (M0).
+> Status: in development.
 
-## Стек
+## Stack
 
-| Частина  | Технології                                                                                     |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Backend  | Python 3.15, FastAPI, SQLAlchemy 2.1, Alembic, PostgreSQL 18, uv, ruff, ty, pytest             |
-| Frontend | TypeScript 7, React 19, Vite 8, Tailwind 4, shadcn/ui, TanStack Query, oxlint, oxfmt, Vitest   |
-| Контракт | OpenAPI 3.1 (`/api/v1`) → типізований клієнт `@library-dss/api-client` (openapi-fetch)         |
-| CI       | GitHub Actions: lint, типи, тести, синхронність API-клієнта, Docker-образ, actionlint + zizmor |
+| Part     | Technologies                                                                                 |
+| -------- | -------------------------------------------------------------------------------------------- |
+| Backend  | Python 3.15, FastAPI, SQLAlchemy 2.1, Alembic, PostgreSQL 18, uv, ruff, ty, pytest           |
+| Frontend | TypeScript 7, React 19, Vite 8, Tailwind 4, shadcn/ui, TanStack Query, oxlint, oxfmt, Vitest |
+| Contract | OpenAPI 3.1 (`/api/v1`) → typed client `@library-dss/api-client` (openapi-fetch)             |
+| CI       | GitHub Actions: lint, types, tests, API client in sync, Docker image, actionlint + zizmor    |
 
-## Швидкий старт
+## Quick start
 
-Потрібні Docker Desktop і Node.js 26 (≥ 24). Встановлювати `uv` локально необов'язково: Python-частина працює в Docker.
+You need Docker Desktop and Node.js 26 (≥ 24). A local `uv` is optional, because the Python part runs in Docker.
 
 ```bash
-docker compose up -d     # PostgreSQL 18 + API з авто-перезавантаженням
+docker compose up -d     # PostgreSQL 18 + API with auto-reload + background worker
 npm install
-npm run dev              # фронтенд на http://localhost:5173 (проксі /api → :8000)
+npm run dev              # frontend at http://localhost:5173 (proxies /api → :8000)
 ```
 
-- API-документація (Scalar): <http://localhost:8000/api/docs>
-- Перевірка готовності: <http://localhost:8000/api/v1/ready>
-- Типові змінні оточення лежать у [`.env.example`](.env.example); скопіюйте у `.env`, щоб змінити.
+- API docs (Scalar): <http://localhost:8000/api/docs>
+- Readiness check: <http://localhost:8000/api/v1/ready>
+- Default environment variables are in [`.env.example`](.env.example); copy it to `.env` to change them.
 
-## Перевірки (ті самі, що в CI)
+## Checks (the same as CI)
 
 ```bash
-docker compose exec api pytest                  # тести бекенду (з БД)
+docker compose exec api pytest                  # backend tests (with the database)
 npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build
 ```
 
-Якщо змінювали API, оновіть контракт і клієнт (CI перевіряє, що вони синхронні):
+After changing the API, update the contract and the client (CI checks that they match):
 
 ```bash
 docker compose exec -T api dss openapi > packages/api-client/openapi.json
 npm run api:generate
 ```
 
-Git-хуки: `uv run prek install` (потрібен локальний `uv`).
+Git hooks: `uv run prek install` (needs a local `uv`).
 
-## Структура
+## Structure
 
 ```text
-backend/            FastAPI-застосунок: app/{api/v1, services, domain, models, core, cli}, міграції, тести
-generator/          libsim — симулятор бібліотеки (генератор датасетів v2 + ground truth)
-frontend/           тонкий React-клієнт на shadcn/ui (лише відображення, вся логіка в API)
-packages/api-client згенерований TypeScript-клієнт API, спільний для будь-якого фронтенду
-tools/api-codegen   ізольований генератор клієнта (TS 7 поки не має JS compiler API)
+backend/            FastAPI app: app/{api/v1, services, domain, ingest, worker, models, core, utils, cli}, migrations, tests
+generator/          libsim: library simulator (dataset generator + ground truth)
+frontend/           thin React client on shadcn/ui (rendering only, all logic is in the API)
+packages/api-client generated TypeScript API client, shared by any frontend
+tools/api-codegen   isolated client generator (TS 7 has no JS compiler API yet)
 ```
 
-Ключова ідея архітектури: `app/domain` (база моделей СППР) не залежить від вебу й БД. Ті самі моделі викликаються з API, CLI (`dss`), фонового виконавця й експериментального стенду магістерської.
+The key architectural idea: `app/domain`, the model base of the DSS, depends on neither the web layer nor the database. The same models run from the API, the CLI (`dss`), the background worker and the thesis experiment harness. How each part works: [DESIGN.md](DESIGN.md). Rules for contributors and agents: [AGENTS.md](AGENTS.md).
 
-## Правила
+## Rules
 
-- Увесь контент (дані, каталог, інтерфейс) українською або англійською. Російськомовного контенту немає.
-- Код і коментарі англійською, документація й інтерфейс українською.
+- All content (data, catalogue, UI) is in Ukrainian or English. There is no Russian-language content.
+- The UI is in Ukrainian; code, comments and documentation are in English.
 
-## Ліцензія
+## License
 
 [BSD 3-Clause](LICENSE) © 2025–2026 Volodymyr Hrehul

@@ -1,4 +1,4 @@
-"""Dataset format v2: table definitions shared by the writer, the JSON Schema and the backend.
+"""Tabular dataset format: table definitions shared by the writer, the JSON Schema and the backend.
 
 A dataset file is `{"schema_version": 2, "meta": {...}, "tables": {name: {"columns": [...],
 "rows": [[...], ...]}}}`. Tables map 1:1 onto the backend's import tables. Timestamps are
@@ -118,7 +118,7 @@ def columns(table: str) -> list[str]:
 
 
 def json_schema() -> dict[str, Any]:
-    """JSON Schema (2020-12) of a dataset v2 file; used by the backend importer and docs."""
+    """JSON Schema (2020-12) of a dataset file; used by the backend importer and docs."""
 
     def cell(kind: str, nullable: bool) -> dict[str, Any]:
         spec = dict(_JSON_TYPES[kind])
@@ -145,8 +145,8 @@ def json_schema() -> dict[str, Any]:
     }
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://github.com/Premisterio/library-dss/docs/schema/dataset-v2.schema.json",
-        "title": "Library DSS dataset v2",
+        "$id": "https://github.com/Premisterio/library-dss/docs/schema/dataset.schema.json",
+        "title": "Library DSS dataset",
         "type": "object",
         "required": ["schema_version", "meta", "tables"],
         "properties": {

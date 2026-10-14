@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     cookie_secure: bool = Field(default=True, description="False only for plain-HTTP local dev.")
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
+    # Datasets and background jobs
+    max_upload_mb: int = Field(default=150, ge=1, description="Uncompressed JSON size limit.")
+    worker_poll_seconds: float = Field(default=1.0, gt=0)
+    job_stale_seconds: int = Field(
+        default=300, ge=10, description="Running jobs without a heartbeat this long are failed."
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,168 +1,190 @@
-# Симулятор `libsim`: модель онлайн-бібліотеки
+# The `libsim` simulator: a model of an online library
 
-`libsim` генерує датасети формату v2 для СППР. Модель і текст розділу «Експерименти» магістерської спираються на цей документ.
+`libsim` generates datasets for the DSS in the tabular format ([schema](schema/dataset.schema.json)). The model and the "Experiments" chapter of the thesis rest on this document.
 
-**Навіщо симуляція.** Реальних журналів видачі з підписками й кампаніями у відкритому доступі немає. До того ж для оцінки рішень треба знати **правду**: чи справді знижка утримала б читача. Симулятор закладає в дані відомі залежності й записує їх в окремий `ground_truth.json`. Тоді якість моделей і рішень СППР можна виміряти, а не лише описати.
+**Why a simulation.** There are no public lending logs that include subscriptions and campaigns. Evaluating decisions also needs the **truth**, for example whether a discount would really have kept a member.
 
-## Дані: що реальне, а що симульоване
+The simulator plants known dependencies in the data and writes them to a separate `ground_truth.json`. This makes the quality of the DSS models and decisions measurable, not only describable.
 
-| Складова                                             | Джерело                                                                                                                                                                  |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Каталог**                                          | Реальний, Open Library (CC0): 3975 книг — 211 українських видань з реальними сигналами попиту, 798 українських книг «довгого хвоста», 2966 популярних англомовних творів |
-| **Популярність і якість книг**                       | Реальні оцінки й журнал читання Open Library, плюс шум                                                                                                                   |
-| **Параметри поведінки читачів**                      | Калібровані на goodbooks-10k (CC BY-SA 4.0, 6 млн оцінок 53 тис. читачів): шкала оцінок, концентрація смаків, довгий хвіст популярності                                  |
-| **Читачі, позики, сесії, черги, підписки, кампанія** | Симульовані за моделлю нижче                                                                                                                                             |
+## Data: what is real and what is simulated
 
-Російськомовного контенту немає: у каталозі лише українські й англійські видання (див. `AGENTS.md`).
+| Part                                                         | Source                                                                                                                                                          |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Catalogue**                                                | Real, from Open Library (CC0): 3975 books — 211 Ukrainian editions with real demand signals, 798 long-tail Ukrainian books, 2966 popular English-language works |
+| **Book popularity and quality**                              | Real Open Library ratings and reading log, plus noise                                                                                                           |
+| **Reader behaviour parameters**                              | Calibrated on goodbooks-10k (CC BY-SA 4.0, 6 M ratings by 53 k readers): rating scale, taste concentration, long tail of popularity                             |
+| **Members, loans, sessions, holds, subscriptions, campaign** | Simulated by the model below                                                                                                                                    |
 
-## Час
+There is no Russian-language content: the catalogue has Ukrainian and English editions only (see `AGENTS.md`).
 
-- **Крок і вікно спостереження.** Крок симуляції — один день. Історія охоплює `months` місяців до дати зрізу `as_of`.
-- **Майбутнє після зрізу.** Симуляція йде ще на `horizon_days` (30) днів після `as_of`. Ці події в датасет **не потрапляють**, з них будується лише ground truth про результати дій.
-- **Часовий пояс.** Часи подій записуються в UTC, локальний пояс — `Europe/Kyiv`.
-- **Добовий ритм.** Три хронотипи читачів (ранковий, вечірній, «сова»).
-- **Тижневий ритм.** Вихідні +25% активності, літо −15%, у вересні студенти активніші на 25%.
+## Time
 
-## Читачі
+- **Step and observation window.** The simulation steps one day at a time. The history covers `months` months up to the snapshot date `as_of`.
+- **After the snapshot.** The simulation runs `horizon_days` (30) more days past `as_of`. Those events **do not reach** the dataset; they only feed the ground truth about the outcomes of actions.
+- **Time zone.** Event times are written in UTC; the local zone is `Europe/Kyiv`.
+- **Daily rhythm.** Three reader chronotypes: morning, evening and night owl.
+- **Weekly and seasonal rhythm.** Weekends +25% activity, summer −15%, students +25% in September.
 
-- **Реєстрація.** Початкова когорта (35%) плюс приплив з трендом зростання 25% на рік.
-- **Профіль (видно в даних):** вікова група, освіта, мовна преференція (половина читає лише українською), згода на розсилку (70%), задекларовані інтереси (3 жанри, 25% шуму).
-- **Приховане (лише в ground truth):**
-  - вектор смаків за жанрами — `Dirichlet(11.4 · база_жанрів · нахил_за_віком)`, де 11.4 відкалібровано на goodbooks-10k;
-  - темп читання;
-  - базова задоволеність;
-  - чутливість до ціни;
-  - прихований фактор (для пресета `misspecified`).
+## Members
 
-## Задоволеність — прихований стан
+- **Registration.** An initial cohort (35%) plus newcomers, with a growth trend of 25% a year.
+- **Profile (visible in the data):**
+  - age group and education;
+  - language preference (half read Ukrainian only);
+  - e-mail opt-in (70%);
+  - declared interests: 3 genres, 25% noise.
+- **Hidden (ground truth only):**
+  - genre tastes, `Dirichlet(11.4 · genre_base · age_tilt)`, where 11.4 is calibrated on goodbooks-10k;
+  - reading pace;
+  - baseline satisfaction;
+  - price sensitivity;
+  - a hidden factor (for the `misspecified` preset).
 
-Кожен читач має задоволеність `s`, яка щодня повертається до власного рівня `μ`:
+## Satisfaction: the hidden state
 
-```text
-s(t+1) = 0.985 · s(t) + 0.015 · μ + N(0, 0.04) + удари подій
-```
-
-Події зсувають `s`:
-
-| Подія                        | Зсув `s` |
-| ---------------------------- | -------- |
-| Дочитана книга з оцінкою ≥ 4 | +0.18    |
-| Невдала книга (оцінка ≤ 2)   | −0.12    |
-| Прострочена черга            | −0.30    |
-| Пошук без результатів        | −0.12    |
-
-Активність читача множиться на `exp(0.9 · s)`. Отже, в даних видно лише **наслідки** задоволеності, тобто активність, а не саму `s`. Тому прогноз відтоку не може бути ідеальним, як і в реальності.
-
-## Читання, позики, черги
-
-- **Вибір книги.** Жанр обирається за смаками. Книга в жанрі — пропорційно `популярність · exp(0.4 · якість)`, без повторів.
-- **Дочитування.** Імовірність `σ(1.2 + 0.6·якість + 0.7·відповідність_смаку − 0.5·ln(сторінки/300))`. Недочитані книги кидаються на 10–60%.
-- **Оцінка.** Латентна величина `3.9 + 0.45·якість + 0.35·відповідність + упередження_читача + шум`. Крайні думки ставлять частіше: розподіл близький до goodbooks-10k.
-- **Ліцензії.** Кількість копій росте з популярністю книги й розміром аудиторії. 20% тайтлів навмисно недоліцензовані.
-- **Немає вільної копії.** Читач стає в чергу (60%), бере іншу книгу (30%) або відмовляється (10%).
-- **Черги.** Обслуговуються за принципом FIFO і прострочуються через 21 день.
-- **Строк позики.** 21 день, після чого книга повертається автоматично.
-
-## Пошук
-
-- **Звичайні пошуки.** Їх видно перед видачею книги (назва чи автор), а також під час перегляду за жанром.
-- **Книги, яких немає в бібліотеці.** 300 тайтлів каталогу відсутні у фонді. Бажання взяти таку книгу у 75% випадків дає **пошук з нулем результатів** і зсув задоволеності. Це спостережуваний слід незадоволеного попиту.
-- **Кандидати.** 60 із цих тайтлів пропонує дистриб'ютор. Це альтернативи для модуля закупівлі контенту, з ціною ліцензії, що корелює з попитом.
-
-## Підписки та відтік
-
-**Плани:**
-
-| План         | Ціна     | Період   |
-| ------------ | -------- | -------- |
-| Місячний     | 149 грн  | 30 днів  |
-| Річний       | 1290 грн | 365 днів |
-| Студентський | 79 грн   | 30 днів  |
-
-Новий читач починає з 14-денного пробного періоду (55%) або з безкоштовного тарифу (1 позика одночасно). Конверсія пробного періоду залежить від задоволеності й активності.
-
-**Відтік стається лише в момент продовження** підписки:
+Each member has a satisfaction `s` that drifts back to their own level `μ` every day:
 
 ```text
-logit P(відтік) = β0[план] − 1.2·s + 0.25·фрустрації_30д − 0.3·ln(1 + стаж_міс) + 0.6·неактивний_14д + τ(дія)
-β0: місячний −2.25, річний −0.75, студентський −2.1
+s(t+1) = 0.985 · s(t) + 0.015 · μ + N(0, 0.04) + event shocks
 ```
 
-Після відтоку платежів і нових позик немає.
+Events shift `s`:
 
-## Минула кампанія і ефекти дій
+| Event                     | Shift of `s` |
+| ------------------------- | ------------ |
+| Finished a book rated ≥ 4 | +0.18        |
+| A bad book (rated ≤ 2)    | −0.12        |
+| A hold that lapsed        | −0.30        |
+| A search with no results  | −0.12        |
 
-**Кампанія.** Рандомізована кампанія утримання тривала 4 місяці й закінчилася за 3 місяці до `as_of`. Кожен платний читач на першому продовженні в цьому вікні отримує випадкову групу: контроль (40%), e-mail (30%) або знижка 20% (30%).
+A member's activity is multiplied by `exp(0.9 · s)`. The data therefore shows only the **consequences** of satisfaction (activity), never `s` itself, so churn prediction cannot be perfect, just as in reality.
 
-Справжні ефекти **різні для різних читачів**:
+## Reading, loans, holds
 
-| Дія                                            | Ефект `τ` на logit відтоку                                   |
-| ---------------------------------------------- | ------------------------------------------------------------ |
-| Знижка                                         | `−1.3 · чутливість_до_ціни`; не діє на «втрачених» (s < −1)  |
-| E-mail читачу, чия активність падає            | −0.5                                                         |
-| E-mail «сплячому» читачу (без читання 30 днів) | **+0.25**: нагадування провокує скасування («sleeping dogs») |
-| E-mail іншим                                   | −0.05                                                        |
+- **Choosing a book.**
+  - The genre follows the member's tastes.
+  - Within the genre, the chance of a book is proportional to `popularity · exp(0.4 · quality)`. Members do not borrow the same book twice.
+- **Finishing.**
+  - Probability `σ(1.2 + 0.6·quality + 0.7·taste_fit − 0.5·ln(pages/300))`.
+  - Unfinished books are dropped at 10–60%.
+- **Rating.**
+  - Latent value `3.9 + 0.45·quality + 0.35·taste_fit + reader_bias + noise`.
+  - Extreme opinions are rated more often, so the distribution is close to goodbooks-10k.
+- **Licences.** The number of copies grows with a book's popularity and the size of the audience. 20% of titles are deliberately under-licensed.
+- **No free copy.** The member places a hold (60%), borrows another book (30%) or gives up (10%).
+- **Holds.** Served first in, first out; they lapse after 21 days.
+- **Loan period.** 21 days; then the book returns automatically.
 
-Лист отримують лише ті, хто погодився на розсилку.
+## Search
+
+- **Ordinary searches** appear before a loan (by title or author) and while browsing a genre.
+- **Books the library does not have.**
+  - 300 catalogue titles are missing from the collection.
+  - In 75% of cases, wanting such a book produces a **zero-result search** and a satisfaction shock. This is the observable trace of unmet demand.
+- **Candidates.**
+  - A distributor offers 60 of those titles.
+  - They are the alternatives for the content acquisition module, with a licence price that correlates with demand.
+
+## Subscriptions and churn
+
+**Plans:**
+
+| Plan    | Price    | Period   |
+| ------- | -------- | -------- |
+| Monthly | 149 UAH  | 30 days  |
+| Annual  | 1290 UAH | 365 days |
+| Student | 79 UAH   | 30 days  |
+
+A new member starts with a 14-day trial (55%) or on the free tier (one loan at a time). Trial conversion depends on satisfaction and activity.
+
+**Churn happens only at renewal:**
+
+```text
+logit P(churn) = β0[plan] − 1.2·s + 0.25·frustrations_30d − 0.3·ln(1 + tenure_months) + 0.6·inactive_14d + τ(action)
+β0: monthly −2.25, annual −0.75, student −2.1
+```
+
+After churn there are no more payments and no new loans.
+
+## The past campaign and the effects of actions
+
+**Campaign.** A randomized retention campaign ran for 4 months and ended 3 months before `as_of`. At their first renewal in that window, every paying member is randomly assigned to one of three arms:
+
+- control (40%);
+- e-mail (30%);
+- a 20% discount (30%).
+
+The true effects **differ between members**:
+
+| Action                                              | Effect `τ` on the churn logit                                     |
+| --------------------------------------------------- | ----------------------------------------------------------------- |
+| Discount                                            | `−1.3 · price_sensitivity`; none for lost causes (s < −1)         |
+| E-mail to a member whose activity is falling        | −0.5                                                              |
+| E-mail to a dormant member (no reading for 30 days) | **+0.25**: the reminder provokes a cancellation ("sleeping dogs") |
+| E-mail to anyone else                               | −0.05                                                             |
+
+Only members who opted in receive e-mails.
 
 ## Ground truth (`*.ground_truth.json`)
 
-До ground truth записується:
+The ground truth records:
 
-- **Параметри** і коефіцієнти відтоку.
-- **Приховані стани** кожного читача: `s`, чутливість до ціни, смаки.
-- **Група ризику**, тобто ті, чий період закінчується в перші 30 днів після `as_of`. Для них записано `p_true` для кожної дії (`none`, `email`, `discount`) і реалізований результат для кожної дії. Результати отримано зі **спільних випадкових чисел**, тож дії порівнюються чесно.
-- **Учасники кампанії:** справжні `τ` і `p_true` на момент призначення.
-- **Книги:** справжня якість і популярність.
-- **Кандидати:** справжній попит.
+- **Parameters** and churn coefficients.
+- **Hidden state** of every member: `s`, price sensitivity, tastes.
+- **The risk group**: members whose period ends within 30 days after `as_of`.
+  - For each of them it records `p_true` and the realized outcome for every action (`none`, `email`, `discount`).
+  - Outcomes come from **common random numbers**, so actions are compared fairly.
+- **Campaign participants:** the true `τ` and `p_true` at assignment.
+- **Books:** true quality and popularity.
+- **Candidates:** true demand.
 
-## Пресети
+## Presets
 
-| Пресет             | Що змінює                                                    |
-| ------------------ | ------------------------------------------------------------ |
-| `demo`             | Базова модель                                                |
-| `weak-signal`      | Ефекти вдвічі слабші, більше шуму                            |
-| `no-heterogeneity` | Ефект дії однаковий для всіх                                 |
-| `misspecified`     | Відтік залежить від прихованого фактора, якого немає в даних |
-| `high-scarcity`    | Удвічі менше ліцензій, 40% недоліцензованих                  |
+| Preset             | What it changes                                          |
+| ------------------ | -------------------------------------------------------- |
+| `demo`             | The base model                                           |
+| `weak-signal`      | Effects half as strong, more noise                       |
+| `no-heterogeneity` | The effect of an action is the same for everyone         |
+| `misspecified`     | Churn depends on a hidden factor that is not in the data |
+| `high-scarcity`    | Half the licences, 40% under-licensed titles             |
 
-## Закладено vs відновлено
+## Planted vs recovered
 
-`libsim validate` вимірює ефекти **лише за даними, які бачить СППР**. Нижче результати для `demo`, seed 1, 5000 читачів × 24 місяці:
+`libsim validate` measures the effects **from the data the DSS sees only**. Results for `demo`, seed 1, 5000 members × 24 months:
 
-| Перевірка                                              | З даних                                        | Правда / ціль              |
-| ------------------------------------------------------ | ---------------------------------------------- | -------------------------- |
-| Відтік на продовженні                                  | місячний 6,3%, річний 20,4%, студентський 6,7% | 6–10%, 20–30%              |
-| Відтік неактивних (≥ 14 днів без читання) vs активних  | 11,8% vs 5,0%                                  | закладено `+0.6` до logit  |
-| Ефект знижки з рандомізації                            | −3,0 п.п. (SE 2,0)                             | −3,4 п.п.                  |
-| Ефект e-mail з рандомізації                            | −3,4 п.п. (SE 2,0)                             | −0,5 п.п. (у межах 1,5 SE) |
-| Різний ефект для різних читачів                        | e-mail шкодить 10% читачів, допомагає 59%      | закладено                  |
-| Історія серед позик: молодь vs 55+                     | 5,2% vs 11,4%                                  | нахил смаків за віком      |
-| Фентезі серед позик: молодь vs 55+                     | 27,4% vs 18,6%                                 | нахил смаків за віком      |
-| Середня оцінка ↔ справжня якість (≥ 10 оцінок)         | Spearman 0,79                                  | —                          |
-| Пошуки без результатів ↔ справжній попит на кандидатів | Spearman 0,79                                  | —                          |
-| Вихідні / будні; вечір 19–23                           | ×1,13; 42% сесій                               | ритм закладено             |
+| Check                                                   | From the data                            | Truth / target              |
+| ------------------------------------------------------- | ---------------------------------------- | --------------------------- |
+| Churn at renewal                                        | monthly 6.3%, annual 20.4%, student 6.7% | 6–10%, 20–30%               |
+| Churn of inactive (≥ 14 days without reading) vs active | 11.8% vs 5.0%                            | planted `+0.6` on the logit |
+| Discount effect from the randomization                  | −3.0 pp (SE 2.0)                         | −3.4 pp                     |
+| E-mail effect from the randomization                    | −3.4 pp (SE 2.0)                         | −0.5 pp (within 1.5 SE)     |
+| Different effects for different members                 | e-mail hurts 10% of members, helps 59%   | planted                     |
+| History among loans: young vs 55+                       | 5.2% vs 11.4%                            | age tilt of tastes          |
+| Fantasy among loans: young vs 55+                       | 27.4% vs 18.6%                           | age tilt of tastes          |
+| Average rating ↔ true quality (≥ 10 ratings)            | Spearman 0.79                            | —                           |
+| Zero-result searches ↔ true candidate demand            | Spearman 0.79                            | —                           |
+| Weekend / weekday; evening 19–23                        | ×1.13; 42% of sessions                   | rhythm planted              |
 
-Ці перевірки є тестами (`generator/tests/test_signals.py`) і проходять на різних seed-ах.
+These checks are tests (`generator/tests/test_signals.py`) and pass across seeds.
 
-## Обмеження й припущення
+## Limitations and assumptions
 
-Ці пункти фіксуємо в тексті як загрози валідності:
+The thesis records these as threats to validity:
 
-- **Ми оцінюємо СППР на власній моделі світу.** Тому є пресети `misspecified` і `weak-signal`.
-- **Шум ефектів.** При ~250 людях у групі кампанії ефект e-mail оцінюється з великою похибкою. Це реалістично, а експеримент із розміром кампанії — частина M6.
-- **Одна дія на читача, знижка лише на один період.** Відтік стається тільки в кінці періоду.
-- **Сигнали популярності** Open Library відображають читачів Open Library, а не українську аудиторію.
-- **Вибірка goodbooks-10k** — лише активні читачі. Тому рівень активності в симуляторі нижчий, а форму розподілу збережено.
+- **The DSS is evaluated on our own model of the world.** That is why the `misspecified` and `weak-signal` presets exist.
+- **Noisy effects.** With ~250 people per campaign arm, the e-mail effect is estimated with a large error. This is realistic; an experiment on the campaign size is part of M6.
+- **One action per member, a discount for one period only.** Churn happens only at the end of a period.
+- **Open Library popularity signals** reflect Open Library readers, not a Ukrainian audience.
+- **goodbooks-10k covers active readers only.** The simulator's activity level is therefore lower, while the shape of the distribution is kept.
 
-## Відтворення
+## Reproducing
 
 ```bash
 uv run libsim generate --preset demo --seed 1            # data/generated/demo-s1-<hash>.json.gz + ground truth
 uv run libsim validate data/generated/demo-s1-<hash>.json.gz
-uv run libsim catalog fetch && uv run libsim catalog build     # перебудувати каталог (~2 ГБ кешу)
-uv run libsim catalog calibrate                                # перерахувати калібрування
-uv run libsim schema --out docs/schema/dataset-v2.schema.json
+uv run libsim catalog fetch && uv run libsim catalog build     # rebuild the catalogue (~2 GB cache)
+uv run libsim catalog calibrate                                # recompute the calibration
+uv run libsim schema --out docs/schema/dataset.schema.json
 ```
 
-Однакові параметри й seed дають байт-у-байт однакові файли.
+The same parameters and seed give byte-identical files.
