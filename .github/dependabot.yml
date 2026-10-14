@@ -28,6 +28,11 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
+    # openapi-typescript needs the TypeScript JS compiler API, which TS 7 does not ship yet.
+    # This isolated tool must stay on TS 5.x until openapi-typescript supports TS 7.
+    ignore:
+      - dependency-name: typescript
+        versions: [">=6.0.0"]
 
   - package-ecosystem: github-actions
     directory: /

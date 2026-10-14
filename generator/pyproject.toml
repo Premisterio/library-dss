@@ -4,7 +4,7 @@ version = "0.1.0.dev0"
 description = "Симулятор онлайн-бібліотеки із закладеними залежностями та ground truth для оцінки СППР"
 readme = "README.md"
 requires-python = ">=3.15,<3.16"
-dependencies = []
+dependencies = ["numpy>=2.5", "tzdata>=2026.1"]
 
 [project.scripts]
 libsim = "libsim.cli:main"
@@ -24,4 +24,5 @@ packages = ["src/libsim"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
-markers = ["slow: long-running signal-recovery tests (nightly CI)"]
+markers = ["slow: larger simulations that check planted signals are recoverable"]
+filterwarnings = ["error"]

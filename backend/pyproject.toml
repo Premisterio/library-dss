@@ -38,6 +38,7 @@ packages = ["app"]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = ["db: needs PostgreSQL reachable via DATABASE_URL"]
+filterwarnings = ["error"]
 
 [tool.coverage.run]
 source = ["app"]
