@@ -23,3 +23,6 @@ repos:
         entry: npx --no-install oxlint --type-aware --deny-warnings
         language: system
         types_or: [ts, tsx, javascript]
+        # Lint the whole project: type-aware rules need it, and a commit touching only ignored
+        # files (the generated api-client schema) would otherwise make oxlint fail.
+        pass_filenames: false

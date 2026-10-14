@@ -1,0 +1,93 @@
+"""Enumerations exposed via GET /api/v1/meta/enums: stable codes with Ukrainian labels.
+
+Clients display labels from here instead of hard-coding dictionaries. Genre codes must match
+the simulator's taxonomy (`libsim.catalog.genres.GENRES`); a test keeps them in sync.
+"""
+
+ENUMS: dict[str, dict[str, str]] = {
+    "genre": {
+        "fantasy": "Фентезі",
+        "science_fiction": "Наукова фантастика",
+        "mystery_thriller": "Детективи й трилери",
+        "romance": "Любовні романи",
+        "horror": "Жахи",
+        "historical_fiction": "Історична проза",
+        "children": "Дитяча література",
+        "young_adult": "Підліткова література",
+        "poetry_drama": "Поезія й драматургія",
+        "classics": "Класика",
+        "fiction": "Сучасна проза",
+        "biography": "Біографії й мемуари",
+        "history": "Історія",
+        "philosophy_religion": "Філософія й релігія",
+        "self_help": "Психологія й саморозвиток",
+        "business": "Бізнес і економіка",
+        "technology": "Технології",
+        "science": "Наука",
+        "society_politics": "Суспільство й політика",
+        "arts": "Мистецтво",
+        "education_reference": "Навчальна й довідкова",
+    },
+    "age_range": {
+        "16-17": "16–17",
+        "18-24": "18–24",
+        "25-34": "25–34",
+        "35-44": "35–44",
+        "45-54": "45–54",
+        "55-64": "55–64",
+        "65+": "65+",
+    },
+    "education": {
+        "secondary": "Середня",
+        "student": "Студент(ка)",
+        "bachelor": "Бакалавр",
+        "master": "Магістр",
+        "phd": "Доктор філософії",
+    },
+    "language": {"uk": "Українська", "en": "Англійська"},
+    "language_pref": {"uk": "Лише українською", "uk+en": "Українською й англійською"},
+    "plan": {
+        "trial": "Пробний період",
+        "monthly": "Місячний",
+        "annual": "Річний",
+        "student": "Студентський",
+    },
+    "period_outcome": {
+        "open": "Триває",
+        "renewed": "Продовжено",
+        "churned": "Відтік",
+        "converted": "Перейшов на платний",
+        "expired": "Завершився",
+    },
+    "hold_outcome": {
+        "open": "Очікує",
+        "fulfilled": "Видано",
+        "lapsed": "Прострочено",
+        "cancelled": "Скасовано",
+    },
+    "device": {
+        "mobile_android": "Android",
+        "mobile_ios": "iPhone",
+        "desktop": "Комп'ютер",
+        "tablet": "Планшет",
+        "e_reader": "Електронна книга",
+    },
+    "campaign_arm": {"control": "Контрольна група", "email": "E-mail", "discount": "Знижка"},
+    "dataset_status": {
+        "pending": "Очікує",
+        "importing": "Імпортується",
+        "ready": "Готовий",
+        "failed": "Помилка",
+    },
+    "job_status": {
+        "queued": "У черзі",
+        "running": "Виконується",
+        "succeeded": "Готово",
+        "failed": "Помилка",
+    },
+    "capability": {
+        "descriptive": "Описова аналітика",
+        "retention": "Утримання підписників",
+        "content": "Закупівля контенту",
+    },
+}

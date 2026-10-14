@@ -1,17 +1,37 @@
-"""SQLAlchemy ORM models. Tables arrive in M2; Alembic autogenerates from `Base.metadata`."""
+"""SQLAlchemy ORM models. Alembic autogenerates migrations from `Base.metadata`."""
 
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeBase
+from app.models.analyst import Analyst
+from app.models.base import NAMING_CONVENTION, Base
+from app.models.dataset import Dataset, DatasetAnalytics
+from app.models.job import Job
+from app.models.library import (
+    Book,
+    Campaign,
+    CampaignAssignment,
+    CandidateTitle,
+    Hold,
+    LibUser,
+    Loan,
+    ReadingSession,
+    Search,
+    SubscriptionPeriod,
+)
 
-# Deterministic constraint names keep Alembic migrations reviewable.
-NAMING_CONVENTION = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
-}
-
-
-class Base(DeclarativeBase):
-    metadata = MetaData(naming_convention=NAMING_CONVENTION)
+__all__ = [
+    "NAMING_CONVENTION",
+    "Analyst",
+    "Base",
+    "Book",
+    "Campaign",
+    "CampaignAssignment",
+    "CandidateTitle",
+    "Dataset",
+    "DatasetAnalytics",
+    "Hold",
+    "Job",
+    "LibUser",
+    "Loan",
+    "ReadingSession",
+    "Search",
+    "SubscriptionPeriod",
+]

@@ -29,6 +29,8 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dss}:${POSTGRES_PASSWORD:-dss}@db:5432/${POSTGRES_DB:-dss}
       SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-secret-key-change-me-0123456789}
       WATCHFILES_FORCE_POLLING: "true"
+      COOKIE_SECURE: "false" # plain HTTP in local dev
+      ALLOW_REGISTRATION: "true"
     command: >-
       sh -c "alembic upgrade head &&
       uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload --reload-dir app"

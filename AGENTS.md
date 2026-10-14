@@ -86,7 +86,8 @@ uv run libsim schema --out docs/schema/dataset-v2.schema.json   # after changing
 - **Domain code:** pure functions over DataFrames/dataclasses, deterministic given a seed. No `datetime.now()`: use the dataset `as_of` date.
 - **Tests:**
   - every bug fix gets a regression test;
-  - DB tests are marked `@pytest.mark.db`;
+  - backend tests run against PostgreSQL: the schema is migrated once, each test runs in a rolled-back transaction (`db_session`);
+  - `test_migrations.py` fails if models change without an Alembic migration (`uv run alembic revision --autogenerate`);
   - slow generator signal-recovery tests are marked `@pytest.mark.slow`;
   - pytest treats warnings as errors.
 - **Simulator:**
@@ -102,8 +103,8 @@ uv run libsim schema --out docs/schema/dataset-v2.schema.json   # after changing
 | Milestone | Scope                                                                                                                                  | Status            |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
 | M0        | Monorepo, tooling, skeletons, dev compose, CI                                                                                          | done (2026-10-14) |
-| M1        | `libsim` v2: real catalogue (Open Library + goodbooks-10k calibration), daily simulation with planted effects, ground truth, schema v2 | done, in review   |
-| M2        | Backend platform: auth, jobs + worker, v1/v2 import, analytics, exports, CLI, demo seed                                                | —                 |
+| M1        | `libsim` v2: real catalogue (Open Library + goodbooks-10k calibration), daily simulation with planted effects, ground truth, schema v2 | done (2026-10-14) |
+| M2        | Backend platform: auth, jobs + worker, v1/v2 import, analytics, exports, CLI, demo seed                                                | in progress       |
 | M3        | Thin shadcn frontend (datasets, overview, analytics, reports) + VPS deploy                                                             | —                 |
 | M4a       | Churn prediction (no leakage), explanations                                                                                            | —                 |
 | M4b       | Uplift from the randomized campaign, MILP action plan, what-if, decision log                                                           | —                 |
@@ -115,6 +116,12 @@ uv run libsim schema --out docs/schema/dataset-v2.schema.json   # after changing
 
 Newest first. Add an entry for every decision that changes scope, stack or rules.
 
+- **2026-10-14 — Backend analytics on Polars.** The backend computes analytics with Polars (fast, modern API; it is already used by the generator), not pandas. scikit-learn (M4) works on numpy arrays exported from Polars.
+- **2026-10-14 — Auth.**
+  - PyJWT + pwdlib (argon2id). Tokens carry `type` and `ver`; refresh tokens are rejected where access is required (a v1 bug).
+  - Logout bumps `token_version`, which revokes every token.
+  - Browsers get the refresh token only as an httpOnly cookie (path `/api/v1/auth`, rotated); CLI clients may request it in the body.
+  - Prod sets `ALLOW_REGISTRATION=false` and creates accounts with `dss create-user`.
 - **2026-10-14 — Simulator.**
   - Daily simulation with hidden satisfaction (AR(1)) and churn only at renewal.
   - Licence scarcity with FIFO holds; zero-result searches reveal demand for held-out titles.

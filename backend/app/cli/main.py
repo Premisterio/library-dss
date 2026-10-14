@@ -21,6 +21,36 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command("create-user")
+def create_user(
+    email: Annotated[str, typer.Option(help="Login e-mail.")],
+    name: Annotated[str, typer.Option(help="Display name.")],
+    password: Annotated[
+        str,
+        typer.Option(prompt=True, hide_input=True, confirmation_prompt=True, envvar="DSS_PASSWORD"),
+    ],
+    admin: Annotated[bool, typer.Option(help="Grant the admin role.")] = False,
+) -> None:
+    """Create an analyst account (the way to add users when registration is disabled)."""
+    from app.core.db import get_sessionmaker
+    from app.core.errors import ApiError
+    from app.services import auth
+
+    with get_sessionmaker()() as session:
+        try:
+            analyst = auth.create_analyst(
+                session,
+                email=email,
+                name=name,
+                password=password,
+                role="admin" if admin else "analyst",
+            )
+        except ApiError as exc:
+            typer.echo(f"error: {exc.code}: {exc.detail}", err=True)
+            raise typer.Exit(1) from exc
+    typer.echo(f"created analyst #{analyst.id} <{analyst.email}> ({analyst.role})")
+
+
 @app.command()
 def openapi(
     out: Annotated[Path | None, typer.Option(help="Write to this file instead of stdout.")] = None,

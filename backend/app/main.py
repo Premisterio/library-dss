@@ -30,6 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
         generate_unique_id_function=_operation_id,
     )
+    app.state.settings = settings
     install_error_handlers(app)
     if settings.cors_origins:
         app.add_middleware(
