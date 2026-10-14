@@ -6,7 +6,7 @@ Code comments only explain code that is not obvious. Design and rules live here.
 
 ## 1. System
 
-The app is a decision support system (DSS). Its parts follow Sprague & Carlson:
+The app is a decision support system (DSS) with two decision modules: subscriber retention (churn prediction, action effects, an optimal plan under a budget) and content acquisition (multi-criteria choice under a budget). Its parts follow Sprague & Carlson:
 
 | Subsystem | Code                                                                                                               |
 | --------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -121,6 +121,7 @@ There are two file formats, detected by content:
   - `retention` needs subscription periods and campaign assignments.
   - `content` needs candidate titles and searches.
   - Nested files get `descriptive` only.
+- **Performance.** The 5k-member, 24-month libsim demo imports in about 8 s, with a worker peak of about 280 MiB.
 
 ### 2.6 Jobs and the worker
 
@@ -161,7 +162,7 @@ There are two file formats, detected by content:
 
 ### 2.9 Domain (model base)
 
-- Domain code is pure functions over Polars frames and dataclasses, deterministic given a seed.
+- Domain code is pure functions over Polars frames and dataclasses, deterministic given a seed. Polars rather than pandas: it is fast, typed and already used by the generator. scikit-learn models take numpy arrays exported from Polars.
 - Time comes from the dataset's `as_of`, never from the clock.
 - `enums.py` holds codes with Ukrainian labels, served by `GET /meta/enums`, so clients never hard-code labels.
   - Genre codes equal the simulator's taxonomy.
@@ -238,6 +239,7 @@ There are two file formats, detected by content:
   - `packages/api-client` is generated from the committed `openapi.json` by `tools/api-codegen`. That tool is isolated on TypeScript 5.9 because TypeScript 7 has no JS compiler API.
   - Never edit `src/schema.ts` by hand. CI fails when the client drifts from the backend.
 - **Frontend.**
+  - It is deliberately thin, on shadcn defaults. A later redesign changes presentation only, which is why the backend carries all logic.
   - It renders and computes no metrics. When a field is missing, extend the backend.
   - Data comes only through TanStack Query and the api client. Labels come from `meta/enums`. Errors are mapped by their Problem `code`.
   - shadcn components live in `frontend/src/components/ui`. Style is oxlint plus oxfmt (no semicolons, double quotes).
@@ -249,6 +251,7 @@ There are two file formats, detected by content:
   - `api`: applies migrations, reloads on change;
   - `worker`: restarted by watchfiles on change.
   - The frontend runs natively with a `/api` proxy.
+- **Production** (planned): one docker compose on a VPS with Caddy, api, worker and PostgreSQL; images built by CI.
 - **Images.** The `prod` target is non-root. Its HEALTHCHECK probes HTTP, so a production worker service needs its own check.
 - **CI.**
   - Jobs: Python (ruff, ty, pytest with coverage, generator tests), frontend (format, types, lint, tests, build), API contract drift, Docker prod image, workflow lint (actionlint, zizmor).
