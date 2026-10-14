@@ -1,8 +1,8 @@
-"""Bachelor-era v1 format (nested users JSON) → the v2 tables.
+"""Nested format (one object per user with account, profile and activity) → dataset tables.
 
-v1 has no licences, holds, campaigns or candidate titles, and its codes (age ranges, devices,
-plans) predate the v2 taxonomy, so such datasets support descriptive analytics only. Book genres
-are mapped onto the v2 taxonomy; every unmapped field is kept in `users.extra`.
+The format has no licences, holds, campaigns or candidate titles, and its codes (age ranges,
+devices, plans) differ from the tabular format, so it supports descriptive analytics only. Book
+genres are mapped onto the catalogue genres; unmapped user fields are kept in `lib_users.extra`.
 """
 
 from datetime import date, datetime
@@ -15,7 +15,7 @@ from app.ingest import IngestError
 from app.ingest.frames import empty_frame
 from app.utils.dates import DATE_FORMAT, parse_utc
 
-V1_GENRES = {
+GENRES = {
     "fiction": "fiction",
     "mystery": "mystery_thriller",
     "thriller": "mystery_thriller",
@@ -35,10 +35,10 @@ V1_GENRES = {
 PLAN_DAYS = {"monthly": 30, "quarterly": 91, "annual": 365}
 
 
-def frames_from_v1(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
+def frames_from_nested(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
     users_in = document.get("users")
     if not isinstance(users_in, list) or not users_in:
-        raise IngestError("dataset.invalid", "A v1 file must have a non-empty 'users' list")
+        raise IngestError("dataset.invalid", "A nested file must have a non-empty 'users' list")
     users: list[dict[str, Any]] = []
     books: dict[str, dict[str, Any]] = {}
     loans: list[dict[str, Any]] = []
@@ -81,7 +81,7 @@ def frames_from_v1(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
                         "book_id": b["book_id"],
                         "title": b["title"],
                         "authors": b["author"],
-                        "genre": V1_GENRES.get(b.get("genre"), "fiction"),
+                        "genre": GENRES.get(b.get("genre"), "fiction"),
                     },
                 )
                 loans.append(
@@ -124,7 +124,7 @@ def frames_from_v1(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
                 )
     except (KeyError, TypeError, ValueError) as exc:
         raise IngestError(
-            "dataset.invalid", f"v1 file is missing or has a bad field: {exc}"
+            "dataset.invalid", f"The file is missing a field or has a bad one: {exc}"
         ) from exc
 
     try:
@@ -132,13 +132,13 @@ def frames_from_v1(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
     except pl.exceptions.PolarsError as exc:
         raise IngestError(
             "dataset.invalid",
-            "v1 file has values of the wrong type (timestamps must look like "
+            "The file has values of the wrong type (timestamps must look like "
             "2025-02-01T17:17:09Z, payment dates like 2025-02-01)",
         ) from exc
 
 
 Str, Int, Bool = pl.String, pl.Int64, pl.Boolean
-V1_SCHEMAS: dict[str, dict[str, Any]] = {
+ROW_SCHEMAS: dict[str, dict[str, Any]] = {
     "users": {
         "user_id": Str,
         "registered_at": Str,
@@ -181,8 +181,8 @@ V1_SCHEMAS: dict[str, dict[str, Any]] = {
 
 def _frames(*tables: list[dict[str, Any]]) -> dict[str, pl.DataFrame]:
     users, books, loans, sessions, searches, periods = (
-        pl.DataFrame(rows, schema=V1_SCHEMAS[name], strict=False)
-        for name, rows in zip(V1_SCHEMAS, tables, strict=True)
+        pl.DataFrame(rows, schema=ROW_SCHEMAS[name], strict=False)
+        for name, rows in zip(ROW_SCHEMAS, tables, strict=True)
     )
 
     frames = {
@@ -217,7 +217,7 @@ def _frames(*tables: list[dict[str, Any]]) -> dict[str, pl.DataFrame]:
 
 
 def as_of_from(frames: dict[str, pl.DataFrame]) -> date:
-    """v1 files carry no as_of: use the date of the latest activity."""
+    """Nested files carry no as_of: use the date of the latest activity."""
     latest = pl.concat(
         frames[table].select(pl.col(col).max().alias("at"))
         for table, col in (
@@ -228,5 +228,5 @@ def as_of_from(frames: dict[str, pl.DataFrame]) -> date:
         )
     )["at"].max()
     if not isinstance(latest, datetime):
-        raise IngestError("dataset.invalid", "The v1 file has no dated activity")
+        raise IngestError("dataset.invalid", "The file has no dated activity")
     return latest.date()

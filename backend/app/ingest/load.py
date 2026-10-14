@@ -8,7 +8,7 @@ import psycopg
 from sqlalchemy.orm import Session
 
 from app.ingest import IngestError
-from app.ingest.schema_v2 import DB_TABLE
+from app.ingest.schema import DB_TABLE
 
 NULL = r"\N"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%.6f%:z"

@@ -1,4 +1,4 @@
-"""Dataset import: parse a file (v2 or the bachelor-era v1 format), validate it and load it.
+"""Dataset import: parse a file (tabular or nested format), validate it and load it.
 
 Parsing and validation work on Polars frames and never touch the database; `load` writes the
 validated frames with PostgreSQL COPY inside the caller's transaction.

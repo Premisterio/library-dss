@@ -9,9 +9,9 @@ from typing import Any
 import orjson
 
 from app.ingest import IngestError
-from app.ingest.frames import ParsedDataset, capabilities_for, frames_from_v2, validate
-from app.ingest.schema_v2 import SCHEMA_VERSION
-from app.ingest.v1 import as_of_from, frames_from_v1
+from app.ingest.frames import ParsedDataset, capabilities_for, frames_from_tables, validate
+from app.ingest.nested import as_of_from, frames_from_nested
+from app.ingest.schema import SCHEMA_VERSION
 
 GZIP_MAGIC = b"\x1f\x8b"
 
@@ -52,8 +52,9 @@ def parse(document: dict[str, Any]) -> ParsedDataset:
             raise IngestError(
                 "dataset.invalid", "meta.as_of must be a date like 2026-09-30"
             ) from exc
-        frames = frames_from_v2(document)
+        frames = frames_from_tables(document)
         parsed = ParsedDataset(
+            format="tabular",
             schema_version=SCHEMA_VERSION,
             meta=meta,
             as_of=as_of,
@@ -62,21 +63,21 @@ def parse(document: dict[str, Any]) -> ParsedDataset:
         )
         validate(parsed)
     elif version is None and isinstance(document.get("users"), list):
-        frames = frames_from_v1(document)
+        frames = frames_from_nested(document)
         parsed = ParsedDataset(
-            schema_version=1,
-            meta={"format": "v1 (bachelor thesis)"},
+            format="nested",
+            schema_version=None,
+            meta={},
             as_of=as_of_from(frames),
             timezone="UTC",
             frames=frames,
-            warnings=["v1 format: only descriptive analytics are available"],
         )
         validate(parsed, strict=False)
     else:
         raise IngestError(
             "dataset.unsupported_version",
             f"Unsupported dataset format (schema_version={version!r}); "
-            f"expected {SCHEMA_VERSION} or the v1 format",
+            f"expected {SCHEMA_VERSION} or the nested per-user format",
         )
-    parsed.capabilities = capabilities_for(parsed.frames, parsed.schema_version)
+    parsed.capabilities = capabilities_for(parsed.frames, parsed.format)
     return parsed

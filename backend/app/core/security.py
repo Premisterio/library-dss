@@ -1,7 +1,7 @@
 """Password hashing (argon2) and JWT access/refresh tokens.
 
 Tokens carry `type` ("access" | "refresh") and `ver` (the analyst's token_version): a refresh
-token is never accepted where an access token is required (a bug in v1), and bumping
+token is never accepted where an access token is required (a bug in the previous app), and bumping
 token_version on logout revokes every token issued before.
 """
 

@@ -12,7 +12,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.api.v1 import jobs as jobs_api
-from app.ingest.schema_v2 import DB_TABLE, TABLES
+from app.ingest.schema import DB_TABLE, TABLES
 from app.models import Dataset, DatasetFile, Job
 from app.services import auth
 
@@ -51,15 +51,19 @@ def count(session: Session, table: str, dataset_id: int) -> int:
     return session.scalar(query, {"id": dataset_id}) or 0
 
 
-def test_v2_upload_is_imported(
+def test_tabular_upload_is_imported(
     client: TestClient,
     auth_headers: Headers,
     run_jobs: Callable[[], int],
     db_session: Session,
-    v2_document: dict[str, Any],
+    tabular_document: dict[str, Any],
 ) -> None:
     response = upload(
-        client, auth_headers, gzip.compress(orjson.dumps(v2_document)), "demo.json.gz", name="Демо"
+        client,
+        auth_headers,
+        gzip.compress(orjson.dumps(tabular_document)),
+        "demo.json.gz",
+        name="Демо",
     )
     assert response.status_code == 202, response.text
     accepted = response.json()
@@ -72,10 +76,11 @@ def test_v2_upload_is_imported(
     assert run_jobs() == 1
 
     dataset = client.get(f"/api/v1/datasets/{dataset_id}", headers=auth_headers).json()
-    expected_counts = {name: len(v2_document["tables"][name]["rows"]) for name in TABLES}
+    expected_counts = {name: len(tabular_document["tables"][name]["rows"]) for name in TABLES}
     assert dataset["status"] == "ready"
+    assert dataset["format"] == "tabular"
     assert dataset["schema_version"] == 2
-    assert dataset["as_of"] == v2_document["meta"]["as_of"]
+    assert dataset["as_of"] == tabular_document["meta"]["as_of"]
     assert dataset["timezone"] == "Europe/Kyiv"
     assert dataset["capabilities"] == ["descriptive", "retention", "content"]
     assert dataset["row_counts"] == expected_counts
@@ -91,7 +96,7 @@ def test_v2_upload_is_imported(
     assert job["result"]["dataset_id"] == dataset_id
 
     # Values survive COPY unchanged: arrays, booleans, timestamps (UTC), money.
-    user = v2_document["tables"]["users"]["rows"][0]
+    user = tabular_document["tables"]["users"]["rows"][0]
     stored = db_session.execute(
         text(
             "SELECT interests, email_opt_in, to_char(registered_at AT TIME ZONE 'UTC',"
@@ -103,19 +108,19 @@ def test_v2_upload_is_imported(
     assert list(stored) == [user[6], user[5], user[1]]
 
 
-def test_v1_upload_supports_descriptive_analytics_only(
+def test_nested_upload_supports_descriptive_analytics_only(
     client: TestClient,
     auth_headers: Headers,
     run_jobs: Callable[[], int],
     db_session: Session,
-    v1_document: dict[str, Any],
+    nested_document: dict[str, Any],
 ) -> None:
-    dataset = imported(client, auth_headers, run_jobs, v1_document)
+    dataset = imported(client, auth_headers, run_jobs, nested_document)
     assert dataset["status"] == "ready"
-    assert dataset["schema_version"] == 1
+    assert dataset["format"] == "nested"
+    assert dataset["schema_version"] is None
     assert dataset["capabilities"] == ["descriptive"]
     assert dataset["as_of"] == "2025-06-18"
-    assert dataset["meta"]["warnings"]
     # Audit 2026-10-08 regression: all loans and distinct titles are stored, not a top 10.
     assert count(db_session, "loans", dataset["id"]) == 6
     titles = db_session.scalar(
@@ -135,10 +140,10 @@ def test_invalid_dataset_fails_with_details(
     auth_headers: Headers,
     run_jobs: Callable[[], int],
     db_session: Session,
-    v2_document: dict[str, Any],
+    tabular_document: dict[str, Any],
 ) -> None:
-    v2_document["tables"]["loans"]["rows"][0][2] = "no-such-book"
-    dataset = imported(client, auth_headers, run_jobs, v2_document)
+    tabular_document["tables"]["loans"]["rows"][0][2] = "no-such-book"
+    dataset = imported(client, auth_headers, run_jobs, tabular_document)
     assert dataset["status"] == "failed"
     assert dataset["error"]["code"] == "dataset.invalid"
     assert dataset["error"]["errors"] == ["loans.book_id: 1 rows point to unknown books"]
@@ -153,11 +158,11 @@ def test_too_long_values_fail_cleanly(
     client: TestClient,
     auth_headers: Headers,
     run_jobs: Callable[[], int],
-    v1_document: dict[str, Any],
+    nested_document: dict[str, Any],
 ) -> None:
     """Values the database rejects (here a 41+ character id) fail the job, not the worker."""
-    v1_document["users"][2]["user_id"] = "u" * 50
-    dataset = imported(client, auth_headers, run_jobs, v1_document)
+    nested_document["users"][2]["user_id"] = "u" * 50
+    dataset = imported(client, auth_headers, run_jobs, nested_document)
     assert dataset["status"] == "failed"
     assert dataset["error"]["code"] == "dataset.invalid"
     assert "Table 'users'" in dataset["error"]["detail"]
@@ -184,9 +189,9 @@ def test_unsupported_version_fails_the_job(
 
 
 def test_duplicate_upload_is_a_conflict(
-    client: TestClient, auth_headers: Headers, v1_document: dict[str, Any]
+    client: TestClient, auth_headers: Headers, nested_document: dict[str, Any]
 ) -> None:
-    content = orjson.dumps(v1_document)
+    content = orjson.dumps(nested_document)
     first = upload(client, auth_headers, content)
     assert first.status_code == 202
     again = upload(client, auth_headers, gzip.compress(content), "same.json.gz")  # same JSON
@@ -208,9 +213,9 @@ def test_datasets_are_private(
     client: TestClient,
     auth_headers: Headers,
     db_session: Session,
-    v1_document: dict[str, Any],
+    nested_document: dict[str, Any],
 ) -> None:
-    accepted = upload(client, auth_headers, v1_document).json()
+    accepted = upload(client, auth_headers, nested_document).json()
     auth.create_analyst(db_session, email="other@example.com", name="Інший", password="password-2")
     token = client.post(
         "/api/v1/auth/login", json={"email": "other@example.com", "password": "password-2"}
@@ -228,15 +233,15 @@ def test_datasets_are_private(
         assert response.status_code == 404, path
         assert response.json()["code"] in {"dataset.not_found", "job.not_found"}
     # The same file is not a duplicate for another analyst.
-    assert upload(client, other, v1_document).status_code == 202
+    assert upload(client, other, nested_document).status_code == 202
 
 
 def test_list_is_paginated_newest_first(
-    client: TestClient, auth_headers: Headers, v1_document: dict[str, Any]
+    client: TestClient, auth_headers: Headers, nested_document: dict[str, Any]
 ) -> None:
     for n in range(3):
-        v1_document["users"][0]["user_id"] = f"u1-{n}"  # different content each time
-        assert upload(client, auth_headers, v1_document, name=f"Набір {n}").status_code == 202
+        nested_document["users"][0]["user_id"] = f"u1-{n}"  # different content each time
+        assert upload(client, auth_headers, nested_document, name=f"Набір {n}").status_code == 202
     first = client.get("/api/v1/datasets?limit=2", headers=auth_headers).json()
     assert first["total"] == 3
     assert [d["name"] for d in first["items"]] == ["Набір 2", "Набір 1"]
@@ -251,9 +256,9 @@ def test_delete_removes_all_data(
     auth_headers: Headers,
     run_jobs: Callable[[], int],
     db_session: Session,
-    v1_document: dict[str, Any],
+    nested_document: dict[str, Any],
 ) -> None:
-    dataset = imported(client, auth_headers, run_jobs, v1_document)
+    dataset = imported(client, auth_headers, run_jobs, nested_document)
     response = client.delete(f"/api/v1/datasets/{dataset['id']}", headers=auth_headers)
     assert response.status_code == 204
     assert client.get(f"/api/v1/datasets/{dataset['id']}", headers=auth_headers).status_code == 404
@@ -262,9 +267,9 @@ def test_delete_removes_all_data(
 
 
 def test_cannot_delete_while_importing(
-    client: TestClient, auth_headers: Headers, db_session: Session, v1_document: dict[str, Any]
+    client: TestClient, auth_headers: Headers, db_session: Session, nested_document: dict[str, Any]
 ) -> None:
-    dataset_id = upload(client, auth_headers, v1_document).json()["dataset"]["id"]
+    dataset_id = upload(client, auth_headers, nested_document).json()["dataset"]["id"]
     dataset = db_session.get_one(Dataset, dataset_id)
     dataset.status = "importing"
     db_session.commit()
@@ -274,9 +279,9 @@ def test_cannot_delete_while_importing(
 
 
 def test_upload_stores_the_file_compressed(
-    client: TestClient, auth_headers: Headers, db_session: Session, v1_document: dict[str, Any]
+    client: TestClient, auth_headers: Headers, db_session: Session, nested_document: dict[str, Any]
 ) -> None:
-    content = orjson.dumps(v1_document)
+    content = orjson.dumps(nested_document)
     dataset_id = upload(client, auth_headers, content).json()["dataset"]["id"]
     stored = db_session.get_one(DatasetFile, dataset_id)
     assert stored.size_bytes == len(content)
@@ -295,10 +300,10 @@ def test_job_events_stream(
     client: TestClient,
     auth_headers: Headers,
     run_jobs: Callable[[], int],
-    v1_document: dict[str, Any],
+    nested_document: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    job_id = upload(client, auth_headers, v1_document).json()["job"]["id"]
+    job_id = upload(client, auth_headers, nested_document).json()["job"]["id"]
     monkeypatch.setattr(jobs_api, "POLL_SECONDS", 0.01)
     monkeypatch.setattr(jobs_api, "STREAM_MAX_SECONDS", 0.2)
     pending = client.get(f"/api/v1/jobs/{job_id}/events", headers=auth_headers)

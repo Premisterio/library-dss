@@ -7,7 +7,7 @@ from typing import Any
 import orjson
 import pytest
 
-from app.ingest import IngestError, reader, schema_v2
+from app.ingest import IngestError, reader, schema
 from app.ingest.frames import ParsedDataset
 from app.utils.dates import UTC_DATETIME
 
@@ -33,28 +33,29 @@ def invalid(document: dict[str, Any]) -> IngestError:
 def test_importer_schema_matches_the_generator() -> None:
     from libsim.schema import TABLES
 
-    assert {name: list(cols) for name, cols in TABLES.items()} == schema_v2.TABLES
+    assert {name: list(cols) for name, cols in TABLES.items()} == schema.TABLES
 
 
-def test_v2_dataset_parses(v2_document: dict[str, Any]) -> None:
-    parsed = parse(v2_document)
+def test_tabular_dataset_parses(tabular_document: dict[str, Any]) -> None:
+    parsed = parse(tabular_document)
+    assert parsed.format == "tabular"
     assert parsed.schema_version == 2
-    assert parsed.as_of == date.fromisoformat(v2_document["meta"]["as_of"])
+    assert parsed.as_of == date.fromisoformat(tabular_document["meta"]["as_of"])
     assert parsed.timezone == "Europe/Kyiv"
     assert parsed.capabilities == ["descriptive", "retention", "content"]
-    assert parsed.row_counts == {name: len(rows(v2_document, name)) for name in schema_v2.TABLES}
+    assert parsed.row_counts == {name: len(rows(tabular_document, name)) for name in schema.TABLES}
     assert parsed.frames["loans"].schema["borrowed_at"] == UTC_DATETIME
 
 
-def test_v2_validation_reports_every_problem(v2_document: dict[str, Any]) -> None:
-    books, loans, users = (rows(v2_document, t) for t in ("books", "loans", "users"))
-    books[0][column(v2_document, "books", "genre")] = "astrology"
+def test_tabular_validation_reports_every_problem(tabular_document: dict[str, Any]) -> None:
+    books, loans, users = (rows(tabular_document, t) for t in ("books", "loans", "users"))
+    books[0][column(tabular_document, "books", "genre")] = "astrology"
     users[1][0] = users[0][0]  # duplicate user id
-    loans[0][column(v2_document, "loans", "book_id")] = "no-such-book"
-    searches = rows(v2_document, "searches")
-    searches[0][column(v2_document, "searches", "searched_at")] = "2099-01-01T00:00:00Z"
+    loans[0][column(tabular_document, "loans", "book_id")] = "no-such-book"
+    searches = rows(tabular_document, "searches")
+    searches[0][column(tabular_document, "searches", "searched_at")] = "2099-01-01T00:00:00Z"
 
-    error = invalid(v2_document)
+    error = invalid(tabular_document)
     assert error.code == "dataset.invalid"
     report = "\n".join(error.errors)
     assert "books.genre: unknown codes ['astrology']" in report
@@ -63,17 +64,18 @@ def test_v2_validation_reports_every_problem(v2_document: dict[str, Any]) -> Non
     assert "searches.searched_at: 1 values after as_of" in report
 
 
-def test_v2_campaign_members_are_unique(v2_document: dict[str, Any]) -> None:
-    assignments = rows(v2_document, "campaign_assignments")
+def test_tabular_campaign_members_are_unique(tabular_document: dict[str, Any]) -> None:
+    assignments = rows(tabular_document, "campaign_assignments")
     assignments.append(list(assignments[0]))
     assert (
-        "campaign_assignments.campaign_id+user_id: 1 duplicate ids" in invalid(v2_document).errors
+        "campaign_assignments.campaign_id+user_id: 1 duplicate ids"
+        in invalid(tabular_document).errors
     )
 
 
-def test_v2_required_values(v2_document: dict[str, Any]) -> None:
-    rows(v2_document, "users")[0][column(v2_document, "users", "registered_at")] = None
-    assert "users.registered_at: 1 empty values" in invalid(v2_document).errors
+def test_tabular_required_values(tabular_document: dict[str, Any]) -> None:
+    rows(tabular_document, "users")[0][column(tabular_document, "users", "registered_at")] = None
+    assert "users.registered_at: 1 empty values" in invalid(tabular_document).errors
 
 
 @pytest.mark.parametrize(
@@ -89,9 +91,11 @@ def test_v2_required_values(v2_document: dict[str, Any]) -> None:
         ),
     ],
 )
-def test_v2_structure_errors(v2_document: dict[str, Any], mutate: Any, message: str) -> None:
-    mutate(v2_document)
-    error = invalid(v2_document)
+def test_tabular_structure_errors(
+    tabular_document: dict[str, Any], mutate: Any, message: str
+) -> None:
+    mutate(tabular_document)
+    error = invalid(tabular_document)
     assert error.code == "dataset.invalid"
     assert message in error.detail
 
@@ -101,14 +105,14 @@ def test_unknown_format_version() -> None:
     assert error.code == "dataset.unsupported_version"
 
 
-def test_v1_dataset_parses(v1_document: dict[str, Any]) -> None:
-    parsed = parse(v1_document)
-    assert parsed.schema_version == 1
+def test_nested_dataset_parses(nested_document: dict[str, Any]) -> None:
+    parsed = parse(nested_document)
+    assert parsed.format == "nested"
+    assert parsed.schema_version is None
     assert parsed.capabilities == ["descriptive"]
-    assert parsed.as_of == date(2025, 6, 18)  # the latest event: v1 files carry no as_of
-    assert parsed.warnings
+    assert parsed.as_of == date(2025, 6, 18)  # the latest event: nested files carry no as_of
     books, loans = parsed.frames["books"], parsed.frames["loans"]
-    # Audit 2026-10-08: v1 counted only the top 10 books; every loan and title must be kept.
+    # Audit 2026-10-08: the previous app counted only the top 10 books; every loan and title counts.
     assert loans.height == 6
     assert books.height == 5
     assert books["title"].n_unique() == 4
@@ -125,16 +129,16 @@ def test_v1_dataset_parses(v1_document: dict[str, Any]) -> None:
     assert periods.filter(periods["plan"] == "annual")["paid_amount"].to_list() == [899.0]
 
 
-def test_v1_bad_timestamp(v1_document: dict[str, Any]) -> None:
-    v1_document["users"][0]["account"]["registration_date"] = "10.01.2025"
-    error = invalid(v1_document)
+def test_nested_bad_timestamp(nested_document: dict[str, Any]) -> None:
+    nested_document["users"][0]["account"]["registration_date"] = "10.01.2025"
+    error = invalid(nested_document)
     assert error.code == "dataset.invalid"
     assert "timestamps must look like" in error.detail
 
 
-def test_v1_missing_field(v1_document: dict[str, Any]) -> None:
-    del v1_document["users"][0]["activity"]["books_borrowed"][0]["title"]
-    assert "'title'" in invalid(v1_document).detail
+def test_nested_missing_field(nested_document: dict[str, Any]) -> None:
+    del nested_document["users"][0]["activity"]["books_borrowed"][0]["title"]
+    assert "'title'" in invalid(nested_document).detail
 
 
 def test_gzip_is_read_and_bounded() -> None:

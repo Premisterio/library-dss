@@ -1,4 +1,4 @@
-"""Turn a simulation result into a dataset v2 file and a separate ground-truth file.
+"""Turn a simulation result into a dataset file and a separate ground-truth file.
 
 Only events up to the end of `as_of` reach the dataset; anything still in progress at that
 moment (loans, holds, subscription periods) is written as open. Output is deterministic:

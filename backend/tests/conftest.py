@@ -140,7 +140,7 @@ def auth_headers(client: TestClient, analyst: Analyst) -> dict[str, str]:
 
 
 @cache
-def _simulated_v2() -> dict[str, Any]:
+def _simulated_tabular() -> dict[str, Any]:
     from libsim import engine, writer
     from libsim.params import preset
 
@@ -148,14 +148,14 @@ def _simulated_v2() -> dict[str, Any]:
 
 
 @pytest.fixture
-def v2_document() -> dict[str, Any]:
+def tabular_document() -> dict[str, Any]:
     """A small libsim dataset (200 members, 8 months); safe to modify in a test."""
-    return copy.deepcopy(_simulated_v2())
+    return copy.deepcopy(_simulated_tabular())
 
 
 @pytest.fixture
-def v1_document() -> dict[str, Any]:
-    """A hand-made bachelor-era (v1) file: 3 users, 5 book ids with 4 distinct titles, 6 loans."""
+def nested_document() -> dict[str, Any]:
+    """A hand-made nested-format file: 3 users, 5 book ids with 4 distinct titles, 6 loans."""
 
     def borrowed(book_id: str, title: str, author: str, genre: str, at: str, **extra: Any) -> dict:
         return {

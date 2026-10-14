@@ -49,7 +49,6 @@ def create_from_upload(
     dataset = Dataset(
         owner_id=owner.id,
         name=(name or stem)[:200],
-        schema_version=0,  # known after parsing
         sha256=digest,
         meta={"original_filename": filename},
     )
@@ -80,10 +79,11 @@ def run_import(session: Session, job: Job, progress: jobs.Progress) -> dict[str,
     parsed = reader.parse(reader.decode(file.content))
     progress(0.3, "load")
     load.load(session, dataset.id, parsed.frames, lambda f, stage: progress(0.3 + 0.6 * f, stage))
+    dataset.format = parsed.format
     dataset.schema_version = parsed.schema_version
     dataset.as_of = parsed.as_of
     dataset.timezone = parsed.timezone
-    dataset.meta = {**dataset.meta, **parsed.meta, "warnings": parsed.warnings}
+    dataset.meta = {**dataset.meta, **parsed.meta}
     dataset.capabilities = parsed.capabilities
     dataset.row_counts = parsed.row_counts
     dataset.status = "ready"

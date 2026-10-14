@@ -98,7 +98,7 @@ export type paths = {
         put?: never;
         /**
          * Upload a dataset file and queue its import
-         * @description Accepts dataset v2 (libsim) or the v1 format, as `.json` or `.json.gz`. The `Location` header points to the import job.
+         * @description Accepts the tabular format (libsim) or the nested per-user format, as `.json` or `.json.gz`. The `Location` header points to the import job.
          */
         post: operations["upload_dataset"];
         delete?: never;
@@ -261,11 +261,16 @@ export type components = {
              */
             created_at: string;
             error: components["schemas"]["TaskError"] | null;
+            /**
+             * Format
+             * @description File structure: `tabular` (tables of rows, as libsim writes them) or `nested` (one object per user). null until the file is parsed.
+             */
+            format: ("tabular" | "nested") | null;
             /** Id */
             id: number;
             /**
              * Meta
-             * @description File metadata (generator, seed, import warnings).
+             * @description File metadata (generator, seed, ...).
              */
             meta: {
                 [key: string]: unknown;
@@ -278,9 +283,9 @@ export type components = {
             };
             /**
              * Schema Version
-             * @description 1 = bachelor-era format, 2 = libsim v2; 0 until the file is parsed.
+             * @description Format version declared by a tabular file.
              */
-            schema_version: number;
+            schema_version: number | null;
             /**
              * Status
              * @enum {string}

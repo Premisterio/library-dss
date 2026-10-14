@@ -106,13 +106,29 @@
               }
             ]
           },
+          "format": {
+            "anyOf": [
+              {
+                "enum": [
+                  "tabular",
+                  "nested"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "File structure: `tabular` (tables of rows, as libsim writes them) or `nested` (one object per user). null until the file is parsed.",
+            "title": "Format"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
           },
           "meta": {
             "additionalProperties": true,
-            "description": "File metadata (generator, seed, import warnings).",
+            "description": "File metadata (generator, seed, ...).",
             "title": "Meta",
             "type": "object"
           },
@@ -128,9 +144,16 @@
             "type": "object"
           },
           "schema_version": {
-            "description": "1 = bachelor-era format, 2 = libsim v2; 0 until the file is parsed.",
-            "title": "Schema Version",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Format version declared by a tabular file.",
+            "title": "Schema Version"
           },
           "status": {
             "enum": [
@@ -157,6 +180,7 @@
           "id",
           "name",
           "status",
+          "format",
           "schema_version",
           "as_of",
           "timezone",
@@ -944,7 +968,7 @@
         ]
       },
       "post": {
-        "description": "Accepts dataset v2 (libsim) or the v1 format, as `.json` or `.json.gz`. The `Location` header points to the import job.",
+        "description": "Accepts the tabular format (libsim) or the nested per-user format, as `.json` or `.json.gz`. The `Location` header points to the import job.",
         "operationId": "upload_dataset",
         "requestBody": {
           "content": {

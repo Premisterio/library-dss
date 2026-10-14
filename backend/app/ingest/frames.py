@@ -7,14 +7,14 @@ from typing import Any
 import polars as pl
 
 from app.ingest import IngestError
-from app.ingest.schema_v2 import (
+from app.ingest.schema import (
     ENUM_COLUMNS,
     MAY_EXCEED_AS_OF,
+    NESTED_MAY_BE_EMPTY,
     REFERENCES,
-    SCHEMA_VERSION,
     TABLES,
     UNIQUE_KEYS,
-    V1_MAY_BE_EMPTY,
+    DatasetFormat,
 )
 from app.utils.dates import UTC_DATETIME, end_of_day_utc, parse_utc
 
@@ -31,13 +31,13 @@ MAX_REPORTED_ERRORS = 20
 
 @dataclass
 class ParsedDataset:
-    schema_version: int
+    format: DatasetFormat
+    schema_version: int | None  # declared by tabular files
     meta: dict[str, Any]
     as_of: date
     timezone: str
     frames: dict[str, pl.DataFrame]
     capabilities: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
 
     @property
     def row_counts(self) -> dict[str, int]:
@@ -52,7 +52,7 @@ def empty_frame(table: str) -> pl.DataFrame:
     return pl.DataFrame(schema=schema)
 
 
-def frames_from_v2(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
+def frames_from_tables(document: dict[str, Any]) -> dict[str, pl.DataFrame]:
     tables = document.get("tables")
     if not isinstance(tables, dict):
         raise IngestError("dataset.invalid", "The file has no 'tables' object")
@@ -96,15 +96,15 @@ def _parse_timestamps(table: str, frame: pl.DataFrame) -> pl.DataFrame:
 def validate(parsed: ParsedDataset, *, strict: bool = True) -> None:
     """Collect every problem before failing, so the analyst can fix the file in one go.
 
-    `strict=False` (v1 files) skips the enum checks and allows the fields v1 does not have,
-    because v1 predates the v2 taxonomy; ids, references and the as_of bound are always checked.
+    `strict=False` (nested files) skips the enum checks and allows the fields that format does
+    not have, since its codes differ; ids, references and the as_of bound are always checked.
     """
     errors: list[str] = []
     frames = parsed.frames
     for table, spec in TABLES.items():
         frame = frames[table]
         for col, _, nullable in spec:
-            if nullable or (not strict and (table, col) in V1_MAY_BE_EMPTY):
+            if nullable or (not strict and (table, col) in NESTED_MAY_BE_EMPTY):
                 continue
             if frame.height and (nulls := frame[col].null_count()):
                 errors.append(f"{table}.{col}: {nulls} empty values")
@@ -141,10 +141,10 @@ def validate(parsed: ParsedDataset, *, strict: bool = True) -> None:
         )
 
 
-def capabilities_for(frames: dict[str, pl.DataFrame], schema_version: int) -> list[str]:
-    """Which DSS modules the data supports (v1 files only allow descriptive analytics)."""
+def capabilities_for(frames: dict[str, pl.DataFrame], fmt: DatasetFormat) -> list[str]:
+    """Which DSS modules the data supports (nested files allow descriptive analytics only)."""
     caps = ["descriptive"]
-    if schema_version < SCHEMA_VERSION:
+    if fmt == "nested":
         return caps
     if frames["subscription_periods"].height and frames["campaign_assignments"].height:
         caps.append("retention")

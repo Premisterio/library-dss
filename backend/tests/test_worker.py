@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.ingest import load
-from app.ingest.schema_v2 import DB_TABLE
+from app.ingest.schema import DB_TABLE
 from app.models import Analyst, Dataset, Job
 from app.services import auth, datasets, jobs
 from app.utils.dates import utc_now
@@ -84,13 +84,17 @@ def test_unknown_job_kind_fails(factory: sessionmaker[Session], owner: Analyst) 
 def test_failed_import_leaves_no_rows(
     factory: sessionmaker[Session],
     owner: Analyst,
-    v2_document: dict[str, Any],
+    tabular_document: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A crash halfway through loading rolls back every table; progress stays visible."""
     with factory() as session:
         dataset, job = datasets.create_from_upload(
-            session, get_settings(), owner, filename="demo.json", content=orjson.dumps(v2_document)
+            session,
+            get_settings(),
+            owner,
+            filename="demo.json",
+            content=orjson.dumps(tabular_document),
         )
     calls = 0
     real_csv = load._csv
@@ -126,7 +130,7 @@ def test_failed_import_leaves_no_rows(
 
 def test_abandoned_jobs_are_recovered(factory: sessionmaker[Session], owner: Analyst) -> None:
     with factory() as session:
-        dataset = Dataset(owner_id=owner.id, name="x", schema_version=0, sha256="0" * 64)
+        dataset = Dataset(owner_id=owner.id, name="x", sha256="0" * 64)
         session.add(dataset)
         session.flush()
         stale = jobs.enqueue(session, kind="noop", owner_id=owner.id, dataset_id=dataset.id)

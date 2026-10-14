@@ -1,14 +1,11 @@
-"""Dataset format v2 as seen by the importer.
-
-Mirrors `libsim.schema.TABLES` (the generator is not shipped with the backend image); a test
-keeps the two in sync. Each v2 table maps to one database table.
-"""
+"""The tabular dataset format as the importer sees it: tables, codes, references and keys."""
 
 from typing import Literal
 
 from app.domain.enums import ENUMS
 
-SCHEMA_VERSION = 2
+DatasetFormat = Literal["tabular", "nested"]
+SCHEMA_VERSION = 2  # the `schema_version` a tabular file declares
 ColumnType = Literal["string", "integer", "number", "boolean", "timestamp", "string[]"]
 
 TABLES: dict[str, list[tuple[str, ColumnType, bool]]] = {
@@ -148,8 +145,8 @@ UNIQUE_KEYS: dict[str, tuple[str, ...]] = {
 # Timestamps that may legitimately lie after as_of (a subscription period still running).
 MAY_EXCEED_AS_OF = {("subscription_periods", "period_end")}
 
-# Required in v2 but unknown in v1 files (nullable in the database).
-V1_MAY_BE_EMPTY = {
+# Required in tabular files, absent from nested ones (nullable in the database).
+NESTED_MAY_BE_EMPTY = {
     ("users", "age_range"),
     ("users", "education"),
     ("users", "language_pref"),

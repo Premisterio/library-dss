@@ -23,14 +23,16 @@ class DatasetOut(BaseModel):
     id: int
     name: str
     status: Literal["pending", "importing", "ready", "failed"]
-    schema_version: int = Field(
-        description="1 = bachelor-era format, 2 = libsim v2; 0 until the file is parsed."
+    format: Literal["tabular", "nested"] | None = Field(
+        description="File structure: `tabular` (tables of rows, as libsim writes them) or "
+        "`nested` (one object per user). null until the file is parsed."
     )
+    schema_version: int | None = Field(description="Format version declared by a tabular file.")
     as_of: date | None = Field(description="Snapshot date: the data ends on this day.")
     timezone: str = Field(description="IANA time zone of the library, e.g. `Europe/Kyiv`.")
     capabilities: list[Capability] = Field(description="Modules this dataset supports.")
     row_counts: dict[str, int]
-    meta: dict[str, Any] = Field(description="File metadata (generator, seed, import warnings).")
+    meta: dict[str, Any] = Field(description="File metadata (generator, seed, ...).")
     error: TaskError | None
     created_at: datetime
     updated_at: datetime
@@ -49,7 +51,8 @@ class UploadAccepted(BaseModel):
     "",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload a dataset file and queue its import",
-    description="Accepts dataset v2 (libsim) or the v1 format, as `.json` or `.json.gz`. "
+    description="Accepts the tabular format (libsim) or the nested per-user format, "
+    "as `.json` or `.json.gz`. "
     "The `Location` header points to the import job.",
 )
 def upload_dataset(

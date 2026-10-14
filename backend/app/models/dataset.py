@@ -17,7 +17,9 @@ class Dataset(CreatedAt, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("analysts.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(200))
-    schema_version: Mapped[int]
+    # tabular | nested; null until the file is parsed
+    format: Mapped[str | None] = mapped_column(String(20))
+    schema_version: Mapped[int | None]  # declared by tabular files
     sha256: Mapped[str] = mapped_column(String(64))
     # pending | importing | ready | failed
     status: Mapped[str] = mapped_column(String(20), default="pending")

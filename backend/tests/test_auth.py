@@ -1,4 +1,4 @@
-"""Authentication flows, including regression tests for the v1 audit (2026-10-08)."""
+"""Authentication flows, including regressions from the 2026-10-08 audit of the previous app."""
 
 from collections.abc import Callable
 
@@ -101,7 +101,7 @@ def test_missing_token(client: TestClient) -> None:
 def test_access_token_lifetime_comes_from_settings(
     make_client: Callable[..., TestClient], minutes: int
 ) -> None:
-    """v1 audit: ACCESS_TOKEN_EXPIRE_MINUTES was ignored and tokens always lived 15 minutes."""
+    """Audit 2026-10-08: ACCESS_TOKEN_EXPIRE_MINUTES was ignored; tokens always lived 15 min."""
     client = make_client(access_token_minutes=minutes)
     register(client)
     tokens = login(client)
@@ -111,7 +111,7 @@ def test_access_token_lifetime_comes_from_settings(
 
 
 def test_refresh_token_is_not_an_access_token(client: TestClient) -> None:
-    """v1 audit: a 7-day refresh token was accepted on every protected endpoint."""
+    """Audit 2026-10-08: a 7-day refresh token was accepted on every protected endpoint."""
     register(client)
     tokens = login(client, include_refresh_token=True)
     status, body = me(client, tokens["refresh_token"])
