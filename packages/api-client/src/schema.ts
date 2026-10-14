@@ -118,7 +118,7 @@ export type paths = {
         get: operations["get_dataset"];
         put?: never;
         post?: never;
-        /** Delete a dataset with all its data, analytics and jobs */
+        /** Delete a dataset with all its data, analytics, jobs and reports */
         delete: operations["delete_dataset"];
         options?: never;
         head?: never;
@@ -239,6 +239,59 @@ export type paths = {
         };
         /** Readiness probe: database reachable, migrations applied */
         get: operations["get_ready"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your reports, newest first */
+        get: operations["list_reports"];
+        put?: never;
+        /** Create a report from a dataset */
+        post: operations["create_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One report with its sections */
+        get: operations["get_report"];
+        put?: never;
+        post?: never;
+        /** Delete a report */
+        delete: operations["delete_report"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{report_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a report as PDF, XLSX, CSV (zip of tables) or JSON */
+        get: operations["export_report"];
         put?: never;
         post?: never;
         delete?: never;
@@ -616,6 +669,87 @@ export type components = {
             name: string;
             /** Password */
             password: string;
+        };
+        /** ReportDetailOut */
+        ReportDetailOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /**
+             * Content
+             * @description The sections as they were when created.
+             */
+            content: components["schemas"]["SectionOut"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: number;
+            /** Dataset Name */
+            dataset_name: string;
+            /** Id */
+            id: number;
+            /** Sections */
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[];
+            /** Timezone */
+            timezone: string;
+            /** Title */
+            title: string;
+        };
+        /** ReportIn */
+        ReportIn: {
+            /** Dataset Id */
+            dataset_id: number;
+            /**
+             * Sections
+             * @description Sections to include; all when omitted.
+             */
+            sections?: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[] | null;
+            /** Title */
+            title: string;
+        };
+        /** ReportOut */
+        ReportOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: number;
+            /** Dataset Name */
+            dataset_name: string;
+            /** Id */
+            id: number;
+            /** Sections */
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[];
+            /** Timezone */
+            timezone: string;
+            /** Title */
+            title: string;
+        };
+        /** ReportPage */
+        ReportPage: {
+            /** Items */
+            items: components["schemas"]["ReportOut"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /**
+             * Total
+             * @description Number of items across all pages.
+             */
+            total: number;
         };
         /** SectionOut */
         SectionOut: {
@@ -1298,6 +1432,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadyOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_reports: {
+        parameters: {
+            query?: {
+                dataset_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportPage"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDetailOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    export_report: {
+        parameters: {
+            query?: {
+                format?: "pdf" | "xlsx" | "csv" | "json";
+            };
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report file (`Content-Disposition: attachment`). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "application/pdf": unknown;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
+                    "application/zip": unknown;
                 };
             };
             /** @description Request validation failed */

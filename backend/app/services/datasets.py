@@ -121,5 +121,8 @@ def delete(session: Session, dataset: Dataset) -> None:
         raise ApiError(
             409, "dataset.busy", "The dataset is being imported; try again when it finishes"
         )
-    session.delete(dataset)  # library rows, analytics, file and jobs cascade in the database
+    session.delete(
+        dataset
+    )  # library rows, analytics, file, jobs and reports cascade in the database
     session.commit()
+    session.expire_all()  # copies of cascaded rows already loaded in this session are gone

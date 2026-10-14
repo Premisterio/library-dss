@@ -158,6 +158,7 @@ There are two file formats, detected by content:
 
 - `app/utils` holds pure helpers that two or more places need.
 - `dates.py`: time is stored and exchanged in UTC. Use `utc_now`, `parse_utc`, `start_of_day_utc`, `end_of_day_utc`, `month_start`, `ISO_UTC_FORMAT` and `UTC_DATETIME` instead of `datetime.now()` or new format strings.
+- `format.py`: numbers as Ukrainian text (`12 345,6`, `6,2 %`), for documents people read. The API never formats numbers; clients do.
 - A format that belongs to one protocol stays next to its code, such as the COPY timestamp format in `ingest/load.py`.
 
 ### 2.9 Domain (model base)
@@ -195,12 +196,31 @@ There are two file formats, detected by content:
 - **Labels.** Every metric, chart, dimension, unit and category code has a Ukrainian label in `ENUMS`, so clients label everything from `GET /meta/enums`. `test_analytics.py` checks this.
 - **Tests.** Exact numbers are tested on `mini_document`, a hand-made five-member dataset whose expected values were derived by hand. When a definition changes, derive the new value by hand too.
 
-### 2.10 CLI
+### 2.10 Reports and exports
+
+- **What a report is.** A report is a titled copy of some or all analytics sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
+- **API.**
+  - `POST /reports` takes `{dataset_id, title, sections?}`; sections keep the canonical order whatever order is asked.
+  - `GET /reports` and `GET /reports/{id}` return the frozen sections in the same shape as the analytics API.
+  - `GET /reports/{id}/export?format=pdf|xlsx|csv|json` downloads the file.
+- **File names** come from the title: characters other than letters, digits, spaces, `.`, `-` and `_` become `-` (so `Q1/2025` gives `Q1-2025.pdf`), with `filename*` (RFC 6266, UTF-8) and an ASCII fallback `report-<id>.<ext>`.
+- **Formats** (`app/exports`, pure functions of a `ReportDocument`):
+  - **PDF** (ReportLab, A4 landscape). Text uses DejaVu Sans, embedded from `app/exports/fonts` (free licence alongside), so Ukrainian renders everywhere.
+    - Each section shows its notes and a KPI table.
+    - Charts with one dimension are drawn: bars for categories, a line for time.
+    - Charts with two dimensions become a pivot table of one measure, the first `ratio` measure if there is one. The smaller dimension goes across.
+    - Tables show at most 30 rows, or the 12 most recent rows of a time series, and say that the full data is in XLSX/CSV.
+  - **XLSX** (XlsxWriter): a summary sheet with every KPI, then one sheet per chart. Headers and category values are Ukrainian labels; numbers stay numbers, with formats.
+  - **CSV**: a zip of `kpis.csv` and `<section>-<chart>.csv`, with codes and raw numbers, UTF-8 with a BOM (Excel).
+  - **JSON**: the report as stored.
+- **Determinism.** Every format is deterministic: no timestamps or random ids beyond the report's `created_at`. The same report always gives the same bytes.
+
+### 2.11 CLI
 
 - `dss` (Typer) runs the same use cases as the API: `create-user`, `refresh-analytics`, `openapi`, ….
 - Imports that touch the database are local to commands, so `dss openapi` needs no database.
 
-### 2.11 Tests
+### 2.12 Tests
 
 - pytest treats warnings as errors. Every bug fix gets a regression test. Regressions from the 2026-10-08 audit of the previous app say so in their docstrings.
 - **Database.**

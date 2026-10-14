@@ -80,8 +80,9 @@ Short rules; the reasons and details are in DESIGN.md.
 - **Long operations** are jobs with a registered handler and progress reports (§2.6).
 - **Time:** UTC everywhere through `app.utils.dates`; never `datetime.now()` (§2.8). Domain code uses the dataset's `as_of` (§2.9).
 - **Migrations** are numbered `0001`, `0002`, … in one chain, one file per revision named `NNNN_<slug>.py`. Create them with `alembic revision --autogenerate -m "…"` (it assigns the number) and review the generated code. Never edit a migration that has reached `main`; add a new one (§2.7).
+- **Reports** are frozen copies of analytics; exports are deterministic and name files after the title safely (§2.10).
 - **Settings** come only from environment variables; `SECRET_KEY` has no default (§2.2).
-- **Tests:** every bug fix gets a regression test; pytest treats warnings as errors; backend tests run against PostgreSQL in rolled-back transactions (§2.11).
+- **Tests:** every bug fix gets a regression test; pytest treats warnings as errors; backend tests run against PostgreSQL in rolled-back transactions (§2.12).
 - **Simulator:** planted effects live in `libsim/params.py`; after changing the model, rerun `libsim validate` and update `docs/simulation.md` (§3).
 - **Frontend:** data only via TanStack Query + `api-client`; oxfmt style; shadcn components in `frontend/src/components/ui` (§4).
 
