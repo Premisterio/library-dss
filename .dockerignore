@@ -1,0 +1,20 @@
+# Build context is the repo root; images need only backend/ and generator/ sources.
+.git
+.github
+.idea
+.vscode
+.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/.hypothesis
+**/node_modules
+frontend
+packages
+tools
+docs
+data
+backend/experiments/results
+**/.env
+**/.env.*

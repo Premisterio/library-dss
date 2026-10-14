@@ -1,0 +1,28 @@
+{
+  "name": "library-dss",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @library-dss/frontend",
+    "build": "npm run build -w @library-dss/frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "oxlint --type-aware --deny-warnings",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "test": "npm run test --workspaces --if-present",
+    "api:generate": "npm ci --prefix tools/api-codegen --no-audit --no-fund && node tools/api-codegen/generate.mjs"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "oxlint-tsgolint": "^7.0.2004",
+    "typescript": "~7.0.2"
+  }
+}

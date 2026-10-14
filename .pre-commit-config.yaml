@@ -1,0 +1,25 @@
+# Git hooks run by prek (a fast pre-commit replacement): `uv run prek install`.
+# Hooks call the project-pinned tools, so local results match CI.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --no-sync ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --no-sync ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: oxfmt
+        name: oxfmt
+        entry: npx --no-install oxfmt --no-error-on-unmatched-pattern
+        language: system
+        types_or: [ts, tsx, javascript, json, yaml, toml, markdown, css]
+      - id: oxlint
+        name: oxlint (type-aware)
+        entry: npx --no-install oxlint --type-aware --deny-warnings
+        language: system
+        types_or: [ts, tsx, javascript]

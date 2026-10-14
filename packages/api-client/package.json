@@ -1,0 +1,16 @@
+{
+  "name": "@library-dss/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for the Library DSS API, generated from the backend OpenAPI contract. Shared by any frontend.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  }
+}

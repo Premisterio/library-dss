@@ -1,0 +1,13 @@
+# Virtual uv workspace root: the Python packages live in backend/ and generator/.
+# One lockfile (uv.lock) pins everything for local dev, Docker and CI.
+[tool.uv.workspace]
+members = ["backend", "generator"]
+
+[dependency-groups]
+dev = ["prek>=0.5", "ruff>=0.17", "ty>=0.0.87"]
+
+[tool.ty.environment]
+python-version = "3.15"
+
+[tool.ty.src]
+exclude = ["**/migrations/versions"]

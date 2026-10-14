@@ -1,0 +1,31 @@
+target-version = "py315"
+line-length = 100
+
+[lint]
+select = [
+  "E", # pycodestyle errors
+  "W", # pycodestyle warnings
+  "F", # pyflakes
+  "I", # isort
+  "N", # pep8-naming
+  "UP", # pyupgrade
+  "B", # bugbear
+  "S", # bandit (security)
+  "C4", # comprehensions
+  "SIM", # simplify
+  "PT", # pytest style
+  "PTH", # pathlib
+  "RUF",
+]
+ignore = [
+  # Ukrainian text in strings/comments is intentional, not a confusable.
+  "RUF001",
+  "RUF002",
+  "RUF003",
+]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106", "S311"]
+
+[lint.isort]
+known-first-party = ["app", "libsim"]

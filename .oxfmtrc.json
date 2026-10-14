@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "endOfLine": "lf",
+  "semi": false,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "sortPackageJson": false,
+  "sortTailwindcss": {
+    "stylesheet": "frontend/src/index.css",
+    "functions": ["cn", "cva"]
+  },
+  "ignorePatterns": [
+    "packages/api-client/src/schema.ts",
+    "packages/api-client/openapi.json",
+    "**/package-lock.json",
+    "uv.lock",
+    "backend/**",
+    "generator/**"
+  ]
+}

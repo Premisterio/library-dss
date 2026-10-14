@@ -1,0 +1,55 @@
+# Local development stack. `docker compose up -d`, then `npm run dev` for the frontend.
+# Values come from .env when present (see .env.example); the defaults work out of the box.
+name: library-dss
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dss}
+      POSTGRES_USER: ${POSTGRES_USER:-dss}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dss}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev
+    environment:
+      ENVIRONMENT: dev
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dss}:${POSTGRES_PASSWORD:-dss}@db:5432/${POSTGRES_DB:-dss}
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-secret-key-change-me-0123456789}
+      WATCHFILES_FORCE_POLLING: "true"
+    command: >-
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload --reload-dir app"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/srv/backend
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+volumes:
+  db_data:
