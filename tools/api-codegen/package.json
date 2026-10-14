@@ -5,6 +5,6 @@
   "description": "Isolated TypeScript client generator. TS 7 ships no JS compiler API yet, so codegen runs on TS 5.9; the generated code is type-checked by TS 7.",
   "devDependencies": {
     "openapi-typescript": "7.13.0",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   }
 }
