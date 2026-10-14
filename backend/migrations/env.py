@@ -15,7 +15,7 @@ target_metadata = Base.metadata
 
 
 def number_revision(_context: object, _revision: object, directives: list) -> None:
-    """Name new revisions 0001, 0002, ... instead of random hashes: readable order and files."""
+    """Give a new revision the next number: 0001, 0002, ..."""
     head = ScriptDirectory.from_config(config).get_current_head()
     directives[0].rev_id = f"{int(head) + 1:04d}" if head else "0001"
 

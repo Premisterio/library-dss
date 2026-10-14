@@ -13,7 +13,6 @@ def test_models_and_migrations_are_in_sync(migrated: None) -> None:
 
 
 def test_migrations_are_numbered_in_one_chain() -> None:
-    """Revisions are 0001, 0002, ... in one line of history, each in `<rev>_<slug>.py`."""
     script = ScriptDirectory.from_config(Config(str(ALEMBIC_INI)))
     revisions = list(reversed(list(script.walk_revisions())))  # oldest first
     assert len(script.get_heads()) == 1

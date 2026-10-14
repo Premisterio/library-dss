@@ -15,7 +15,6 @@ API_PREFIX = "/api/v1"
 
 
 def _operation_id(route: APIRoute) -> str:
-    # The handler name becomes the method name in generated clients, so keep it stable.
     return route.name
 
 

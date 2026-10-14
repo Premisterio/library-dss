@@ -55,6 +55,5 @@ def test_domain_layer_is_pure() -> None:
 
 
 def test_utils_depend_on_nothing_else_in_the_app() -> None:
-    """Helpers usable from every layer, the domain included."""
     banned = (*FORBIDDEN_IN_DOMAIN, "app")
     assert not (violations := _violations(UTILS_DIR, banned, allowed=("app.utils",))), violations
