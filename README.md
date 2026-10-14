@@ -23,6 +23,7 @@ You need Docker Desktop and Node.js 26 (≥ 24). A local `uv` is optional, becau
 
 ```bash
 docker compose up -d     # PostgreSQL 18 + API with auto-reload + background worker
+docker compose exec -e DSS_PASSWORD=demo-password api dss seed-demo   # demo@library.ua + data + report
 npm install
 npm run dev              # frontend at http://localhost:5173 (proxies /api → :8000)
 ```

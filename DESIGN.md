@@ -53,6 +53,8 @@ tools/api-codegen/      isolated client generator
   - Request validation errors become `request.invalid` with `errors[]` (field paths).
   - Unhandled exceptions become `server.error` and are logged.
   - 401 responses carry `WWW-Authenticate: Bearer`.
+  - 405 responses list every method of the path in `Allow` (Starlette alone lists only the first route's).
+  - Problems are sent as `application/problem+json`, and the OpenAPI document says so (`LibraryApi.openapi` moves FastAPI's default JSON entries).
 - **Security.**
   - Passwords are hashed with argon2id.
   - JWTs (HS256) carry `type` (`access`/`refresh`) and `ver` (the analyst's `token_version`). A refresh token is rejected where an access token is expected.
@@ -137,6 +139,7 @@ There are two file formats, detected by content:
 - **Recovery.** Every 60 s the worker fails `running` jobs whose heartbeat is older than `JOB_STALE_SECONDS`, as `job.interrupted`. They cannot resume.
 - **Shutdown.** On SIGINT/SIGTERM the current job is finished first; compose allows 60 s for that.
 - **Adding a job kind:** enqueue it in a service, register the handler, and report progress.
+- **Running a job outside the worker.** `claim(job_id)` takes one specific queued job, for example from the CLI. If a worker already took it, `wait(job_id)` blocks until the job finishes.
 
 ### 2.7 Models and migrations
 
@@ -217,8 +220,14 @@ There are two file formats, detected by content:
 
 ### 2.11 CLI
 
-- `dss` (Typer) runs the same use cases as the API: `create-user`, `refresh-analytics`, `openapi`, ….
+- `dss` (Typer) runs the same use cases as the API: `create-user`, `seed-demo`, `refresh-analytics`, `openapi`, ….
 - Imports that touch the database are local to commands, so `dss openapi` needs no database.
+- **`dss seed-demo`** gives any client realistic data with one command:
+  - it creates the demo analyst (`DSS_PASSWORD` or a prompt);
+  - it simulates a libsim dataset, the same file `libsim generate` writes, or imports `--file`;
+  - it runs the import itself, or waits for the worker that took it, then creates a report.
+  - Running it again reuses the account, the dataset (same SHA-256) and the report.
+  - libsim is a dev dependency, so the production image needs `--file`.
 
 ### 2.12 Tests
 
@@ -235,6 +244,9 @@ There are two file formats, detected by content:
   - `nested_document`: a hand-made nested-format file, Ukrainian and English content only.
   - `mini_document`: a hand-made tabular file with hand-computed analytics.
 - **Contract and structure:** `test_openapi.py`, `test_architecture.py` and `test_migrations.py`.
+- **Contract fuzzing** (`test_contract.py`, Schemathesis): every operation gets valid and invalid requests (15 examples each in CI). No response may be a 500, and every response must match its documented status, content type, schema and headers. The only exception: registration may reject schema-valid e-mails on reserved domains.
+- **Snapshots** (`test_snapshots.py`, syrupy): the dataset, analytics, report and enum responses on `mini_document`, with ids and timestamps masked. After an intended change, run `pytest --snapshot-update` and review the diff of `tests/__snapshots__`.
+- **Dependency note.** PyYAML, which Schemathesis needs, has no Python 3.15 wheels. The root `pyproject.toml` makes uv build it as pure Python everywhere.
 
 ## 3. Generator (libsim)
 

@@ -30,7 +30,9 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    email: EmailStr
+    email: str = Field(
+        max_length=320, description="Any string; a wrong one simply fails to sign in."
+    )
     password: str = Field(max_length=200)
     include_refresh_token: bool = Field(
         default=False,

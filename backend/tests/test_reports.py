@@ -43,7 +43,7 @@ def dataset_id(
 
 def create_report(client: TestClient, headers: Headers, dataset_id: int, **extra: Any) -> dict:
     response = client.post(
-        "/api/v1/reports", headers=headers, json={"dataset_id": dataset_id, "title": TITLE, **extra}
+        "/api/v1/reports", headers=headers, json={"dataset_id": dataset_id, "title": TITLE} | extra
     )
     assert response.status_code == 201, response.text
     return response.json()
@@ -72,6 +72,16 @@ def test_report_lifecycle(client: TestClient, auth_headers: Headers, dataset_id:
     }
     assert client.delete(f"/api/v1/reports/{report['id']}", headers=auth_headers).status_code == 204
     assert client.get(f"/api/v1/reports/{report['id']}", headers=auth_headers).status_code == 404
+
+
+def test_reports_are_listed_newest_first(
+    client: TestClient, auth_headers: Headers, dataset_id: int
+) -> None:
+    """Audit 2026-10-08: the "latest report" shown was actually the oldest one."""
+    first = create_report(client, auth_headers, dataset_id, title="Перший")
+    second = create_report(client, auth_headers, dataset_id, title="Другий")
+    listed = client.get("/api/v1/reports", headers=auth_headers).json()["items"]
+    assert [r["id"] for r in listed] == [second["id"], first["id"]]
 
 
 def test_sections_keep_the_canonical_order(

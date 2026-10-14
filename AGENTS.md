@@ -47,6 +47,7 @@ uv run prek install             # git hooks (ruff, oxfmt, oxlint)
 # run
 docker compose up -d            # PostgreSQL 18 (:5433) + API (:8000, migrations on start, reload) + worker
 npm run dev                     # frontend :5173, proxies /api → :8000
+docker compose exec -e DSS_PASSWORD=… api dss seed-demo   # demo analyst + dataset + report
 
 # checks (same as CI)
 uv run ruff check . && uv run ruff format --check . && uv run ty check backend generator
@@ -59,6 +60,9 @@ npm run format:check && npm run typecheck && npm run lint && npm run test && npm
 
 # analytics code changed → recompute stored analytics of existing datasets
 docker compose exec api dss refresh-analytics
+
+# an intended change of API responses → refresh snapshots and review the diff
+(cd backend && uv run pytest tests/test_snapshots.py --snapshot-update)
 
 # API contract changed → regenerate and commit both files (CI fails on drift)
 uv run dss openapi --out packages/api-client/openapi.json

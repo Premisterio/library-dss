@@ -173,3 +173,18 @@ def test_worker_loop_recovers_runs_and_stops(
     assert not worker.is_alive()
     assert get_job(factory, queued).status == "failed"
     assert get_job(factory, abandoned.id).status == "failed"
+
+
+def test_a_specific_job_is_claimed_once(factory: sessionmaker[Session], owner: Analyst) -> None:
+    job_id = enqueue(factory, owner)
+    assert jobs.claim(factory, job_id)
+    assert not jobs.claim(factory, job_id)  # already running: someone else has it
+    assert get_job(factory, job_id).status == "running"
+
+
+def test_waiting_for_a_job(factory: sessionmaker[Session], owner: Analyst) -> None:
+    job_id = enqueue(factory, owner, kind="mystery")
+    with pytest.raises(TimeoutError):
+        jobs.wait(factory, job_id, timeout=0.05, poll=0.01)
+    runner.run_once(factory)
+    assert jobs.wait(factory, job_id, timeout=1, poll=0.01).status == "failed"
