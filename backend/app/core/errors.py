@@ -38,11 +38,23 @@ class Problem(BaseModel):
 class ApiError(Exception):
     """Raise from any layer to return a Problem response."""
 
-    def __init__(self, status: int, code: str, detail: str | None = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        detail: str | None = None,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(detail or code)
         self.status = status
         self.code = code
         self.detail = detail
+        self.headers = (
+            headers
+            if headers is not None
+            else ({"WWW-Authenticate": "Bearer"} if status == 401 else None)
+        )
 
 
 # Documented on every route, so generated clients know the error shape.
@@ -74,7 +86,8 @@ def install_error_handlers(app: FastAPI) -> None:
                 status=exc.status,
                 detail=exc.detail,
                 code=exc.code,
-            )
+            ),
+            headers=exc.headers,
         )
 
     @app.exception_handler(RequestValidationError)

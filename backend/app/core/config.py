@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     )
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
+    # Authentication
+    access_token_minutes: int = Field(default=15, ge=1)
+    refresh_token_days: int = Field(default=14, ge=1)
+    allow_registration: bool = Field(
+        default=True, description="Disable in production; create accounts with `dss create-user`."
+    )
+    cookie_secure: bool = Field(default=True, description="False only for plain-HTTP local dev.")
+    cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+
 
 @lru_cache
 def get_settings() -> Settings:
