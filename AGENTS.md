@@ -55,6 +55,9 @@ npm run format:check && npm run typecheck && npm run lint && npm run test && npm
 # new migration (numbered automatically, see DESIGN.md §2.7)
 (cd backend && uv run alembic revision --autogenerate -m "what changed")
 
+# analytics code changed → recompute stored analytics of existing datasets
+docker compose exec api dss refresh-analytics
+
 # API contract changed → regenerate and commit both files (CI fails on drift)
 uv run dss openapi --out packages/api-client/openapi.json
 npm run api:generate
@@ -71,6 +74,7 @@ Short rules; the reasons and details are in DESIGN.md.
 
 - **Errors:** raise `ApiError(status, "area.reason", detail)`; clients rely on the stable `code` (§2.2).
 - **API responses:** raw numbers with units, ISO 8601 UTC timestamps, enum codes with labels from `meta/enums`, lists as `{items, total, limit, offset}`; another analyst's resource answers 404 (§2.3).
+- **Descriptive analytics** are computed once at import, as of the dataset's `as_of`, and stored; a value a dataset cannot provide is `null` with a note, never `0`. After changing analytics code, run `dss refresh-analytics` (§2.9).
 - **Long operations** are jobs with a registered handler and progress reports (§2.6).
 - **Time:** UTC everywhere through `app.utils.dates`; never `datetime.now()` (§2.8). Domain code uses the dataset's `as_of` (§2.9).
 - **Migrations** are numbered `0001`, `0002`, … in one chain, one file per revision named `NNNN_<slug>.py`. Create them with `alembic revision --autogenerate -m "…"` (it assigns the number) and review the generated code. Never edit a migration that has reached `main`; add a new one (§2.7).
@@ -101,6 +105,10 @@ Newest first. Add an entry for every decision that changes scope, stack or rules
   - `DESIGN.md` documents every part of the app (how it works, its rules, why); code comments no longer state rules.
   - Names describe what things are, not project history: no "v1/v2" or "bachelor" in identifiers, files, messages or docs. Datasets expose `format` (`tabular` | `nested`) instead of an arbitrary version number.
   - All documentation is in English; only the UI is Ukrainian.
+- **2026-10-14 — Descriptive analytics.**
+  - Seven sections (overview, usage, content, segments, search, subscriptions, cohorts) computed with Polars at import in ~0.3 s for the 5k demo and stored as JSONB; the API serves the stored JSON.
+  - Windows are fixed (last 30/90 days, whole history) and counted back from `as_of` in the dataset's time zone.
+  - Titles are counted as distinct (title, authors) pairs, so the audit file of the earlier app gives 1001 titles (994 distinct title strings; 4 titles have several authors).
 - **2026-10-14 — Migration names and shared helpers.**
   - Alembic revisions are numbered (`0001_initial_schema.py`, revision `"0001"`) instead of random hashes: readable order and `down_revision`. `migrations/env.py` assigns the number.
   - `app/utils/` holds pure helpers shared by several layers; the first one is `dates.py`.

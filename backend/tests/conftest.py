@@ -279,3 +279,90 @@ def nested_document() -> dict[str, Any]:
             ),
         ]
     }
+
+
+@pytest.fixture
+def mini_v2_document() -> dict[str, Any]:
+    """A hand-made v2 dataset (5 members, as of 2026-03-31, Kyiv) with hand-computed analytics.
+
+    Expected values are derived in tests/test_analytics.py; keep both in sync.
+    """
+    from app.ingest.schema_v2 import TABLES
+
+    rows: dict[str, list[list[Any]]] = {name: [] for name in TABLES}
+    rows["users"] = [
+        ["u1", "2025-10-05T09:00:00Z", "25-34", "master", "uk+en", True, ["fantasy"]],
+        ["u2", "2025-11-10T09:00:00Z", "18-24", "student", "uk", True, ["science_fiction"]],
+        ["u3", "2026-01-15T09:00:00Z", "35-44", "bachelor", "uk", False, ["history"]],
+        ["u4", "2026-03-20T09:00:00Z", "25-34", "bachelor", "uk+en", True, ["fantasy"]],
+        ["u5", "2025-10-01T09:00:00Z", "65+", "phd", "uk", False, ["classics"]],
+    ]
+    rows["books"] = [
+        ["b1", "Кобзар", "Тарас Шевченко", "poetry_drama", "uk", 300, 1840, 2],
+        ["b2", "Dune", "Frank Herbert", "science_fiction", "en", 600, 1965, 1],
+        ["b3", "Тигролови", "Іван Багряний", "mystery_thriller", "uk", 280, 1944, 1],
+        ["b4", "Лісова пісня", "Леся Українка", "poetry_drama", "uk", 150, 1911, 1],
+    ]
+    rows["subscription_periods"] = [
+        [
+            "u1",
+            "monthly",
+            "2026-01-05T21:00:00Z",
+            "2026-02-04T21:00:00Z",
+            149,
+            149,
+            None,
+            "renewed",
+        ],
+        [
+            "u1",
+            "monthly",
+            "2026-02-04T21:00:00Z",
+            "2026-03-06T21:00:00Z",
+            149,
+            149,
+            None,
+            "renewed",
+        ],
+        ["u1", "monthly", "2026-03-06T21:00:00Z", "2026-04-05T21:00:00Z", 149, 119.2, 0.2, "open"],
+        ["u2", "student", "2026-02-10T22:00:00Z", "2026-03-12T22:00:00Z", 79, 79, None, "churned"],
+        ["u3", "trial", "2026-01-15T22:00:00Z", "2026-01-29T22:00:00Z", 0, 0, None, "converted"],
+        ["u3", "annual", "2026-01-29T22:00:00Z", "2027-01-29T22:00:00Z", 1290, 1290, None, "open"],
+        ["u4", "trial", "2026-03-20T22:00:00Z", "2026-04-03T21:00:00Z", 0, 0, None, "open"],
+        ["u5", "trial", "2025-10-01T21:00:00Z", "2025-10-15T21:00:00Z", 0, 0, None, "expired"],
+    ]
+    rows["loans"] = [
+        ["l1", "u1", "b1", "2026-03-02T10:00:00Z", "2026-03-12T10:00:00Z", True, 5, False],
+        ["l2", "u1", "b2", "2026-03-20T18:00:00Z", None, None, None, False],
+        ["l3", "u2", "b2", "2026-02-12T10:00:00Z", "2026-03-01T10:00:00Z", False, 3, False],
+        ["l4", "u3", "b3", "2026-03-25T08:00:00Z", None, None, None, True],
+        ["l5", "u4", "b1", "2026-03-21T12:00:00Z", "2026-03-28T12:00:00Z", True, 4, False],
+        ["l6", "u3", "b1", "2025-12-20T10:00:00Z", "2026-01-05T10:00:00Z", True, 4, False],
+    ]
+    rows["reading_sessions"] = [
+        ["u1", "b1", "2026-03-03T17:00:00Z", 40, 30, "mobile_android"],  # Tue 19:00 Kyiv
+        ["u1", "b1", "2026-03-04T17:30:00Z", 30, 25, "mobile_android"],  # Wed 19:30
+        ["u1", "b2", "2026-03-21T06:00:00Z", 60, 50, "mobile_android"],  # Sat 08:00
+        ["u4", "b1", "2026-03-22T19:00:00Z", 45, 40, "mobile_ios"],  # Sun 21:00
+        ["u3", "b3", "2026-03-30T06:00:00Z", 50, 45, "desktop"],  # Mon 09:00 (summer time)
+        ["u2", "b2", "2026-02-15T12:00:00Z", 20, 15, "e_reader"],  # Sun 14:00
+    ]
+    rows["searches"] = [
+        ["u1", "2026-03-01T22:00:00Z", "Кобзар", 1],
+        ["u2", "2026-03-05T09:00:00Z", "Дюна", 0],
+        ["u4", "2026-03-20T10:00:00Z", "дюна ", 0],
+        ["u3", "2026-02-20T10:00:00Z", "Багряний", 1],
+    ]
+    rows["holds"] = [
+        ["h1", "u3", "b3", "2026-03-10T08:00:00Z", "2026-03-25T08:00:00Z", "fulfilled"],
+        ["h2", "u2", "b2", "2026-03-05T10:00:00Z", "2026-03-26T10:00:00Z", "lapsed"],
+        ["h3", "u4", "b2", "2026-03-28T10:00:00Z", None, "open"],
+    ]
+    return {
+        "schema_version": 2,
+        "meta": {"as_of": "2026-03-31", "timezone": "Europe/Kyiv", "seed": 0},
+        "tables": {
+            name: {"columns": [col for col, _, _ in spec], "rows": rows[name]}
+            for name, spec in TABLES.items()
+        },
+    }

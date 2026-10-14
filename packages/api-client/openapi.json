@@ -35,6 +35,27 @@
         "title": "AnalystOut",
         "type": "object"
       },
+      "AnalyticsOut": {
+        "properties": {
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "sections"
+        ],
+        "title": "AnalyticsOut",
+        "type": "object"
+      },
       "Body_upload_dataset": {
         "properties": {
           "file": {
@@ -61,6 +82,83 @@
           "file"
         ],
         "title": "Body_upload_dataset",
+        "type": "object"
+      },
+      "ChartOut": {
+        "description": "A tidy table: one row per combination of dimension values.",
+        "properties": {
+          "attributes": {
+            "description": "Descriptive columns that are not plotted.",
+            "items": {
+              "$ref": "#/components/schemas/DimensionOut"
+            },
+            "title": "Attributes",
+            "type": "array"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/DimensionOut"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "key": {
+            "description": "Chart code; title in enums `chart`.",
+            "title": "Key",
+            "type": "string"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/MeasureOut"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The value covers the last N days up to as_of; null: the whole history, or the state at the end of as_of for current counts (paying subscribers, MRR).",
+            "title": "Window Days"
+          }
+        },
+        "required": [
+          "key",
+          "dimensions",
+          "measures",
+          "attributes",
+          "window_days",
+          "rows"
+        ],
+        "title": "ChartOut",
         "type": "object"
       },
       "DatasetOut": {
@@ -224,6 +322,60 @@
           "offset"
         ],
         "title": "DatasetPage",
+        "type": "object"
+      },
+      "DimensionOut": {
+        "properties": {
+          "enum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Enums group with labels for the values.",
+            "title": "Enum"
+          },
+          "key": {
+            "description": "Column of the rows; label in enums `dimension`.",
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`time` values are ISO dates (week or month start, local time).",
+            "enum": [
+              "category",
+              "time",
+              "number"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Display order of category values.",
+            "title": "Order"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "enum",
+          "order"
+        ],
+        "title": "DimensionOut",
         "type": "object"
       },
       "EnumItem": {
@@ -436,6 +588,63 @@
         "title": "JobOut",
         "type": "object"
       },
+      "KpiOut": {
+        "properties": {
+          "key": {
+            "description": "Metric code; label in enums `metric`.",
+            "title": "Key",
+            "type": "string"
+          },
+          "unit": {
+            "description": "`ratio` is a fraction 0..1 (show as a percentage).",
+            "enum": [
+              "count",
+              "ratio",
+              "UAH",
+              "minutes",
+              "days",
+              "rating"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when this dataset cannot provide it (see notes).",
+            "title": "Value"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The value covers the last N days up to as_of; null: the whole history, or the state at the end of as_of for current counts (paying subscribers, MRR).",
+            "title": "Window Days"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "unit",
+          "window_days"
+        ],
+        "title": "KpiOut",
+        "type": "object"
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -460,6 +669,70 @@
           "password"
         ],
         "title": "LoginIn",
+        "type": "object"
+      },
+      "MeasureOut": {
+        "properties": {
+          "key": {
+            "description": "Column of the rows; label in enums `metric`.",
+            "title": "Key",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "count",
+              "ratio",
+              "UAH",
+              "minutes",
+              "days",
+              "rating"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when it differs from the chart's window.",
+            "title": "Window Days"
+          }
+        },
+        "required": [
+          "key",
+          "unit",
+          "window_days"
+        ],
+        "title": "MeasureOut",
+        "type": "object"
+      },
+      "NoteOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message_uk": {
+            "title": "Message Uk",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "message_uk",
+          "params"
+        ],
+        "title": "NoteOut",
         "type": "object"
       },
       "Problem": {
@@ -560,6 +833,63 @@
           "password"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "SectionOut": {
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "charts": {
+            "items": {
+              "$ref": "#/components/schemas/ChartOut"
+            },
+            "title": "Charts",
+            "type": "array"
+          },
+          "key": {
+            "enum": [
+              "overview",
+              "usage",
+              "content",
+              "segments",
+              "search",
+              "subscriptions",
+              "cohorts"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "kpis": {
+            "items": {
+              "$ref": "#/components/schemas/KpiOut"
+            },
+            "title": "Kpis",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "as_of",
+          "timezone",
+          "kpis",
+          "charts",
+          "notes"
+        ],
+        "title": "SectionOut",
         "type": "object"
       },
       "TaskError": {
@@ -1125,6 +1455,138 @@
         "summary": "One dataset",
         "tags": [
           "datasets"
+        ]
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/analytics": {
+      "get": {
+        "operationId": "get_analytics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Every analytics section of a dataset",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/analytics/{section}": {
+      "get": {
+        "operationId": "get_analytics_section",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "enum": [
+                "overview",
+                "usage",
+                "content",
+                "segments",
+                "search",
+                "subscriptions",
+                "cohorts"
+              ],
+              "title": "Section",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One analytics section",
+        "tags": [
+          "analytics"
         ]
       }
     },
