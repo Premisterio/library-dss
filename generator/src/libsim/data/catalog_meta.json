@@ -1,0 +1,63 @@
+{
+  "builder": {
+    "config": {
+      "max_pages": 2000,
+      "max_title_length": 160,
+      "min_pages": 24,
+      "min_signal_english": 20,
+      "min_year_ukrainian_tail": 1991,
+      "n_english": 3000,
+      "n_ukrainian_tail": 800,
+      "rating_prior_weight": 10,
+      "trend_months": 12
+    },
+    "libsim": "0.1.0.dev0",
+    "polars": "2.0.0"
+  },
+  "by_genre": {
+    "arts": 83,
+    "biography": 206,
+    "business": 165,
+    "children": 203,
+    "classics": 138,
+    "education_reference": 183,
+    "fantasy": 422,
+    "fiction": 525,
+    "historical_fiction": 28,
+    "history": 262,
+    "horror": 119,
+    "mystery_thriller": 296,
+    "philosophy_religion": 111,
+    "poetry_drama": 101,
+    "romance": 181,
+    "science": 148,
+    "science_fiction": 156,
+    "self_help": 280,
+    "society_politics": 236,
+    "technology": 72,
+    "young_adult": 60
+  },
+  "by_language": {
+    "en": 2966,
+    "uk": 1009
+  },
+  "by_segment": {
+    "english_popular": 2966,
+    "ukrainian_long_tail": 798,
+    "ukrainian_with_signal": 211
+  },
+  "rows": 3975,
+  "rules": [
+    "Russian-language editions never qualify; Ukrainian titles must be Cyrillic without Russian-only letters (ё, ъ, ы, э); subjects with those letters are ignored.",
+    "Romanised (transliterated) Ukrainian catalogue titles are excluded.",
+    "Conference proceedings, theses, bulletins and similar non-book records are excluded.",
+    "Genre comes from Open Library subjects via libsim.catalog.genres rules."
+  ],
+  "source": {
+    "dataset": "https://huggingface.co/datasets/open-index/open-library",
+    "global_mean_rating": 4.0009,
+    "license": "CC0-1.0",
+    "origin": "Open Library data dumps (https://openlibrary.org/developers/dumps)",
+    "signals_as_of": "2026-02-28"
+  }
+}

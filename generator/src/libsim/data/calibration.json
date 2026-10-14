@@ -1,0 +1,93 @@
+{
+  "book_mean_rating": {
+    "mean": 3.9031,
+    "sd": 0.2853
+  },
+  "books_per_user": {
+    "lognormal_mu": 4.6863,
+    "lognormal_sigma": 0.2625,
+    "max": 200.0,
+    "mean": 111.869,
+    "min": 19.0,
+    "p10": 82.0,
+    "p25": 96.0,
+    "p50": 111.0,
+    "p75": 128.0,
+    "p90": 146.0,
+    "p99": 176.0
+  },
+  "builder": {
+    "libsim": "0.1.0.dev0",
+    "polars": "2.0.0"
+  },
+  "genre_taste": {
+    "books_with_genre_share": 1.0,
+    "dirichlet_concentration": 11.375,
+    "genre_base_share": {
+      "arts": 0.0031,
+      "biography": 0.0517,
+      "business": 0.0066,
+      "children": 0.0565,
+      "education_reference": 0.0004,
+      "fantasy": 0.2305,
+      "fiction": 0.1368,
+      "historical_fiction": 0.0349,
+      "history": 0.0433,
+      "horror": 0.0376,
+      "mystery_thriller": 0.1528,
+      "philosophy_religion": 0.0202,
+      "poetry_drama": 0.0187,
+      "romance": 0.0839,
+      "science": 0.0051,
+      "science_fiction": 0.0697,
+      "self_help": 0.008,
+      "society_politics": 0.0079,
+      "technology": 0.0001,
+      "young_adult": 0.0323
+    },
+    "mean_genres_over_10pct": 2.956,
+    "mean_top_genre_share": 0.3809,
+    "users_used": 52525
+  },
+  "popularity": {
+    "corr_log_count_mean_rating": 0.0235,
+    "rank_frequency_slope": -0.8484,
+    "top_10pct_share": 0.532,
+    "top_1pct_share": 0.1709
+  },
+  "rating_distribution": {
+    "1": 0.0208,
+    "2": 0.0601,
+    "3": 0.2294,
+    "4": 0.3579,
+    "5": 0.3318
+  },
+  "size": {
+    "books": 10000,
+    "ratings": 5976479,
+    "users": 53424
+  },
+  "source": {
+    "attribution": "Derived from goodbooks-10k by Zygmunt Zając (https://github.com/zygmuntz/goodbooks-10k), licensed CC BY-SA 4.0. Only aggregate statistics are included.",
+    "dataset": "https://github.com/zygmuntz/goodbooks-10k",
+    "license": "CC BY-SA 4.0"
+  },
+  "to_read": {
+    "per_user_with_list": {
+      "max": 117.0,
+      "mean": 18.676,
+      "min": 1.0,
+      "p10": 2.0,
+      "p25": 6.0,
+      "p50": 14.0,
+      "p75": 27.0,
+      "p90": 42.0,
+      "p99": 68.0
+    },
+    "share_of_users_with_list": 0.9148
+  },
+  "user_mean_rating": {
+    "mean": 3.9285,
+    "sd": 0.4495
+  }
+}
