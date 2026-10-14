@@ -1,8 +1,4 @@
-"""Building blocks of an analytics section: KPIs, tidy charts and notes.
-
-Everything is UI-agnostic: numbers are raw with a unit, categories are codes (labels come from
-`GET /meta/enums`), charts are tidy tables that fit any chart library or a plain table.
-"""
+"""Building blocks of an analytics section: KPIs, tidy charts and notes (see DESIGN.md)."""
 
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
@@ -52,7 +48,7 @@ class Chart:
 
 @dataclass(frozen=True)
 class Note:
-    """Why something is missing or how to read it, e.g. v1 files have no hold data."""
+    """Why something is missing or how to read it, e.g. a dataset without hold data."""
 
     code: str
     message_uk: str

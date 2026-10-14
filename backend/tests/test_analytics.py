@@ -1,6 +1,6 @@
 """Descriptive analytics: exact numbers on hand-made files, contract checks on a simulated one.
 
-The expected values below are computed by hand from the `mini_v2_document` fixture (as of
+The expected values below are computed by hand from the `mini_document` fixture (as of
 2026-03-31 in Kyiv: the window "last 30 days" starts 2026-03-01T21:00Z, "last 90 days"
 starts 2025-12-31T21:00Z).
 """
@@ -31,8 +31,8 @@ def chart(section: Section, key: str) -> list[dict[str, Any]]:
 
 
 @pytest.fixture
-def mini(mini_v2_document: dict[str, Any]) -> dict[str, Section]:
-    return analyse(mini_v2_document)
+def mini(mini_document: dict[str, Any]) -> dict[str, Section]:
+    return analyse(mini_document)
 
 
 def test_overview_numbers(mini: dict[str, Section]) -> None:
@@ -228,11 +228,11 @@ def test_cohort_numbers(mini: dict[str, Section]) -> None:
     ]
 
 
-def test_v1_dataset_explains_what_is_missing(v1_document: dict[str, Any]) -> None:
-    sections = analyse(v1_document)
+def test_nested_dataset_explains_what_is_missing(nested_document: dict[str, Any]) -> None:
+    sections = analyse(nested_document)
     overview = kpis(sections["overview"])
     assert overview["members"] == 3
-    assert overview["churn_rate"] is None  # v1 has no renewal outcomes: unknown, not 0
+    assert overview["churn_rate"] is None  # no renewal outcomes: unknown, not 0
     content = kpis(sections["content"])
     # Audit 2026-10-08: every loan and distinct title counts, not a top 10.
     assert content["loans"] == 6

@@ -10,7 +10,7 @@ import polars as pl
 
 from app.utils.dates import end_of_day_utc
 
-Frames = Mapping[str, pl.DataFrame]  # dataset v2 tables by name
+Frames = Mapping[str, pl.DataFrame]  # dataset tables by name
 
 RECENT_DAYS = 90  # window of the "recent" charts
 TOP_N = 20

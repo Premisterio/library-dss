@@ -32,9 +32,9 @@ def test_sections_are_served_after_import(
     client: TestClient,
     auth_headers: Headers,
     run_jobs: Callable[[], int],
-    mini_v2_document: dict[str, Any],
+    mini_document: dict[str, Any],
 ) -> None:
-    dataset_id = import_dataset(client, auth_headers, run_jobs, mini_v2_document)
+    dataset_id = import_dataset(client, auth_headers, run_jobs, mini_document)
     response = client.get(f"/api/v1/datasets/{dataset_id}/analytics/overview", headers=auth_headers)
     assert response.status_code == 200, response.text
     overview = response.json()
@@ -61,12 +61,12 @@ def test_unknown_section_is_a_validation_error(client: TestClient, auth_headers:
 
 
 def test_analytics_need_a_ready_dataset(
-    client: TestClient, auth_headers: Headers, mini_v2_document: dict[str, Any]
+    client: TestClient, auth_headers: Headers, mini_document: dict[str, Any]
 ) -> None:
     accepted = client.post(
         "/api/v1/datasets",
         headers=auth_headers,
-        files={"file": ("mini.json", orjson.dumps(mini_v2_document), "application/json")},
+        files={"file": ("mini.json", orjson.dumps(mini_document), "application/json")},
     ).json()
     response = client.get(
         f"/api/v1/datasets/{accepted['dataset']['id']}/analytics/usage", headers=auth_headers
@@ -80,9 +80,9 @@ def test_missing_analytics_can_be_refreshed(
     auth_headers: Headers,
     run_jobs: Callable[[], int],
     db_session: Session,
-    mini_v2_document: dict[str, Any],
+    mini_document: dict[str, Any],
 ) -> None:
-    dataset_id = import_dataset(client, auth_headers, run_jobs, mini_v2_document)
+    dataset_id = import_dataset(client, auth_headers, run_jobs, mini_document)
     db_session.execute(delete(DatasetAnalytics).where(DatasetAnalytics.dataset_id == dataset_id))
     db_session.commit()
     path = f"/api/v1/datasets/{dataset_id}/analytics"
@@ -99,9 +99,9 @@ def test_analytics_are_private(
     client: TestClient,
     auth_headers: Headers,
     run_jobs: Callable[[], int],
-    mini_v2_document: dict[str, Any],
+    mini_document: dict[str, Any],
 ) -> None:
-    dataset_id = import_dataset(client, auth_headers, run_jobs, mini_v2_document)
+    dataset_id = import_dataset(client, auth_headers, run_jobs, mini_document)
     client.post(
         "/api/v1/auth/register",
         json={"email": "other@example.com", "name": "Інший", "password": "password-2"},

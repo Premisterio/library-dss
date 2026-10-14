@@ -7,8 +7,7 @@ from app.domain.analytics.model import Chart, Dimension, Kpi, Measure, Note, Sec
 
 NO_RESULT_COUNTS = Note(
     "search.no_result_counts",
-    "У датасеті не записано кількість результатів пошуку (формат v1), "
-    "тому пошуки без результатів не показано.",
+    "У датасеті не записано кількість результатів пошуку, тому пошуки без результатів не показано.",
 )
 QUERY = Dimension("query", "category")
 ZERO = pl.col("results_count") == 0
@@ -32,7 +31,7 @@ def _by_query(searches: pl.DataFrame, *extra: pl.Expr) -> pl.DataFrame:
 
 def build(frames: Frames, ctx: Context) -> Section:
     searches = frames["searches"].filter(ctx.within("searched_at", None))
-    # v1 files do not record how many results a search returned.
+    # Nested-format files do not record how many results a search returned.
     counted = searches.is_empty() or searches["results_count"].null_count() < searches.height
     last_30 = searches.filter(ctx.within("searched_at", 30))
     recent = searches.filter(ctx.within("searched_at", RECENT_DAYS))

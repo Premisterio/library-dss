@@ -67,7 +67,8 @@ tools/api-codegen/      isolated client generator
   - numbers are raw, with a unit;
   - timestamps are ISO 8601 in UTC, plus the dataset's `timezone`;
   - enums are codes, and their labels come from `GET /meta/enums`;
-  - lists use `{items, total, limit, offset}`, with one named `Page` subclass per item type so clients get a named schema.
+  - lists use `{items, total, limit, offset}`, with one named `Page` subclass per item type so clients get a named schema;
+  - analytics use KPIs and tidy charts (§2.9).
 - **Ownership.** Every resource belongs to an analyst. Another analyst's resource answers 404, not 403, so ids do not leak.
 - **Long operations** answer `202 {resource, job}` with a `Location` header pointing at the job.
   - Clients poll `GET /jobs/{id}` or follow `GET /jobs/{id}/events`, a Server-Sent Events stream built on FastAPI's `EventSourceResponse`.
@@ -167,9 +168,35 @@ There are two file formats, detected by content:
   - Labels contain no Russian letters.
   - `test_meta.py` checks both.
 
+**Descriptive analytics** (`domain/analytics`, served by `services/analytics.py` and `GET /datasets/{id}/analytics[/{section}]`):
+
+- **When it runs.**
+  - Computed once, at the end of the import job and in its transaction, from the frames already in memory. That takes ~0.3 s for 5k members.
+  - Stored per section in `dataset_analytics` as JSONB; the API serves the stored JSON.
+  - After the analytics code changes, `dss refresh-analytics` recomputes from the stored uploads. Without stored analytics the API answers `409 analytics.missing`.
+- **Sections:** `overview`, `usage`, `content`, `segments`, `search`, `subscriptions`, `cohorts`. Each one is a module with a `build(frames, ctx)` function, registered in `SECTIONS`.
+- **Shape of a section** (`model.py`): KPIs, tidy charts and notes.
+  - A KPI is `{key, value, unit, window_days}`.
+  - A tidy chart is `{dimensions, measures, attributes, rows}`: one row per combination of dimension values. It fits any chart library or a plain table.
+  - A note is `{code, message_uk}`.
+  - Units: `count`, `ratio` (0..1, shown as a percentage), `UAH`, `minutes`, `days`, `rating`.
+  - `time` dimension values are ISO dates of the local week or month start.
+- **Time.**
+  - Every value is "as of the end of `as_of`" in the dataset's time zone (`Context`).
+  - Windows are the last 30 days, the last 90 days (`RECENT_DAYS`) or the whole history. `window_days` says which.
+  - A current count such as paying subscribers or MRR is the state at the end of `as_of`.
+- **Missing data.** A value a dataset cannot provide is `null` with a note, never `0`. Examples: renewal outcomes, licences or result counts in nested files. Presence is detected from the data, not from the format.
+- **Definitions.**
+  - A title is a distinct (title, authors) pair.
+  - Churn rate is churned / (renewed + churned) over periods that ended in the window.
+  - MRR is each paid period's amount divided by its length in months.
+  - Recency buckets count back from `as_of`.
+- **Labels.** Every metric, chart, dimension, unit and category code has a Ukrainian label in `ENUMS`, so clients label everything from `GET /meta/enums`. `test_analytics.py` checks this.
+- **Tests.** Exact numbers are tested on `mini_document`, a hand-made five-member dataset whose expected values were derived by hand. When a definition changes, derive the new value by hand too.
+
 ### 2.10 CLI
 
-- `dss` (Typer) runs the same use cases as the API: `create-user`, `openapi`, ….
+- `dss` (Typer) runs the same use cases as the API: `create-user`, `refresh-analytics`, `openapi`, ….
 - Imports that touch the database are local to commands, so `dss openapi` needs no database.
 
 ### 2.11 Tests
@@ -185,6 +212,7 @@ There are two file formats, detected by content:
 - **Fixtures.**
   - `tabular_document`: a small libsim dataset.
   - `nested_document`: a hand-made nested-format file, Ukrainian and English content only.
+  - `mini_document`: a hand-made tabular file with hand-computed analytics.
 - **Contract and structure:** `test_openapi.py`, `test_architecture.py` and `test_migrations.py`.
 
 ## 3. Generator (libsim)

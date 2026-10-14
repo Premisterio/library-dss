@@ -15,8 +15,7 @@ from app.domain.analytics.model import Chart, Dimension, Kpi, Measure, Note, Sec
 
 NO_LICENCES = Note(
     "content.no_licences",
-    "У датасеті немає даних про ліцензії й черги (формат v1), "
-    "тому кількість копій і черги не показано.",
+    "У датасеті немає даних про ліцензії й черги, тому кількість копій і черги не показано.",
 )
 GENRE = Dimension("genre", "category", enum="genre")
 RESOLVED_HOLDS = ("fulfilled", "lapsed", "cancelled")
@@ -134,7 +133,7 @@ def build(frames: Frames, ctx: Context) -> Section:
     recent_loans = loans.filter(ctx.within("borrowed_at", RECENT_DAYS))
     holds = frames["holds"].join(info, on="book_id")
     recent_holds = holds.filter(ctx.within("placed_at", RECENT_DAYS))
-    # v1 files have no licence data at all; a v2 file always has copies per title.
+    # Nested-format files have no licence data; tabular files have copies for every title.
     licensed = books.height > 0 and books["copies"].null_count() < books.height
     hold_stats = recent_holds.select(_hold_stats()).row(0, named=True)
 

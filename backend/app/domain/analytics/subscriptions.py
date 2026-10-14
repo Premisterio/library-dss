@@ -26,7 +26,7 @@ RENEWAL_OUTCOMES = ("renewed", "churned")
 TRIAL_OUTCOMES = ("converted", "expired")
 NO_OUTCOMES = Note(
     "subscriptions.no_outcomes",
-    "У датасеті немає результатів продовження підписок (формат v1), "
+    "У датасеті немає результатів продовження підписок, "
     "тому відтік і конверсію пробного періоду не пораховано.",
 )
 MONTH = Dimension("month", "time")

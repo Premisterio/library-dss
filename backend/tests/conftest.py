@@ -282,12 +282,12 @@ def nested_document() -> dict[str, Any]:
 
 
 @pytest.fixture
-def mini_v2_document() -> dict[str, Any]:
-    """A hand-made v2 dataset (5 members, as of 2026-03-31, Kyiv) with hand-computed analytics.
+def mini_document() -> dict[str, Any]:
+    """A hand-made tabular dataset (5 members, as of 2026-03-31, Kyiv) with known analytics.
 
     Expected values are derived in tests/test_analytics.py; keep both in sync.
     """
-    from app.ingest.schema_v2 import TABLES
+    from app.ingest.schema import TABLES
 
     rows: dict[str, list[list[Any]]] = {name: [] for name in TABLES}
     rows["users"] = [
