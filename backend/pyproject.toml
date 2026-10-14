@@ -1,7 +1,7 @@
 [project]
 name = "library-dss-backend"
 version = "2.0.0.dev0"
-description = "СППР онлайн-бібліотеки: HTTP API, база моделей, CLI і фоновий виконавець задач"
+description = "Online library DSS: HTTP API, model base, CLI and background worker"
 requires-python = ">=3.15,<3.16"
 dependencies = [
     "alembic>=1.20",
@@ -15,11 +15,13 @@ dependencies = [
     "pydantic-settings>=2.15",
     "pyjwt>=2.15",
     "python-multipart>=0.0.20",
+    "reportlab>=5.0.1",
     "scalar-fastapi>=1.9",
     "sqlalchemy>=2.1",
     "typer>=0.27",
     "uvicorn>=0.54",
     "uvloop>=0.23; sys_platform != 'win32'",
+    "xlsxwriter>=3.2.9",
 ]
 
 [project.scripts]
@@ -29,6 +31,8 @@ dss = "app.cli.main:app"
 dev = [
     "httpx2>=2.13",
     "libsim",
+    "openpyxl>=3.1.5",
+    "pypdf>=6.20.1",
     "pytest>=9",
     "pytest-cov>=7",
     "watchfiles>=1.3",

@@ -105,7 +105,7 @@ def get_dataset(dataset_id: int, analyst: CurrentAnalyst, session: SessionDep) -
     "/{dataset_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Delete a dataset with all its data, analytics and jobs",
+    summary="Delete a dataset with all its data, analytics, jobs and reports",
 )
 def delete_dataset(dataset_id: int, analyst: CurrentAnalyst, session: SessionDep) -> Response:
     datasets.delete(session, datasets.get_for(session, dataset_id, analyst))

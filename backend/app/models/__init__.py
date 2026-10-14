@@ -16,6 +16,7 @@ from app.models.library import (
     Search,
     SubscriptionPeriod,
 )
+from app.models.report import Report
 
 __all__ = [
     "NAMING_CONVENTION",
@@ -33,6 +34,7 @@ __all__ = [
     "LibUser",
     "Loan",
     "ReadingSession",
+    "Report",
     "Search",
     "SubscriptionPeriod",
 ]
