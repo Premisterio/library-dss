@@ -66,6 +66,11 @@ npm run format:check && npm run typecheck && npm run lint && npm run test && npm
 # API contract changed → regenerate and commit both files (CI fails on drift)
 uv run dss openapi --out packages/api-client/openapi.json
 npm run api:generate
+
+# simulator (see docs/simulation.md)
+uv run libsim generate --preset demo --seed 1   # → data/generated/<id>.json.gz + ground truth
+uv run libsim validate data/generated/<id>.json.gz
+uv run libsim schema --out docs/schema/dataset-v2.schema.json   # after changing libsim/schema.py
 ```
 
 ## Conventions
@@ -82,7 +87,11 @@ npm run api:generate
 - **Tests:**
   - every bug fix gets a regression test;
   - DB tests are marked `@pytest.mark.db`;
-  - slow generator signal-recovery tests are marked `@pytest.mark.slow`.
+  - slow generator signal-recovery tests are marked `@pytest.mark.slow`;
+  - pytest treats warnings as errors.
+- **Simulator:**
+  - every planted effect lives in `libsim/params.py`, and the model is documented in `docs/simulation.md`;
+  - after changing it, rerun `libsim validate` and update the "planted vs recovered" table.
 - **Frontend:**
   - data only via TanStack Query + `api-client`;
   - oxfmt style (no semicolons, double quotes);
@@ -93,7 +102,7 @@ npm run api:generate
 | Milestone | Scope                                                                                                                                  | Status            |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
 | M0        | Monorepo, tooling, skeletons, dev compose, CI                                                                                          | done (2026-10-14) |
-| M1        | `libsim` v2: real catalogue (Open Library + goodbooks-10k calibration), daily simulation with planted effects, ground truth, schema v2 | in progress       |
+| M1        | `libsim` v2: real catalogue (Open Library + goodbooks-10k calibration), daily simulation with planted effects, ground truth, schema v2 | done, in review   |
 | M2        | Backend platform: auth, jobs + worker, v1/v2 import, analytics, exports, CLI, demo seed                                                | —                 |
 | M3        | Thin shadcn frontend (datasets, overview, analytics, reports) + VPS deploy                                                             | —                 |
 | M4a       | Churn prediction (no leakage), explanations                                                                                            | —                 |
@@ -106,6 +115,13 @@ npm run api:generate
 
 Newest first. Add an entry for every decision that changes scope, stack or rules.
 
+- **2026-10-14 — Simulator.**
+  - Daily simulation with hidden satisfaction (AR(1)) and churn only at renewal.
+  - Licence scarcity with FIFO holds; zero-result searches reveal demand for held-out titles.
+  - A past randomized campaign with heterogeneous effects, including e-mail "sleeping dogs".
+  - Ground truth with outcomes under every action (common random numbers).
+  - Dataset v2 is columnar JSON (`docs/schema/dataset-v2.schema.json`).
+  - 5k members × 24 months simulate in ~15 s; signal-recovery tests pass across seeds.
 - **2026-10-14 — Catalogue.**
   - Real data: Open Library (CC0) for Ukrainian and English works, popularity and quality from its ratings and reading log.
   - goodbooks-10k (CC BY-SA 4.0) only to calibrate reader behaviour.

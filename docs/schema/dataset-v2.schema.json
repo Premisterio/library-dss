@@ -1,0 +1,553 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Premisterio/library-dss/docs/schema/dataset-v2.schema.json",
+  "title": "Library DSS dataset v2",
+  "type": "object",
+  "required": ["schema_version", "meta", "tables"],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "meta": {
+      "type": "object",
+      "required": ["generator", "seed", "preset", "params_hash", "as_of", "timezone"]
+    },
+    "tables": {
+      "type": "object",
+      "required": [
+        "users",
+        "books",
+        "subscription_periods",
+        "loans",
+        "reading_sessions",
+        "searches",
+        "holds",
+        "campaigns",
+        "campaign_assignments",
+        "candidate_titles"
+      ],
+      "properties": {
+        "users": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": [
+                "user_id",
+                "registered_at",
+                "age_range",
+                "education",
+                "language_pref",
+                "email_opt_in",
+                "interests"
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "minItems": 7,
+                "maxItems": 7
+              }
+            }
+          }
+        },
+        "books": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": [
+                "book_id",
+                "title",
+                "authors",
+                "genre",
+                "language",
+                "pages",
+                "first_year",
+                "copies"
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "minItems": 8,
+                "maxItems": 8
+              }
+            }
+          }
+        },
+        "subscription_periods": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": [
+                "user_id",
+                "plan",
+                "period_start",
+                "period_end",
+                "list_price",
+                "paid_amount",
+                "discount_pct",
+                "outcome"
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "minItems": 8,
+                "maxItems": 8
+              }
+            }
+          }
+        },
+        "loans": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": [
+                "loan_id",
+                "user_id",
+                "book_id",
+                "borrowed_at",
+                "returned_at",
+                "completed",
+                "rating",
+                "via_hold"
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "minItems": 8,
+                "maxItems": 8
+              }
+            }
+          }
+        },
+        "reading_sessions": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": ["user_id", "book_id", "started_at", "minutes", "pages", "device"]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "minItems": 6,
+                "maxItems": 6
+              }
+            }
+          }
+        },
+        "searches": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": ["user_id", "searched_at", "query", "results_count"]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "minItems": 4,
+                "maxItems": 4
+              }
+            }
+          }
+        },
+        "holds": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": ["hold_id", "user_id", "book_id", "placed_at", "resolved_at", "outcome"]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "minItems": 6,
+                "maxItems": 6
+              }
+            }
+          }
+        },
+        "campaigns": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": ["campaign_id", "name", "starts_at", "ends_at", "design", "arms"]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "minItems": 6,
+                "maxItems": 6
+              }
+            }
+          }
+        },
+        "campaign_assignments": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": [
+                "campaign_id",
+                "user_id",
+                "assigned_at",
+                "arm",
+                "delivered",
+                "discount_pct",
+                "target_period_end"
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  }
+                ],
+                "minItems": 7,
+                "maxItems": 7
+              }
+            }
+          }
+        },
+        "candidate_titles": {
+          "type": "object",
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {
+              "const": [
+                "candidate_id",
+                "title",
+                "authors",
+                "genre",
+                "language",
+                "pages",
+                "first_year",
+                "license_cost",
+                "offered_at"
+              ]
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  }
+                ],
+                "minItems": 9,
+                "maxItems": 9
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
