@@ -8,6 +8,8 @@ Read in this order:
 2. This file: process rules, stack, commands.
 3. [DESIGN.md](DESIGN.md): how each part of the app works and the rules it follows. Read the section of every part you change.
 
+Keep this file general: rules, stack, commands, conventions. Status and next steps go to `HANDOFF.md`, how things work to DESIGN.md, and the history of changes stays in git and PRs (no dated entries here).
+
 ## Hard rules
 
 1. **Never commit or push without the user's explicit approval** of the changes. Prepare the change, summarize it, wait for "ok". Push only when asked.
