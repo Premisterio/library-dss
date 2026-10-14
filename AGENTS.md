@@ -4,9 +4,11 @@ Guide for AI coding agents (and humans) working on **library-dss**: a decision s
 
 Read in this order:
 
-1. `HANDOFF.md` if it exists (local, gitignored): the live session state, uncommitted work and next steps. Update it before you finish.
+1. `HANDOFF.md` if it exists (local, gitignored): the live state, open PRs, uncommitted work and next steps. Update it after every PR (opened, updated or merged) and before you finish.
 2. This file: process rules, stack, commands.
 3. [DESIGN.md](DESIGN.md): how each part of the app works and the rules it follows. Read the section of every part you change.
+
+Keep this file general: rules, stack, commands, conventions. Status and next steps go to `HANDOFF.md`, how things work to DESIGN.md, and the history of changes stays in git and PRs (no dated entries here).
 
 ## Hard rules
 
@@ -55,6 +57,9 @@ npm run format:check && npm run typecheck && npm run lint && npm run test && npm
 # new migration (numbered automatically, see DESIGN.md §2.7)
 (cd backend && uv run alembic revision --autogenerate -m "what changed")
 
+# analytics code changed → recompute stored analytics of existing datasets
+docker compose exec api dss refresh-analytics
+
 # API contract changed → regenerate and commit both files (CI fails on drift)
 uv run dss openapi --out packages/api-client/openapi.json
 npm run api:generate
@@ -71,6 +76,7 @@ Short rules; the reasons and details are in DESIGN.md.
 
 - **Errors:** raise `ApiError(status, "area.reason", detail)`; clients rely on the stable `code` (§2.2).
 - **API responses:** raw numbers with units, ISO 8601 UTC timestamps, enum codes with labels from `meta/enums`, lists as `{items, total, limit, offset}`; another analyst's resource answers 404 (§2.3).
+- **Descriptive analytics** are computed once at import, as of the dataset's `as_of`, and stored; a value a dataset cannot provide is `null` with a note, never `0`. After changing analytics code, run `dss refresh-analytics` (§2.9).
 - **Long operations** are jobs with a registered handler and progress reports (§2.6).
 - **Time:** UTC everywhere through `app.utils.dates`; never `datetime.now()` (§2.8). Domain code uses the dataset's `as_of` (§2.9).
 - **Migrations** are numbered `0001`, `0002`, … in one chain, one file per revision named `NNNN_<slug>.py`. Create them with `alembic revision --autogenerate -m "…"` (it assigns the number) and review the generated code. Never edit a migration that has reached `main`; add a new one (§2.7).
@@ -79,57 +85,18 @@ Short rules; the reasons and details are in DESIGN.md.
 - **Simulator:** planted effects live in `libsim/params.py`; after changing the model, rerun `libsim validate` and update `docs/simulation.md` (§3).
 - **Frontend:** data only via TanStack Query + `api-client`; oxfmt style; shadcn components in `frontend/src/components/ui` (§4).
 
-## Roadmap
+## Milestones
 
-| Milestone | Scope                                                                                                                                    | Status            |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| M0        | Monorepo, tooling, skeletons, dev compose, CI                                                                                            | done (2026-10-14) |
-| M1        | `libsim`: real catalogue (Open Library + goodbooks-10k calibration), daily simulation with planted effects, ground truth, dataset schema | done (2026-10-14) |
-| M2        | Backend platform: auth, jobs + worker, dataset import, analytics, exports, CLI, demo seed                                                | in progress       |
-| M3        | Thin shadcn frontend (datasets, overview, analytics, reports) + VPS deploy                                                               | —                 |
-| M4a       | Churn prediction (no leakage), explanations                                                                                              | —                 |
-| M4b       | Uplift from the randomized campaign, MILP action plan, what-if, decision log                                                             | —                 |
-| M5        | Content acquisition MCDA: AHP, TOPSIS/SAW, sensitivity, budget portfolio                                                                 | —                 |
-| M6        | Thesis experiment harness (seeds × presets × budgets vs baselines)                                                                       | —                 |
-| M7        | E2E tests, backup drill, user docs, first release                                                                                        | —                 |
+The current status lives in `HANDOFF.md`.
 
-## Decision log
-
-Newest first. Add an entry for every decision that changes scope, stack or rules.
-
-- **2026-10-14 — Documentation, naming and language.**
-  - `DESIGN.md` documents every part of the app (how it works, its rules, why); code comments no longer state rules.
-  - Names describe what things are, not project history: no "v1/v2" or "bachelor" in identifiers, files, messages or docs. Datasets expose `format` (`tabular` | `nested`) instead of an arbitrary version number.
-  - All documentation is in English; only the UI is Ukrainian.
-- **2026-10-14 — Migration names and shared helpers.**
-  - Alembic revisions are numbered (`0001_initial_schema.py`, revision `"0001"`) instead of random hashes: readable order and `down_revision`. `migrations/env.py` assigns the number.
-  - `app/utils/` holds pure helpers shared by several layers; the first one is `dates.py`.
-- **2026-10-14 — Background jobs and dataset import.**
-  - Queue = the `jobs` table; the worker claims jobs with `SELECT … FOR UPDATE SKIP LOCKED` (no Redis/Celery). Jobs abandoned by a stopped worker are failed after `JOB_STALE_SECONDS` without a heartbeat.
-  - Live progress via FastAPI's native SSE (`EventSourceResponse`), bounded to 10 minutes per stream; clients reconnect.
-  - Uploads are stored gzip-compressed in PostgreSQL (`dataset_files`), so one `pg_dump` backs up everything; duplicates are detected by the SHA-256 of the uncompressed JSON (per analyst).
-  - Import = orjson → Polars frames → bulk validation (all problems reported at once, up to 20) → COPY, in one transaction. Measured on the 5k × 24-month demo: ~8 s, worker peak ~280 MiB.
-  - Two file formats, named by structure: `tabular` (libsim) and `nested` (one object per user, the format of the earlier app). Nested files import with `capabilities=["descriptive"]`; their unmapped fields go to `lib_users.extra`.
-- **2026-10-14 — Backend analytics on Polars.** The backend computes analytics with Polars (fast, modern API; it is already used by the generator), not pandas. scikit-learn (M4) works on numpy arrays exported from Polars.
-- **2026-10-14 — Auth.**
-  - PyJWT + pwdlib (argon2id). Tokens carry `type` and `ver`; refresh tokens are rejected where access is required (a bug of the earlier app).
-  - Logout bumps `token_version`, which revokes every token.
-  - Browsers get the refresh token only as an httpOnly cookie (path `/api/v1/auth`, rotated); CLI clients may request it in the body.
-  - Prod sets `ALLOW_REGISTRATION=false` and creates accounts with `dss create-user`.
-- **2026-10-14 — Simulator.**
-  - Daily simulation with hidden satisfaction (AR(1)) and churn only at renewal.
-  - Licence scarcity with FIFO holds; zero-result searches reveal demand for held-out titles.
-  - A past randomized campaign with heterogeneous effects, including e-mail "sleeping dogs".
-  - Ground truth with outcomes under every action (common random numbers).
-  - The dataset file is columnar JSON (`docs/schema/dataset.schema.json`).
-  - 5k members × 24 months simulate in ~15 s; signal-recovery tests pass across seeds.
-- **2026-10-14 — Catalogue.**
-  - Real data: Open Library (CC0) for Ukrainian and English works, popularity and quality from its ratings and reading log.
-  - goodbooks-10k (CC BY-SA 4.0) only to calibrate reader behaviour.
-  - Exclude Russian-language editions only.
-  - The earlier app's `book_database.json` is dropped: it has wrong genres, random page counts and Russian titles.
-- **2026-10-14 — Process.** No commits/pushes without approval. oxlint stays as the linter.
-- **2026-10-14 — Repository.** Fresh repo `Premisterio/library-dss` (public) instead of a new branch in `Diploma`.
-- **2026-10-14 — Stack.** Newest possible: Python 3.15, TS 7, Node 26, PostgreSQL 18. The TS 7 gaps are handled with oxlint and the isolated codegen.
-- **2026-10-08 — Frontend scope.** The frontend is thin on shadcn defaults; the author will redesign it later, so the backend must be maximally reusable.
-- **2026-10-08 — DSS scope.** Both modules: retention (core) and content acquisition (MCDA). Paid VPS hosting.
+| Milestone | Scope                                                                                                    |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| M0        | Monorepo, tooling, skeletons, dev compose, CI                                                            |
+| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, dataset schema            |
+| M2        | Backend platform: auth, jobs + worker, dataset import, analytics, reports and exports, CLI, demo seed    |
+| M3        | Thin shadcn frontend (datasets, overview, analytics, reports) + VPS deploy                               |
+| M4a       | Churn prediction without leakage, explanations                                                           |
+| M4b       | Uplift from the randomized campaign, optimal action plan under a budget, what-if scenarios, decision log |
+| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                                      |
+| M6        | Thesis experiment harness (seeds × presets × budgets vs baselines)                                       |
+| M7        | End-to-end tests, backup drill, user docs, first release                                                 |

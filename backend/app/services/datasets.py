@@ -13,7 +13,7 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.ingest import IngestError, load, reader
 from app.models import Analyst, Dataset, DatasetFile, Job
-from app.services import jobs
+from app.services import analytics, jobs
 
 IMPORT_JOB = "import_dataset"
 
@@ -78,7 +78,7 @@ def run_import(session: Session, job: Job, progress: jobs.Progress) -> dict[str,
     progress(0.05, "parse")
     parsed = reader.parse(reader.decode(file.content))
     progress(0.3, "load")
-    load.load(session, dataset.id, parsed.frames, lambda f, stage: progress(0.3 + 0.6 * f, stage))
+    load.load(session, dataset.id, parsed.frames, lambda f, stage: progress(0.3 + 0.55 * f, stage))
     dataset.format = parsed.format
     dataset.schema_version = parsed.schema_version
     dataset.as_of = parsed.as_of
@@ -86,6 +86,8 @@ def run_import(session: Session, job: Job, progress: jobs.Progress) -> dict[str,
     dataset.meta = {**dataset.meta, **parsed.meta}
     dataset.capabilities = parsed.capabilities
     dataset.row_counts = parsed.row_counts
+    progress(0.85, "analytics")
+    analytics.store(session, dataset, parsed.frames)
     dataset.status = "ready"
     dataset.error = None
     progress(1.0, "done")

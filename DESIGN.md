@@ -6,7 +6,7 @@ Code comments only explain code that is not obvious. Design and rules live here.
 
 ## 1. System
 
-The app is a decision support system (DSS). Its parts follow Sprague & Carlson:
+The app is a decision support system (DSS) with two decision modules: subscriber retention (churn prediction, action effects, an optimal plan under a budget) and content acquisition (multi-criteria choice under a budget). Its parts follow Sprague & Carlson:
 
 | Subsystem | Code                                                                                                               |
 | --------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -67,7 +67,8 @@ tools/api-codegen/      isolated client generator
   - numbers are raw, with a unit;
   - timestamps are ISO 8601 in UTC, plus the dataset's `timezone`;
   - enums are codes, and their labels come from `GET /meta/enums`;
-  - lists use `{items, total, limit, offset}`, with one named `Page` subclass per item type so clients get a named schema.
+  - lists use `{items, total, limit, offset}`, with one named `Page` subclass per item type so clients get a named schema;
+  - analytics use KPIs and tidy charts (§2.9).
 - **Ownership.** Every resource belongs to an analyst. Another analyst's resource answers 404, not 403, so ids do not leak.
 - **Long operations** answer `202 {resource, job}` with a `Location` header pointing at the job.
   - Clients poll `GET /jobs/{id}` or follow `GET /jobs/{id}/events`, a Server-Sent Events stream built on FastAPI's `EventSourceResponse`.
@@ -120,6 +121,7 @@ There are two file formats, detected by content:
   - `retention` needs subscription periods and campaign assignments.
   - `content` needs candidate titles and searches.
   - Nested files get `descriptive` only.
+- **Performance.** The 5k-member, 24-month libsim demo imports in about 8 s, with a worker peak of about 280 MiB.
 
 ### 2.6 Jobs and the worker
 
@@ -160,16 +162,42 @@ There are two file formats, detected by content:
 
 ### 2.9 Domain (model base)
 
-- Domain code is pure functions over Polars frames and dataclasses, deterministic given a seed.
+- Domain code is pure functions over Polars frames and dataclasses, deterministic given a seed. Polars rather than pandas: it is fast, typed and already used by the generator. scikit-learn models take numpy arrays exported from Polars.
 - Time comes from the dataset's `as_of`, never from the clock.
 - `enums.py` holds codes with Ukrainian labels, served by `GET /meta/enums`, so clients never hard-code labels.
   - Genre codes equal the simulator's taxonomy.
   - Labels contain no Russian letters.
   - `test_meta.py` checks both.
 
+**Descriptive analytics** (`domain/analytics`, served by `services/analytics.py` and `GET /datasets/{id}/analytics[/{section}]`):
+
+- **When it runs.**
+  - Computed once, at the end of the import job and in its transaction, from the frames already in memory. That takes ~0.3 s for 5k members.
+  - Stored per section in `dataset_analytics` as JSONB; the API serves the stored JSON.
+  - After the analytics code changes, `dss refresh-analytics` recomputes from the stored uploads. Without stored analytics the API answers `409 analytics.missing`.
+- **Sections:** `overview`, `usage`, `content`, `segments`, `search`, `subscriptions`, `cohorts`. Each one is a module with a `build(frames, ctx)` function, registered in `SECTIONS`.
+- **Shape of a section** (`model.py`): KPIs, tidy charts and notes.
+  - A KPI is `{key, value, unit, window_days}`.
+  - A tidy chart is `{dimensions, measures, attributes, rows}`: one row per combination of dimension values. It fits any chart library or a plain table.
+  - A note is `{code, message_uk}`.
+  - Units: `count`, `ratio` (0..1, shown as a percentage), `UAH`, `minutes`, `days`, `rating`.
+  - `time` dimension values are ISO dates of the local week or month start.
+- **Time.**
+  - Every value is "as of the end of `as_of`" in the dataset's time zone (`Context`).
+  - Windows are the last 30 days, the last 90 days (`RECENT_DAYS`) or the whole history. `window_days` says which.
+  - A current count such as paying subscribers or MRR is the state at the end of `as_of`.
+- **Missing data.** A value a dataset cannot provide is `null` with a note, never `0`. Examples: renewal outcomes, licences or result counts in nested files. Presence is detected from the data, not from the format.
+- **Definitions.**
+  - A title is a distinct (title, authors) pair.
+  - Churn rate is churned / (renewed + churned) over periods that ended in the window.
+  - MRR is each paid period's amount divided by its length in months.
+  - Recency buckets count back from `as_of`.
+- **Labels.** Every metric, chart, dimension, unit and category code has a Ukrainian label in `ENUMS`, so clients label everything from `GET /meta/enums`. `test_analytics.py` checks this.
+- **Tests.** Exact numbers are tested on `mini_document`, a hand-made five-member dataset whose expected values were derived by hand. When a definition changes, derive the new value by hand too.
+
 ### 2.10 CLI
 
-- `dss` (Typer) runs the same use cases as the API: `create-user`, `openapi`, ….
+- `dss` (Typer) runs the same use cases as the API: `create-user`, `refresh-analytics`, `openapi`, ….
 - Imports that touch the database are local to commands, so `dss openapi` needs no database.
 
 ### 2.11 Tests
@@ -185,6 +213,7 @@ There are two file formats, detected by content:
 - **Fixtures.**
   - `tabular_document`: a small libsim dataset.
   - `nested_document`: a hand-made nested-format file, Ukrainian and English content only.
+  - `mini_document`: a hand-made tabular file with hand-computed analytics.
 - **Contract and structure:** `test_openapi.py`, `test_architecture.py` and `test_migrations.py`.
 
 ## 3. Generator (libsim)
@@ -210,6 +239,7 @@ There are two file formats, detected by content:
   - `packages/api-client` is generated from the committed `openapi.json` by `tools/api-codegen`. That tool is isolated on TypeScript 5.9 because TypeScript 7 has no JS compiler API.
   - Never edit `src/schema.ts` by hand. CI fails when the client drifts from the backend.
 - **Frontend.**
+  - It is deliberately thin, on shadcn defaults. A later redesign changes presentation only, which is why the backend carries all logic.
   - It renders and computes no metrics. When a field is missing, extend the backend.
   - Data comes only through TanStack Query and the api client. Labels come from `meta/enums`. Errors are mapped by their Problem `code`.
   - shadcn components live in `frontend/src/components/ui`. Style is oxlint plus oxfmt (no semicolons, double quotes).
@@ -221,6 +251,7 @@ There are two file formats, detected by content:
   - `api`: applies migrations, reloads on change;
   - `worker`: restarted by watchfiles on change.
   - The frontend runs natively with a `/api` proxy.
+- **Production** (planned): one docker compose on a VPS with Caddy, api, worker and PostgreSQL; images built by CI.
 - **Images.** The `prod` target is non-root. Its HEALTHCHECK probes HTTP, so a production worker service needs its own check.
 - **CI.**
   - Jobs: Python (ruff, ty, pytest with coverage, generator tests), frontend (format, types, lint, tests, build), API contract drift, Docker prod image, workflow lint (actionlint, zizmor).

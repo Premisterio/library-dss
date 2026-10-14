@@ -51,6 +51,32 @@ def create_user(
     typer.echo(f"created analyst #{analyst.id} <{analyst.email}> ({analyst.role})")
 
 
+@app.command("refresh-analytics")
+def refresh_analytics(
+    dataset: Annotated[
+        int | None, typer.Option(help="Dataset id; every ready dataset when omitted.")
+    ] = None,
+) -> None:
+    """Recompute stored analytics from the uploaded files (after the analytics code changed)."""
+    from sqlalchemy import select
+
+    from app.core.db import get_sessionmaker
+    from app.models import Dataset
+    from app.services import analytics
+
+    with get_sessionmaker()() as session:
+        query = select(Dataset).where(Dataset.status == "ready").order_by(Dataset.id)
+        if dataset is not None:
+            query = query.where(Dataset.id == dataset)
+        targets = list(session.scalars(query))
+        if dataset is not None and not targets:
+            typer.echo(f"error: dataset #{dataset} does not exist or is not ready", err=True)
+            raise typer.Exit(1)
+        for target in targets:
+            analytics.refresh(session, target)
+            typer.echo(f"refreshed dataset #{target.id} ({target.name})")
+
+
 @app.command()
 def openapi(
     out: Annotated[Path | None, typer.Option(help="Write to this file instead of stdout.")] = None,

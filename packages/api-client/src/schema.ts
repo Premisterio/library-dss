@@ -125,6 +125,40 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets/{dataset_id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every analytics section of a dataset */
+        get: operations["get_analytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/analytics/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One analytics section */
+        get: operations["get_analytics_section"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -233,6 +267,13 @@ export type components = {
             /** Role */
             role: string;
         };
+        /** AnalyticsOut */
+        AnalyticsOut: {
+            /** Dataset Id */
+            dataset_id: number;
+            /** Sections */
+            sections: components["schemas"]["SectionOut"][];
+        };
         /** Body_upload_dataset */
         Body_upload_dataset: {
             /**
@@ -242,6 +283,35 @@ export type components = {
             file: string;
             /** Name */
             name?: string | null;
+        };
+        /**
+         * ChartOut
+         * @description A tidy table: one row per combination of dimension values.
+         */
+        ChartOut: {
+            /**
+             * Attributes
+             * @description Descriptive columns that are not plotted.
+             */
+            attributes: components["schemas"]["DimensionOut"][];
+            /** Dimensions */
+            dimensions: components["schemas"]["DimensionOut"][];
+            /**
+             * Key
+             * @description Chart code; title in enums `chart`.
+             */
+            key: string;
+            /** Measures */
+            measures: components["schemas"]["MeasureOut"][];
+            /** Rows */
+            rows: {
+                [key: string]: string | number | null;
+            }[];
+            /**
+             * Window Days
+             * @description The value covers the last N days up to as_of; null: the whole history, or the state at the end of as_of for current counts (paying subscribers, MRR).
+             */
+            window_days: number | null;
         };
         /** DatasetOut */
         DatasetOut: {
@@ -315,6 +385,30 @@ export type components = {
              * @description Number of items across all pages.
              */
             total: number;
+        };
+        /** DimensionOut */
+        DimensionOut: {
+            /**
+             * Enum
+             * @description Enums group with labels for the values.
+             */
+            enum: string | null;
+            /**
+             * Key
+             * @description Column of the rows; label in enums `dimension`.
+             */
+            key: string;
+            /**
+             * Kind
+             * @description `time` values are ISO dates (week or month start, local time).
+             * @enum {string}
+             */
+            kind: "category" | "time" | "number";
+            /**
+             * Order
+             * @description Display order of category values.
+             */
+            order: string[] | null;
         };
         /** EnumItem */
         EnumItem: {
@@ -397,6 +491,30 @@ export type components = {
              */
             status: "queued" | "running" | "succeeded" | "failed";
         };
+        /** KpiOut */
+        KpiOut: {
+            /**
+             * Key
+             * @description Metric code; label in enums `metric`.
+             */
+            key: string;
+            /**
+             * Unit
+             * @description `ratio` is a fraction 0..1 (show as a percentage).
+             * @enum {string}
+             */
+            unit: "count" | "ratio" | "UAH" | "minutes" | "days" | "rating";
+            /**
+             * Value
+             * @description null when this dataset cannot provide it (see notes).
+             */
+            value: number | null;
+            /**
+             * Window Days
+             * @description The value covers the last N days up to as_of; null: the whole history, or the state at the end of as_of for current counts (paying subscribers, MRR).
+             */
+            window_days: number | null;
+        };
         /** LoginIn */
         LoginIn: {
             /**
@@ -412,6 +530,35 @@ export type components = {
             include_refresh_token: boolean;
             /** Password */
             password: string;
+        };
+        /** MeasureOut */
+        MeasureOut: {
+            /**
+             * Key
+             * @description Column of the rows; label in enums `metric`.
+             */
+            key: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "count" | "ratio" | "UAH" | "minutes" | "days" | "rating";
+            /**
+             * Window Days
+             * @description Set when it differs from the chart's window.
+             */
+            window_days: number | null;
+        };
+        /** NoteOut */
+        NoteOut: {
+            /** Code */
+            code: string;
+            /** Message Uk */
+            message_uk: string;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
         };
         /**
          * Problem
@@ -469,6 +616,27 @@ export type components = {
             name: string;
             /** Password */
             password: string;
+        };
+        /** SectionOut */
+        SectionOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Charts */
+            charts: components["schemas"]["ChartOut"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts";
+            /** Kpis */
+            kpis: components["schemas"]["KpiOut"][];
+            /** Notes */
+            notes: components["schemas"]["NoteOut"][];
+            /** Timezone */
+            timezone: string;
         };
         /**
          * TaskError
@@ -856,6 +1024,87 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_analytics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_analytics_section: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+                section: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionOut"];
+                };
             };
             /** @description Request validation failed */
             422: {
