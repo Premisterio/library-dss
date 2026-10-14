@@ -29,7 +29,10 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Local data: generated datasets and experiment outputs
+# Local agent handoff notes (see AGENTS.md)
+HANDOFF.md
+
+# Local data: generated datasets, downloaded source data, experiment outputs
 /data/
 backend/experiments/results/
 *.log

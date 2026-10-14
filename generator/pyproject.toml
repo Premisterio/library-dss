@@ -10,7 +10,9 @@ dependencies = []
 libsim = "libsim.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=9"]
+# Offline catalogue builder (Open Library + goodbooks-10k); not needed to run the simulator.
+catalog = ["polars>=2.0"]
+dev = ["pytest>=9", { include-group = "catalog" }]
 
 [build-system]
 requires = ["hatchling>=1.32"]
