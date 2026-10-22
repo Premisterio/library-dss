@@ -17,5 +17,11 @@
     "import/no-cycle": "error",
     "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }]
   },
-  "ignorePatterns": ["**/dist/**", "packages/api-client/src/schema.ts", "tools/**"]
+  "ignorePatterns": [
+    "**/dist/**",
+    "packages/api-client/src/schema.ts",
+    "tools/**",
+    "frontend/src/components/ui/**",
+    "frontend/src/hooks/use-mobile.ts"
+  ]
 }

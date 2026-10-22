@@ -186,6 +186,48 @@
         "label": "Помилка"
       }
     ],
+    "dataset_table": [
+      {
+        "code": "users",
+        "label": "Читачі"
+      },
+      {
+        "code": "books",
+        "label": "Книги"
+      },
+      {
+        "code": "subscription_periods",
+        "label": "Періоди підписок"
+      },
+      {
+        "code": "loans",
+        "label": "Позичення"
+      },
+      {
+        "code": "reading_sessions",
+        "label": "Сесії читання"
+      },
+      {
+        "code": "searches",
+        "label": "Пошуки"
+      },
+      {
+        "code": "holds",
+        "label": "Бронювання"
+      },
+      {
+        "code": "campaigns",
+        "label": "Кампанії"
+      },
+      {
+        "code": "campaign_assignments",
+        "label": "Учасники кампаній"
+      },
+      {
+        "code": "candidate_titles",
+        "label": "Тайтли-кандидати"
+      }
+    ],
     "device": [
       {
         "code": "mobile_android",
@@ -396,6 +438,28 @@
         "label": "Скасовано"
       }
     ],
+    "job_stage": [
+      {
+        "code": "started",
+        "label": "Підготовка"
+      },
+      {
+        "code": "parse",
+        "label": "Розбір і перевірка файлу"
+      },
+      {
+        "code": "load",
+        "label": "Запис у базу"
+      },
+      {
+        "code": "analytics",
+        "label": "Розрахунок аналітики"
+      },
+      {
+        "code": "done",
+        "label": "Готово"
+      }
+    ],
     "job_status": [
       {
         "code": "queued",
@@ -461,7 +525,7 @@
       },
       {
         "code": "reading_minutes",
-        "label": "Хвилини читання"
+        "label": "Час читання"
       },
       {
         "code": "sessions",
@@ -473,7 +537,7 @@
       },
       {
         "code": "minutes_per_active_member",
-        "label": "Хвилин на активного читача"
+        "label": "Час читання на активного читача"
       },
       {
         "code": "share",

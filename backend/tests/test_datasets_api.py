@@ -315,6 +315,36 @@ def test_job_events_stream(
     assert [e["status"] for e in events(finished)] == ["succeeded"]  # closes when finished
 
 
+def test_nul_characters_never_reach_the_database(
+    client: TestClient,
+    auth_headers: Headers,
+    db_session: Session,
+    nested_document: dict[str, Any],
+) -> None:
+    """PostgreSQL text cannot hold NUL. A NUL in the name is rejected; one in the file name,
+    which comes from the multipart header, is dropped."""
+    named = upload(client, auth_headers, nested_document, name="a\u0000b")
+    assert named.status_code == 422
+
+    # httpx escapes NUL in file names, so the multipart body is written by hand.
+    boundary = "nul-boundary"
+    head = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="a\u0000b.json"\r\n'
+        "Content-Type: application/json\r\n\r\n"
+    )
+    body = head.encode() + orjson.dumps(nested_document) + f"\r\n--{boundary}--\r\n".encode()
+    response = client.post(
+        "/api/v1/datasets",
+        headers=auth_headers | {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        content=body,
+    )
+    assert response.status_code == 202, response.text
+    dataset_id = response.json()["dataset"]["id"]
+    assert response.json()["dataset"]["name"] == "ab"
+    assert db_session.get_one(DatasetFile, dataset_id).original_name == "ab.json"
+
+
 def test_endpoints_require_authentication(client: TestClient) -> None:
     assert client.get("/api/v1/datasets").status_code == 401
     assert client.post("/api/v1/datasets").status_code == 401

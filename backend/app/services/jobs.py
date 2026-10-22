@@ -16,6 +16,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
+from app.domain.enums import JobStage
 from app.models import Analyst, Dataset, Job
 from app.utils.dates import utc_now
 
@@ -50,7 +51,7 @@ def _start(session: Session, job: Job) -> None:
         "running",
         utc_now(),
         utc_now(),
-        "started",
+        JobStage.STARTED,
     )
     if job.dataset_id is not None:
         session.execute(

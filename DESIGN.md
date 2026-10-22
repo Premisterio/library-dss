@@ -64,6 +64,8 @@ tools/api-codegen/      isolated client generator
 
 - **The contract** is OpenAPI 3.1 at `/api/v1/openapi.json`, with docs at `/api/docs`.
   - Inside `/api/v1` changes are additive only. A breaking change needs a new path version.
+  - CI runs `oasdiff breaking` on every pull request against the base branch's `openapi.json`. A deliberate exception, such as rejecting input that used to crash, goes into `.github/oasdiff-ignore.txt` with the reason in the PR.
+  - Text that reaches PostgreSQL uses `api.schemas.Text`, which rejects NUL characters with 422 (PostgreSQL text cannot hold them, so they used to give 500). An uploaded file's name comes from the multipart header, not a field, so NUL is dropped from it instead.
 - **`operation_id` is the handler name** (snake_case, unique; checked by `test_openapi.py`). It becomes the method name in generated clients, so renaming a handler breaks clients.
 - **Responses do not assume any UI library:**
   - numbers are raw, with a unit;
@@ -183,12 +185,14 @@ There are two file formats, detected by content:
 - **Shape of a section** (`model.py`): KPIs, tidy charts and notes.
   - A KPI is `{key, value, unit, window_days}`.
   - A tidy chart is `{dimensions, measures, attributes, rows}`: one row per combination of dimension values. It fits any chart library or a plain table.
+  - Attributes describe a row without being plotted. They can tell rows apart when a dimension value repeats, such as one title by different authors; clients show them next to the repeated value.
   - A note is `{code, message_uk}`.
   - Units: `count`, `ratio` (0..1, shown as a percentage), `UAH`, `minutes`, `days`, `rating`.
   - `time` dimension values are ISO dates of the local week or month start.
 - **Time.**
   - Every value is "as of the end of `as_of`" in the dataset's time zone (`Context`).
   - Windows are the last 30 days, the last 90 days (`RECENT_DAYS`) or the whole history. `window_days` says which.
+  - Weekly charts show complete weeks only: a week cut short by `as_of` would look like a sudden drop.
   - A current count such as paying subscribers or MRR is the state at the end of `as_of`.
 - **Missing data.** A value a dataset cannot provide is `null` with a note, never `0`. Examples: renewal outcomes, licences or result counts in nested files. Presence is detected from the data, not from the format.
 - **Definitions.**
@@ -273,8 +277,52 @@ There are two file formats, detected by content:
 - **Frontend.**
   - It is deliberately thin, on shadcn defaults. A later redesign changes presentation only, which is why the backend carries all logic.
   - It renders and computes no metrics. When a field is missing, extend the backend.
-  - Data comes only through TanStack Query and the api client. Labels come from `meta/enums`. Errors are mapped by their Problem `code`.
-  - shadcn components live in `frontend/src/components/ui`. Style is oxlint plus oxfmt (no semicolons, double quotes).
+  - Labels come from `meta/enums`. Errors are shown by their Problem `code` (`lib/messages.ts`); an unknown code falls back by status, so a raw code never reaches the user.
+- **Layers** (`frontend/src`). Data and logic stay out of the markup, so a redesign replaces only `components/` and `pages/`.
+  - `api/`: everything that talks to the server. That is the client and session, the query keys, and one hook module per resource (`datasets`, `analytics`, `reports`, `jobs`, `auth`, `enums`) holding its queries and mutations. Nothing else calls `api` or `fetch`.
+  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections. Each module has its tests next to it.
+  - `app/`: the router, paths (`paths.*`, `parseId`), route titles and the query client.
+  - `components/common/`: building blocks with no data of their own (`QueryView`, `PanelCard`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`).
+  - `components/<feature>/` (`shell`, `datasets`, `analytics`, `charts`, `reports`): feature parts. They get data through props and may use `api/` hooks for their own actions.
+  - `pages/`: connect the route to hooks and components; no markup of their own beyond composition.
+  - Types come from the generated schema through `api/types.ts`; query keys live only in `api/keys.ts`.
+- **Pages and routes** (react-router, `app/router.tsx`):
+  - `/login`;
+  - `/datasets`: upload with live import progress, list, delete;
+  - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
+    - the index: overview;
+    - `analytics/:section`: one tab per section;
+    - `reports`: create, list and download reports.
+  - The dataset pages, which bring the chart library, are loaded lazily.
+  - Every route has an error boundary. Errors below the shell stay inside it, so the navigation keeps working.
+  - Each route names its page title in `handle`, and the shell header reads it.
+- **Server state** (TanStack Query):
+  - Analytics are keyed apart from datasets, so refreshing the dataset list never refetches the (immutable) analytics.
+  - The dataset list and a dataset that is still importing refresh themselves until the import ends.
+  - A failed mutation shows a toast from the mutation cache. A form that shows its own error opts out with `meta: { silent: true }`.
+- **Session** (`api/session.ts`, `api/auth.tsx`):
+  - The access token lives in memory only and is renewed shortly before it expires, one request at a time.
+  - On start, the app tries a silent sign-in with the refresh cookie.
+  - Never send the access token to `/auth/refresh`, `/auth/login` or `/auth/register`: refresh would read it as a refresh token.
+  - Only a rejected refresh cookie (401/403) or a 401 elsewhere ends the session. A network error or a 5xx during renewal keeps a still-valid session.
+  - Whatever ends a session clears the whole query cache, so the next analyst never sees the previous one's data.
+  - After an explicit sign-out, the next sign-in starts at the dataset list. After an expired session, it returns to the page that asked for it.
+- **Job progress** (`api/jobs.ts`):
+  - The job is a query, keyed by its id, that the SSE stream writes into.
+  - The SSE stream is read with `fetch()`, because `EventSource` cannot send the Authorization header. It reconnects when the server ends a stream early.
+  - While the stream is down, the query polls `GET /jobs/{id}` and keeps polling through errors, so a restarting API does not leave the job unfollowed.
+- **Downloads** go through the typed client as a blob and are named from `Content-Disposition` (`filename*` first).
+- **Charts** (`lib/charts.ts`, `components/charts/`): one renderer for every tidy chart, chosen from its description.
+  - One category dimension → bars; one time dimension → a line of the measures that share the first unit.
+  - Two dimensions → a heatmap table of one measure (a ratio when there is one).
+  - Otherwise → a table.
+  - Every chart can switch to its table. Animation is off, so screenshots and reports show the final state.
+  - A chart that fails to render shows a message in its card; the rest of the page stays.
+- **Formatting** (`lib/format.ts`): `uk-UA` locale; ratios as percent; large minute totals as hours; a missing value as `—`.
+- **Tests and style.**
+  - vitest covers the pure logic and the transport (`src/**/*.test.ts`, one file per module).
+  - shadcn components (`components/ui`, `hooks/use-mobile.ts`) are generated vendor code: the shadcn CLI may overwrite them, and oxlint skips them.
+  - Style is oxlint (type-aware) plus oxfmt (no semicolons, double quotes).
 
 ## 5. Infrastructure and CI
 

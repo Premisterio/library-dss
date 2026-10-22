@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.api.deps import BearerDep, CurrentAnalyst, SettingsDep
+from app.api.schemas import Text
 from app.core.config import Settings
 from app.core.db import SessionDep
 from app.core.errors import ApiError
@@ -25,12 +26,12 @@ COOKIE_PATH = "/api/v1/auth"
 
 class RegisterIn(BaseModel):
     email: EmailStr
-    name: str = Field(min_length=1, max_length=200)
+    name: Text = Field(min_length=1, max_length=200)
     password: str = Field(min_length=auth.MIN_PASSWORD_LENGTH, max_length=200)
 
 
 class LoginIn(BaseModel):
-    email: str = Field(
+    email: Text = Field(
         max_length=320, description="Any string; a wrong one simply fails to sign in."
     )
     password: str = Field(max_length=200)

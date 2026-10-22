@@ -30,6 +30,7 @@ def _activity_weekly(frames: Frames, ctx: Context) -> Chart:
         active.join(loans, on="week", how="full", coalesce=True)
         .join(minutes, on="week", how="full", coalesce=True)
         .with_columns(pl.col("active_members", "loans", "reading_minutes").fill_null(0))
+        .filter(ctx.complete_weeks())
         .sort("week")
     )
     return Chart(

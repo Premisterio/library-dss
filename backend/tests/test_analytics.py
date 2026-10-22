@@ -6,12 +6,15 @@ starts 2025-12-31T21:00Z).
 """
 
 import math
+from datetime import date
 from typing import Any
 
 import orjson
+import polars as pl
 import pytest
 
 from app.domain.analytics import SECTIONS, compute_all
+from app.domain.analytics.common import Context
 from app.domain.analytics.model import Section
 from app.domain.enums import ENUMS
 from app.ingest import reader
@@ -316,3 +319,25 @@ def test_simulated_kpis_are_plausible(simulated: dict[str, Section]) -> None:
     conversion = kpis(simulated["subscriptions"])["trial_conversion_rate"]
     assert conversion is not None
     assert 0.2 < conversion < 0.7
+
+
+def test_weekly_charts_show_complete_weeks_only(mini: dict[str, Section]) -> None:
+    """as_of 2026-03-31 is a Tuesday: the week of 03-30 is partial and would look like a drop."""
+    for section, key in (("overview", "activity_weekly"), ("search", "searches_weekly")):
+        weeks = [row["week"] for row in chart(mini[section], key)]
+        assert weeks
+        assert weeks[-1] <= "2026-03-23", (key, weeks[-1])
+
+
+@pytest.mark.parametrize(
+    ("as_of", "last_week"),
+    [
+        (date(2026, 3, 29), date(2026, 3, 23)),  # Sunday: its week has just ended
+        (date(2026, 3, 28), date(2026, 3, 16)),  # Saturday: one day of it is still missing
+        (date(2026, 3, 30), date(2026, 3, 23)),  # Monday: a new week has only begun
+    ],
+)
+def test_complete_weeks_at_the_boundary(as_of: date, last_week: date) -> None:
+    mondays = pl.DataFrame({"week": [date(2026, 3, 16), date(2026, 3, 23), date(2026, 3, 30)]})
+    kept = mondays.filter(Context.at(as_of, "Europe/Kyiv").complete_weeks())["week"]
+    assert kept.max() == last_week

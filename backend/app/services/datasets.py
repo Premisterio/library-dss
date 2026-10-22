@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.errors import ApiError
+from app.domain.enums import JobStage
 from app.ingest import IngestError, load, reader
 from app.models import Analyst, Dataset, DatasetFile, Job
 from app.services import analytics, jobs
@@ -44,7 +45,8 @@ def create_from_upload(
         raise ApiError(
             409, "dataset.duplicate", f"This file is already uploaded as dataset #{existing.id}"
         )
-    filename = PurePath(filename).name[:255]
+    # PostgreSQL text cannot hold NUL; the name comes from the client's multipart header.
+    filename = PurePath(filename.replace("\x00", "")).name[:255]
     stem = filename.removesuffix(".gz").removesuffix(".json") or "dataset"
     dataset = Dataset(
         owner_id=owner.id,
@@ -75,9 +77,9 @@ def run_import(session: Session, job: Job, progress: jobs.Progress) -> dict[str,
     file = session.get(DatasetFile, job.dataset_id)
     if dataset is None or file is None:
         raise IngestError("dataset.missing", "The dataset was deleted before it was imported")
-    progress(0.05, "parse")
+    progress(0.05, JobStage.PARSE)
     parsed = reader.parse(reader.decode(file.content))
-    progress(0.3, "load")
+    progress(0.3, JobStage.LOAD)
     load.load(session, dataset.id, parsed.frames, lambda f, stage: progress(0.3 + 0.55 * f, stage))
     dataset.format = parsed.format
     dataset.schema_version = parsed.schema_version
@@ -86,11 +88,11 @@ def run_import(session: Session, job: Job, progress: jobs.Progress) -> dict[str,
     dataset.meta = {**dataset.meta, **parsed.meta}
     dataset.capabilities = parsed.capabilities
     dataset.row_counts = parsed.row_counts
-    progress(0.85, "analytics")
+    progress(0.85, JobStage.ANALYTICS)
     analytics.store(session, dataset, parsed.frames)
     dataset.status = "ready"
     dataset.error = None
-    progress(1.0, "done")
+    progress(1.0, JobStage.DONE)
     return {
         "dataset_id": dataset.id,
         "row_counts": parsed.row_counts,

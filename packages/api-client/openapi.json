@@ -69,6 +69,7 @@
               {
                 "maxLength": 200,
                 "minLength": 1,
+                "pattern": "^[^\\x00]*$",
                 "type": "string"
               },
               {
@@ -650,6 +651,7 @@
           "email": {
             "description": "Any string; a wrong one simply fails to sign in.",
             "maxLength": 320,
+            "pattern": "^[^\\x00]*$",
             "title": "Email",
             "type": "string"
           },
@@ -818,6 +820,7 @@
           "name": {
             "maxLength": 200,
             "minLength": 1,
+            "pattern": "^[^\\x00]*$",
             "title": "Name",
             "type": "string"
           },
@@ -941,6 +944,7 @@
           "title": {
             "maxLength": 200,
             "minLength": 1,
+            "pattern": "^[^\\x00]*$",
             "title": "Title",
             "type": "string"
           }

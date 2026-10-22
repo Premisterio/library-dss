@@ -68,12 +68,6 @@
               "loans": 1,
               "reading_minutes": 0,
               "week": "2026-03-23"
-            },
-            {
-              "active_members": 1,
-              "loans": 0,
-              "reading_minutes": 50,
-              "week": "2026-03-30"
             }
           ],
           "window_days": null

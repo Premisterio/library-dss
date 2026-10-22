@@ -1,5 +1,18 @@
 """Enumerations exposed via GET /api/v1/meta/enums: stable codes with Ukrainian labels."""
 
+from enum import StrEnum
+
+
+class JobStage(StrEnum):
+    """Stages an import job reports; `load:<table>` also names the table being written."""
+
+    STARTED = "started"
+    PARSE = "parse"
+    LOAD = "load"
+    ANALYTICS = "analytics"
+    DONE = "done"
+
+
 ENUMS: dict[str, dict[str, str]] = {
     "genre": {
         "fantasy": "Фентезі",
@@ -70,6 +83,25 @@ ENUMS: dict[str, dict[str, str]] = {
     },
     "campaign_arm": {"control": "Контрольна група", "email": "E-mail", "discount": "Знижка"},
     "dataset_format": {"tabular": "Табличний", "nested": "Вкладений (по користувачах)"},
+    "dataset_table": {
+        "users": "Читачі",
+        "books": "Книги",
+        "subscription_periods": "Періоди підписок",
+        "loans": "Позичення",
+        "reading_sessions": "Сесії читання",
+        "searches": "Пошуки",
+        "holds": "Бронювання",
+        "campaigns": "Кампанії",
+        "campaign_assignments": "Учасники кампаній",
+        "candidate_titles": "Тайтли-кандидати",
+    },
+    "job_stage": {
+        "started": "Підготовка",
+        "parse": "Розбір і перевірка файлу",
+        "load": "Запис у базу",
+        "analytics": "Розрахунок аналітики",
+        "done": "Готово",
+    },
     "dataset_status": {
         "pending": "Очікує",
         "importing": "Імпортується",
@@ -123,10 +155,10 @@ ENUMS: dict[str, dict[str, str]] = {
         "mrr": "Щомісячний дохід (MRR)",
         "churn_rate": "Відтік",
         "loans": "Позичення",
-        "reading_minutes": "Хвилини читання",
+        "reading_minutes": "Час читання",
         "sessions": "Сесії читання",
         "avg_session_minutes": "Середня тривалість сесії",
-        "minutes_per_active_member": "Хвилин на активного читача",
+        "minutes_per_active_member": "Час читання на активного читача",
         "share": "Частка",
         "titles_in_catalog": "Назв у каталозі",
         "titles_borrowed": "Назв, які брали",

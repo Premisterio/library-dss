@@ -45,6 +45,10 @@ class Context:
         """Monday of the local week."""
         return self.local(column).dt.truncate("1w").dt.date()
 
+    def complete_weeks(self) -> pl.Expr:
+        """Weeks (by their Monday) that ended by as_of: a partial last week looks like a drop."""
+        return pl.col("week") <= self.as_of - timedelta(days=6)
+
     def month(self, column: str) -> pl.Expr:
         """First day of the local month."""
         return self.local(column).dt.truncate("1mo").dt.date()

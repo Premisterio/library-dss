@@ -2,11 +2,14 @@
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 JobStatus = Literal["queued", "running", "succeeded", "failed"]
+
+# Text that is stored or looked up in PostgreSQL, which cannot hold NUL characters.
+Text = Annotated[str, StringConstraints(pattern=r"^[^\x00]*$")]
 
 
 class Page[T](BaseModel):

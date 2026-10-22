@@ -2,7 +2,7 @@ import re
 
 from fastapi.testclient import TestClient
 
-from app.domain.enums import ENUMS
+from app.domain.enums import ENUMS, JobStage
 
 
 def test_enums_endpoint(client: TestClient) -> None:
@@ -25,3 +25,11 @@ def test_labels_are_ukrainian_not_russian() -> None:
         for label in values.values():
             assert label.strip()
             assert not russian.search(label), label
+
+
+def test_progress_labels_cover_the_import() -> None:
+    """Clients label job stages (`load:loans`) and tables from the enums, not their own lists."""
+    from app.ingest.schema import TABLES
+
+    assert set(ENUMS["dataset_table"]) == set(TABLES)
+    assert {stage.value for stage in JobStage} == set(ENUMS["job_stage"])

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, Response, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import CurrentAnalyst
-from app.api.schemas import Page
+from app.api.schemas import Page, Text
 from app.api.v1.analytics import SectionKey, SectionOut
 from app.core.db import SessionDep
 from app.core.errors import PROBLEM_JSON_RESPONSES
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 class ReportIn(BaseModel):
     dataset_id: int
-    title: str = Field(min_length=1, max_length=200)
+    title: Text = Field(min_length=1, max_length=200)
     sections: list[SectionKey] | None = Field(
         default=None, min_length=1, description="Sections to include; all when omitted."
     )

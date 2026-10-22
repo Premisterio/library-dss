@@ -20,8 +20,8 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 | M0        | Repository, tooling, dev compose, CI                                                     | done             |
 | M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done             |
 | M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8) |
-| M3        | Thin frontend on shadcn, run locally                                                     | **next**         |
-| M4a       | Churn prediction without leakage, explanations                                           | —                |
+| M3        | Thin frontend on shadcn, run locally                                                     | done             |
+| M4a       | Churn prediction without leakage, explanations                                           | **next**         |
 | M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | —                |
 | M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                |
 | M6        | Thesis experiment harness                                                                | —                |
@@ -68,30 +68,31 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - Hand-computed exact numbers on a five-member dataset.
   - Regressions for every bug found in the 2026-10-08 audit of the earlier app.
 
-## Next
-
 ### M3. Thin frontend (local)
 
-React 19 + shadcn/ui (default look) + TanStack Query. Data comes only through `@library-dss/api-client`, labels come from `meta/enums`, errors are shown by their `code`, and the frontend computes no metrics. The author will redesign it later.
-
-- **Sign-in.** The access token is kept in memory and refreshed silently through the httpOnly cookie.
+- **Stack.** React 19, shadcn/ui (default look), TanStack Query, react-router and recharts.
+  - Data comes only through `@library-dss/api-client`, labels come from `meta/enums`, and errors are shown by their `code`.
+  - The frontend computes no metrics. The author will redesign it later.
+  - Layers: `api/` (server state), `lib/` (pure logic), `components/` and `pages/` (markup), so a redesign touches only the markup.
+- **Sign-in.** The access token is kept in memory and renewed before it expires. A silent sign-in uses the httpOnly refresh cookie.
 - **Datasets.**
-  - Upload `.json`/`.json.gz` and follow the import live (SSE).
+  - Upload `.json`/`.json.gz` and follow the import live (SSE read with `fetch`, with polling as a fallback).
   - Show the status, capabilities and validation errors.
-  - Delete a dataset.
-- **Overview.** KPIs and weekly activity.
-- **Analytics.** One tab per section, with one generic renderer driven by the tidy chart description:
-  - bars for categories;
-  - a line for time;
-  - a heatmap or pivot table for two dimensions;
-  - a sortable table.
-  - Notes are shown next to the charts.
+  - Delete a dataset after a confirmation.
+- **Overview and analytics.**
+  - KPIs and weekly activity on the overview; one tab per analytics section.
+  - One generic renderer draws every tidy chart as bars, a line, a heatmap or a table. Every chart can switch to its table.
 - **Reports.** Create a report from chosen sections, list reports, and download PDF, XLSX, CSV or JSON.
+- **Backend fixes found on the way.**
+  - Fuzzing found that a NUL character in text input gave 500. It now gives 422.
+  - Weekly charts show complete weeks only.
+  - Import stages have labels.
 - **Quality.**
-  - vitest for components and the API wrapper; light and dark theme.
-  - CI adds `oasdiff breaking`, so `/api/v1` only grows.
+  - vitest covers the pure logic: chart choice, formatting, session renewal and SSE parsing.
+  - The whole flow was walked through in a browser against `seed-demo` data, in light and dark theme.
+  - CI runs `oasdiff breaking` on pull requests, so `/api/v1` only grows.
 
-Done when the whole flow works locally against `dss seed-demo` data and the frontend has no metric logic.
+## Next
 
 ### M4a. Churn prediction
 
