@@ -316,3 +316,11 @@ def test_simulated_kpis_are_plausible(simulated: dict[str, Section]) -> None:
     conversion = kpis(simulated["subscriptions"])["trial_conversion_rate"]
     assert conversion is not None
     assert 0.2 < conversion < 0.7
+
+
+def test_weekly_charts_show_complete_weeks_only(mini: dict[str, Section]) -> None:
+    """as_of 2026-03-31 is a Tuesday: the week of 03-30 is partial and would look like a drop."""
+    for section, key in (("overview", "activity_weekly"), ("search", "searches_weekly")):
+        weeks = [row["week"] for row in chart(mini[section], key)]
+        assert weeks
+        assert weeks[-1] <= "2026-03-23", (key, weeks[-1])

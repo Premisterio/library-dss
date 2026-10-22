@@ -25,3 +25,11 @@ def test_labels_are_ukrainian_not_russian() -> None:
         for label in values.values():
             assert label.strip()
             assert not russian.search(label), label
+
+
+def test_progress_labels_cover_the_import() -> None:
+    """Clients label job stages (`load:loans`) and tables from the enums, not their own lists."""
+    from app.ingest.schema import TABLES
+
+    assert set(ENUMS["dataset_table"]) == set(TABLES)
+    assert {"started", "parse", "load", "analytics", "done"} <= set(ENUMS["job_stage"])

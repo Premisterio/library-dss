@@ -111,6 +111,18 @@ jobs:
         run: npm run api:generate
       - name: Fail if the committed contract or client is stale
         run: git diff --exit-code -- packages/api-client
+      - name: No breaking changes to /api/v1 (pull requests)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          git show "origin/$BASE_REF:packages/api-client/openapi.json" > "$RUNNER_TEMP/base-openapi.json"
+          docker run --rm \
+            -v "$RUNNER_TEMP:/base:ro" -v "$PWD/packages/api-client:/head:ro" -v "$PWD/.github:/cfg:ro" \
+            tufin/oasdiff@sha256:3e5346a0615610adda11ef9cbdab330d00e8b9619103be0f7ef4942ae8d78cef \
+            breaking /base/base-openapi.json /head/openapi.json \
+            --fail-on ERR --err-ignore /cfg/oasdiff-ignore.txt
 
   docker:
     name: Docker · prod image

@@ -1,30 +1,70 @@
-import { useQuery } from "@tanstack/react-query"
+import { createBrowserRouter, Link, Navigate, Outlet, RouterProvider } from "react-router"
 
+import { AppShell } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
-import { fetchHealth } from "@/lib/api"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { DatasetsPage } from "@/pages/datasets"
+import { LoginPage, RequireAuth } from "@/pages/login"
+
+function NotFound() {
+  return (
+    <Empty className="min-h-svh">
+      <EmptyHeader>
+        <EmptyTitle>Сторінку не знайдено</EmptyTitle>
+        <EmptyDescription>Можливо, посилання застаріло.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button asChild>
+          <Link to="/datasets">До датасетів</Link>
+        </Button>
+      </EmptyContent>
+    </Empty>
+  )
+}
+
+const router = createBrowserRouter([
+  { path: "/login", element: <LoginPage /> },
+  {
+    path: "/",
+    element: (
+      <RequireAuth>
+        <Outlet />
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/datasets" replace /> },
+      {
+        element: <AppShell />,
+        children: [
+          { path: "datasets", element: <DatasetsPage /> },
+          // Charts (recharts) load only with the dataset pages.
+          {
+            path: "d/:datasetId",
+            lazy: async () => ({ Component: (await import("@/pages/dataset-pages")).OverviewPage }),
+          },
+          {
+            path: "d/:datasetId/analytics/:section?",
+            lazy: async () => ({
+              Component: (await import("@/pages/dataset-pages")).AnalyticsPage,
+            }),
+          },
+          {
+            path: "d/:datasetId/reports",
+            lazy: async () => ({ Component: (await import("@/pages/dataset-pages")).ReportsPage }),
+          },
+        ],
+      },
+    ],
+  },
+  { path: "*", element: <NotFound /> },
+])
 
 export function App() {
-  const health = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth() })
-
-  return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold">СППР онлайн-бібліотеки</h1>
-        <p className="text-sm text-muted-foreground">Версія 2 у розробці: каркас проєкту (M0)</p>
-      </header>
-      <section aria-labelledby="api-status" className="flex flex-col gap-3 rounded-xl border p-4">
-        <h2 id="api-status" className="font-medium">
-          Стан API
-        </h2>
-        {health.isPending && <p>Перевіряємо…</p>}
-        {health.isError && (
-          <p className="text-destructive">API недоступне: {health.error.message}</p>
-        )}
-        {health.isSuccess && <p>Працює, версія {health.data.version}</p>}
-        <Button variant="outline" className="self-start" onClick={() => void health.refetch()}>
-          Оновити
-        </Button>
-      </section>
-    </main>
-  )
+  return <RouterProvider router={router} />
 }

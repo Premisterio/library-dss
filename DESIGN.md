@@ -64,6 +64,8 @@ tools/api-codegen/      isolated client generator
 
 - **The contract** is OpenAPI 3.1 at `/api/v1/openapi.json`, with docs at `/api/docs`.
   - Inside `/api/v1` changes are additive only. A breaking change needs a new path version.
+  - CI runs `oasdiff breaking` on every pull request against the base branch's `openapi.json`. A deliberate exception, such as rejecting input that used to crash, goes into `.github/oasdiff-ignore.txt` with the reason in the PR.
+  - Text that reaches PostgreSQL uses `api.schemas.Text`, which rejects NUL characters with 422 (PostgreSQL text cannot hold them, so they used to give 500).
 - **`operation_id` is the handler name** (snake_case, unique; checked by `test_openapi.py`). It becomes the method name in generated clients, so renaming a handler breaks clients.
 - **Responses do not assume any UI library:**
   - numbers are raw, with a unit;
@@ -189,6 +191,7 @@ There are two file formats, detected by content:
 - **Time.**
   - Every value is "as of the end of `as_of`" in the dataset's time zone (`Context`).
   - Windows are the last 30 days, the last 90 days (`RECENT_DAYS`) or the whole history. `window_days` says which.
+  - Weekly charts show complete weeks only: a week cut short by `as_of` would look like a sudden drop.
   - A current count such as paying subscribers or MRR is the state at the end of `as_of`.
 - **Missing data.** A value a dataset cannot provide is `null` with a note, never `0`. Examples: renewal outcomes, licences or result counts in nested files. Presence is detected from the data, not from the format.
 - **Definitions.**
@@ -273,8 +276,33 @@ There are two file formats, detected by content:
 - **Frontend.**
   - It is deliberately thin, on shadcn defaults. A later redesign changes presentation only, which is why the backend carries all logic.
   - It renders and computes no metrics. When a field is missing, extend the backend.
-  - Data comes only through TanStack Query and the api client. Labels come from `meta/enums`. Errors are mapped by their Problem `code`.
-  - shadcn components live in `frontend/src/components/ui`. Style is oxlint plus oxfmt (no semicolons, double quotes).
+  - Data comes only through TanStack Query and the api client. Labels come from `meta/enums`. Errors are mapped by their Problem `code` (`lib/problem.ts`).
+- **Pages and routes** (react-router):
+  - `/login`;
+  - `/datasets`: upload with live import progress, list, delete;
+  - `/d/:id`: overview;
+  - `/d/:id/analytics/:section`: one tab per section;
+  - `/d/:id/reports`: create, list and download reports.
+  - The dataset pages, which bring the chart library, are loaded lazily.
+- **Session** (`lib/session.ts`, `lib/auth.tsx`):
+  - The access token lives in memory only and is renewed shortly before it expires.
+  - On start, the app tries a silent sign-in with the refresh cookie.
+  - Never send the access token to `/auth/refresh`, `/auth/login` or `/auth/register`: refresh would read it as a refresh token.
+  - A 401 elsewhere ends the session.
+- **Job progress** (`lib/jobs.ts`):
+  - The SSE stream is read with `fetch()`, because `EventSource` cannot send the Authorization header.
+  - It reconnects when a stream ends, and falls back to polling `GET /jobs/{id}`.
+- **Downloads** fetch the file with the token and name it from `Content-Disposition` (`filename*` first).
+- **Charts** (`lib/charts.ts`, `components/tidy-chart.tsx`): one renderer for every tidy chart, chosen from its description.
+  - One category dimension → bars; one time dimension → a line of the measures that share the first unit.
+  - Two dimensions → a heatmap table of one measure (a ratio when there is one).
+  - Otherwise → a table.
+  - Every chart can switch to its table. Animation is off, so screenshots and reports show the final state.
+- **Formatting** (`lib/format.ts`): `uk-UA` locale; ratios as percent; large minute totals as hours.
+- **Tests and style.**
+  - vitest covers the pure logic (`src/lib/*.test.ts`).
+  - shadcn components (`components/ui`, `hooks/use-mobile.ts`) are generated vendor code: the shadcn CLI may overwrite them, and oxlint skips them.
+  - Style is oxlint (type-aware) plus oxfmt (no semicolons, double quotes).
 
 ## 5. Infrastructure and CI
 

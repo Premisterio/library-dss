@@ -28,6 +28,7 @@ npm install
 npm run dev              # frontend at http://localhost:5173 (proxies /api → :8000)
 ```
 
+- The app: <http://localhost:5173>. After `seed-demo`, sign in as `demo@library.ua` with the password you passed in `DSS_PASSWORD`.
 - API docs (Scalar): <http://localhost:8000/api/docs>
 - Readiness check: <http://localhost:8000/api/v1/ready>
 - Default environment variables are in [`.env.example`](.env.example); copy it to `.env` to change them.

@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.deps import CurrentAnalyst, SettingsDep
-from app.api.schemas import JobOut, Page, TaskError
+from app.api.schemas import JobOut, Page, TaskError, Text
 from app.core.db import SessionDep
 from app.core.errors import ApiError
 from app.services import datasets
@@ -61,7 +61,7 @@ def upload_dataset(
     analyst: CurrentAnalyst,
     session: SessionDep,
     settings: SettingsDep,
-    name: Annotated[str | None, Form(min_length=1, max_length=200)] = None,
+    name: Annotated[Text | None, Form(min_length=1, max_length=200)] = None,
 ) -> UploadAccepted:
     limit = settings.max_upload_mb * 2**20
     content = file.file.read(limit + 1)

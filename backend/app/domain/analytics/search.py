@@ -60,8 +60,10 @@ def build(frames: Frames, ctx: Context) -> Section:
                 window_days=RECENT_DAYS,
             )
         )
-    weekly = searches.group_by(week=ctx.week("searched_at")).agg(
-        searches=pl.len(), zero_result_searches=ZERO.sum()
+    weekly = (
+        searches.group_by(week=ctx.week("searched_at"))
+        .agg(searches=pl.len(), zero_result_searches=ZERO.sum())
+        .filter(ctx.complete_weeks())
     )
     weekly_measures = (Measure("searches", "count"),)
     if counted:

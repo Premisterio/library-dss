@@ -166,3 +166,14 @@ def test_logout_revokes_every_token(client: TestClient) -> None:
         "/api/v1/auth/refresh", headers={"Authorization": f"Bearer {tokens['refresh_token']}"}
     )
     assert response.status_code == 401
+
+
+def test_nul_characters_are_rejected_not_crashing(client: TestClient) -> None:
+    """Found by contract fuzzing: PostgreSQL text cannot hold NUL, which gave a 500."""
+    login = client.post("/api/v1/auth/login", json={"email": "a\u0000b", "password": "x"})
+    assert login.status_code == 422
+    register = client.post(
+        "/api/v1/auth/register",
+        json={"email": "nul@example.com", "name": "a\u0000b", "password": PASSWORD},
+    )
+    assert register.status_code == 422
