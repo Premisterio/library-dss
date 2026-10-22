@@ -11,6 +11,7 @@ import io
 import json
 from collections.abc import Callable
 from datetime import date, datetime, time, timedelta
+from functools import cache
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -27,19 +28,18 @@ from libsim.world import GENRE_CODES, LANGUAGES
 CAMPAIGN_ID = "camp-retention-1"
 
 
-def _clock(start: date, days: int, tz_name: str) -> Callable[[int], str]:
-    """Local seconds since `start` 00:00 → ISO UTC string (offset taken at local noon)."""
+def _clock(start: date, tz_name: str) -> Callable[[int], str]:
+    """Local seconds since `start` 00:00 → ISO UTC string (offset at local noon of that day)."""
     tz = ZoneInfo(tz_name)
+    base = datetime(start.year, start.month, start.day)
 
+    @cache
     def offset(day: int) -> int:
         delta = datetime.combine(start + timedelta(days=day), time(12), tzinfo=tz).utcoffset()
         return int(delta.total_seconds()) if delta is not None else 0
 
-    offsets = [offset(d) for d in range(days + 1)]
-    base = datetime(start.year, start.month, start.day)
-
     def iso(t: int) -> str:
-        utc = base + timedelta(seconds=int(t) - offsets[min(max(int(t) // 86400, 0), days)])
+        utc = base + timedelta(seconds=int(t) - offset(max(int(t) // 86400, 0)))
         return utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return iso
@@ -57,7 +57,7 @@ def simulation_id(result: Result) -> str:
 
 def build_dataset(result: Result) -> dict[str, Any]:
     p, b, pop, ev = result.params, result.books, result.population, result.events
-    iso = _clock(result.start, result.observed_days, p.timezone)
+    iso = _clock(result.start, p.timezone)
     cut = result.observed_days * 86400
     uid = [f"u{i + 1:06d}" for i in range(pop.n)]
     bid = b.book_id
