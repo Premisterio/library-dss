@@ -7,6 +7,7 @@ import polars as pl
 import psycopg
 from sqlalchemy.orm import Session
 
+from app.domain.enums import JobStage
 from app.ingest import IngestError
 from app.ingest.schema import DB_TABLE
 
@@ -60,4 +61,4 @@ def load(
                 reason = exc.diag.message_primary or type(exc).__name__
                 raise IngestError("dataset.invalid", f"Table '{table}': {reason}") from exc
         done += frame.height
-        progress(done / total, f"load:{table}")
+        progress(done / total, f"{JobStage.LOAD}:{table}")

@@ -1,5 +1,18 @@
 """Enumerations exposed via GET /api/v1/meta/enums: stable codes with Ukrainian labels."""
 
+from enum import StrEnum
+
+
+class JobStage(StrEnum):
+    """Stages an import job reports; `load:<table>` also names the table being written."""
+
+    STARTED = "started"
+    PARSE = "parse"
+    LOAD = "load"
+    ANALYTICS = "analytics"
+    DONE = "done"
+
+
 ENUMS: dict[str, dict[str, str]] = {
     "genre": {
         "fantasy": "Фентезі",

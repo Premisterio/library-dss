@@ -213,7 +213,13 @@ def test_report_needs_a_ready_dataset(
 
 @pytest.mark.parametrize(
     "body",
-    [{"title": ""}, {"title": "x" * 201}, {"sections": []}, {"sections": ["horoscope"]}],
+    [
+        {"title": ""},
+        {"title": "x" * 201},
+        {"title": "a\u0000b"},  # PostgreSQL text cannot hold NUL: 422, not 500
+        {"sections": []},
+        {"sections": ["horoscope"]},
+    ],
 )
 def test_invalid_report_requests(
     client: TestClient, auth_headers: Headers, dataset_id: int, body: dict[str, Any]

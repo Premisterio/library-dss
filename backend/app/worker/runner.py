@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
+from app.domain.enums import JobStage
 from app.ingest import IngestError
 from app.models import Job
 from app.services import datasets, jobs
@@ -38,7 +39,12 @@ def execute(session_factory: jobs.SessionFactory, job_id: uuid.UUID) -> None:
             if handler is None:
                 raise IngestError("job.unknown_kind", f"No handler for job kind {job.kind!r}")
             result = handler(session, job, progress)
-            job.status, job.result, job.progress, job.stage = "succeeded", result, 1.0, "done"
+            job.status, job.result, job.progress, job.stage = (
+                "succeeded",
+                result,
+                1.0,
+                JobStage.DONE,
+            )
             job.finished_at = utc_now()
             session.commit()
             logger.info("job %s (%s) succeeded", job_id, job.kind)
