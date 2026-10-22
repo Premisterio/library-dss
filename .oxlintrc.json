@@ -15,8 +15,7 @@
     "typescript/await-thenable": "error",
     "typescript/no-explicit-any": "error",
     "import/no-cycle": "error",
-    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
-    "eslint/no-await-in-loop": "off"
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }]
   },
   "ignorePatterns": [
     "**/dist/**",

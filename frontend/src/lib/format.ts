@@ -1,15 +1,16 @@
 /** Presentation of the API's raw numbers and ISO dates (the API never formats). */
-
-export type Unit = "count" | "ratio" | "UAH" | "minutes" | "days" | "rating"
+import type { Unit } from "@/api/types"
 
 const LOCALE = "uk-UA"
-const EMPTY = "—"
+
+/** Shown for a value the data does not have. */
+export const EMPTY = "—"
 
 function number(value: number, maximumFractionDigits: number): string {
   return new Intl.NumberFormat(LOCALE, { maximumFractionDigits }).format(value)
 }
 
-export function formatValue(value: number | null | undefined, unit: string): string {
+export function formatValue(value: number | null | undefined, unit: Unit): string {
   if (value === null || value === undefined || Number.isNaN(value)) return EMPTY
   switch (unit) {
     case "ratio":
@@ -30,7 +31,7 @@ export function formatValue(value: number | null | undefined, unit: string): str
 }
 
 /** Short value for chart axes. */
-export function formatAxis(value: number, unit: string): string {
+export function formatAxis(value: number, unit: Unit): string {
   if (unit === "ratio") return formatValue(value, unit)
   return new Intl.NumberFormat(LOCALE, { notation: "compact", maximumFractionDigits: 1 }).format(
     value
@@ -43,7 +44,8 @@ function parseDate(iso: string): Date {
 }
 
 /** "28.09.2026" for days and weeks. */
-export function formatDay(iso: string): string {
+export function formatDay(iso: string | null | undefined): string {
+  if (!iso) return EMPTY
   return new Intl.DateTimeFormat(LOCALE, { timeZone: "UTC", dateStyle: "short" }).format(
     parseDate(iso)
   )
@@ -54,6 +56,11 @@ export function formatMonth(iso: string): string {
   return new Intl.DateTimeFormat(LOCALE, { timeZone: "UTC", month: "short", year: "numeric" })
     .format(parseDate(iso))
     .replace(/\s*р\.$/, "")
+}
+
+/** "07:00" for an hour of the day. */
+export function formatHour(hour: number | string): string {
+  return `${String(hour).padStart(2, "0")}:00`
 }
 
 export function formatDateTime(iso: string): string {

@@ -1,16 +1,18 @@
 import { LibraryIcon } from "lucide-react"
-import { useState, type FormEvent } from "react"
-import { Navigate, useLocation, useNavigate } from "react-router"
+import type { FormEvent } from "react"
+import { Navigate, useLocation } from "react-router"
 
+import { useAuth, useLogin } from "@/api/auth"
+import { errorMessage } from "@/api/problem"
+import { paths } from "@/app/paths"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { useAuth } from "@/lib/auth"
 import { formText } from "@/lib/forms"
-import { errorMessage } from "@/lib/problem"
 
+/** Where to go after signing in: the page that asked for it, or the dataset list. */
 function redirectTarget(state: unknown): string {
   if (
     typeof state === "object" &&
@@ -20,32 +22,26 @@ function redirectTarget(state: unknown): string {
   ) {
     return state.from
   }
-  return "/datasets"
+  return paths.datasets
 }
 
 export function LoginPage() {
-  const { ready, signedIn, login } = useAuth()
-  const navigate = useNavigate()
+  const { ready, signedIn } = useAuth()
+  const login = useLogin()
   const location = useLocation()
   const from = redirectTarget(location.state)
-  const [error, setError] = useState<string>()
-  const [busy, setBusy] = useState(false)
 
+  // Also the way out after a successful sign-in.
   if (ready && signedIn) return <Navigate to={from} replace />
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    setBusy(true)
-    setError(undefined)
-    try {
-      await login(formText(form, "email"), formText(form, "password"))
-      void navigate(from, { replace: true })
-    } catch (caught) {
-      setError(errorMessage(caught))
-    } finally {
-      setBusy(false)
-    }
+    // A password is used as typed: spaces may be part of it.
+    login.mutate({
+      email: formText(form, "email"),
+      password: formText(form, "password", { trim: false }),
+    })
   }
 
   return (
@@ -59,7 +55,7 @@ export function LoginPage() {
           <CardDescription>Увійдіть, щоб працювати з датасетами й аналітикою.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={(event) => void submit(event)}>
+          <form onSubmit={submit}>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">E-mail</FieldLabel>
@@ -75,9 +71,9 @@ export function LoginPage() {
                   required
                 />
               </Field>
-              {error && <FieldError>{error}</FieldError>}
-              <Button type="submit" disabled={busy || !ready}>
-                {busy && <Spinner />}
+              {login.isError && <FieldError>{errorMessage(login.error)}</FieldError>}
+              <Button type="submit" disabled={login.isPending || !ready}>
+                {login.isPending && <Spinner />}
                 Увійти
               </Button>
             </FieldGroup>
@@ -86,19 +82,4 @@ export function LoginPage() {
       </Card>
     </main>
   )
-}
-
-/** Routes behind sign-in: waits for the silent sign-in, then shows the page or the login form. */
-export function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { ready, signedIn } = useAuth()
-  const location = useLocation()
-  if (!ready) {
-    return (
-      <div className="flex min-h-svh items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
-    )
-  }
-  if (!signedIn) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  return children
 }

@@ -3,12 +3,12 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
 import "./index.css"
-import { App } from "./App.tsx"
-import { ThemeProvider } from "@/components/theme-provider.tsx"
-import { Toaster } from "@/components/ui/sonner.tsx"
-import { TooltipProvider } from "@/components/ui/tooltip.tsx"
-import { AuthProvider } from "@/lib/auth.tsx"
-import { queryClient } from "@/lib/query-client.ts"
+import { AuthProvider } from "@/api/auth"
+import { queryClient } from "@/app/query-client"
+import { AppRouter } from "@/app/router"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 const root = document.getElementById("root")
 if (!root) throw new Error("#root element is missing in index.html")
@@ -19,7 +19,7 @@ createRoot(root).render(
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
-            <App />
+            <AppRouter />
             <Toaster richColors position="top-right" />
           </TooltipProvider>
         </AuthProvider>

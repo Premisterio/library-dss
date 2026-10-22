@@ -1,5 +1,6 @@
-/** A text field of a submitted form (files and missing fields give ""). */
-export function formText(form: FormData, name: string): string {
+/** A text field of a submitted form (files and missing fields give ""), trimmed unless asked not to. */
+export function formText(form: FormData, name: string, { trim = true } = {}): string {
   const value = form.get(name)
-  return typeof value === "string" ? value.trim() : ""
+  if (typeof value !== "string") return ""
+  return trim ? value.trim() : value
 }

@@ -1,10 +1,4 @@
-import type { Schemas } from "@/lib/api"
-
-export type Chart = Schemas["ChartOut"]
-export type Dimension = Schemas["DimensionOut"]
-export type Measure = Schemas["MeasureOut"]
-export type Row = Chart["rows"][number]
-export type Cell = Row[string]
+import type { Cell, Chart, Dimension, Measure, Row } from "@/api/types"
 
 const MAX_BARS = 25
 const MAX_PIVOT_COLUMNS = 24
@@ -61,10 +55,9 @@ export function pivot(chart: Chart, down: Dimension, across: Dimension, measure:
   const cells = new Map<string, number | null>()
   let max = 0
   for (const row of chart.rows) {
-    const value = row[measure.key]
-    const number = typeof value === "number" ? value : null
-    cells.set(JSON.stringify([row[down.key], row[across.key]]), number)
-    if (number !== null && number > max) max = number
+    const value = numberOf(row[measure.key])
+    cells.set(JSON.stringify([row[down.key], row[across.key]]), value)
+    if (value !== null && value > max) max = value
   }
   return {
     down: orderedValues(chart.rows, down.key, down.order),
@@ -74,10 +67,15 @@ export function pivot(chart: Chart, down: Dimension, across: Dimension, measure:
   }
 }
 
+/** A measure cell as a number; anything else (null, a missing column) is no value. */
+export function numberOf(cell: Cell | undefined): number | null {
+  return typeof cell === "number" ? cell : null
+}
+
+export type Column = { key: string; dimension?: Dimension; measure?: Measure }
+
 /** Every column of the tidy table, in the order exports use: dimensions, attributes, measures. */
-export function columnsOf(
-  chart: Chart
-): { key: string; dimension?: Dimension; measure?: Measure }[] {
+export function columnsOf(chart: Chart): Column[] {
   return [
     ...chart.dimensions.map((dimension) => ({ key: dimension.key, dimension })),
     ...chart.attributes.map((dimension) => ({ key: dimension.key, dimension })),
