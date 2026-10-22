@@ -3,11 +3,18 @@ import { useMemo } from "react"
 import { useLabel } from "@/api/enums"
 import type { Chart, Dimension, Measure } from "@/api/types"
 import { dimensionText, measureText } from "@/lib/chart-text"
-import { pivot } from "@/lib/charts"
+import { heatStep, pivot } from "@/lib/charts"
 
-const MAX_TINT = 85 // percent of the chart colour in the largest cell
+function cellStyle(step: number) {
+  return step === 0
+    ? undefined
+    : { background: `var(--seq-${step})`, color: `var(--seq-fg-${step})` }
+}
 
-/** Two dimensions as a pivot table, each cell tinted by its share of the largest value. */
+/**
+ * Two dimensions as a pivot table, each cell coloured by a step of the sequential ramp, with
+ * the label colour that step needs.
+ */
 export function HeatmapView({
   chart,
   down,
@@ -48,15 +55,12 @@ export function HeatmapView({
               </th>
               {table.across.map((a) => {
                 const value = table.value(d, a)
-                const share = value === null || table.max === 0 ? 0 : value / table.max
                 return (
                   <td
                     key={String(a)}
                     title={measureText(measure, value)}
                     className="rounded-sm px-1 py-1 text-center"
-                    style={{
-                      background: `color-mix(in oklch, var(--chart-1) ${Math.round(share * MAX_TINT)}%, transparent)`,
-                    }}
+                    style={cellStyle(heatStep(value, table.max))}
                   >
                     {measureText(measure, value)}
                   </td>

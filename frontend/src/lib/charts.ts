@@ -67,6 +67,15 @@ export function pivot(chart: Chart, down: Dimension, across: Dimension, measure:
   }
 }
 
+/** Steps of the sequential colour ramp (`--seq-1` … `--seq-7`). */
+export const HEAT_STEPS = 7
+
+/** The ramp step of a heatmap cell: 1 (near zero) … 7 (the largest value), 0 for no value. */
+export function heatStep(value: number | null, max: number): number {
+  if (value === null || max <= 0) return 0
+  return Math.min(HEAT_STEPS, Math.max(1, Math.ceil((value / max) * HEAT_STEPS)))
+}
+
 /** A measure cell as a number; anything else (null, a missing column) is no value. */
 export function numberOf(cell: Cell | undefined): number | null {
   return typeof cell === "number" ? cell : null

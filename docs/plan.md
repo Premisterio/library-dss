@@ -87,6 +87,10 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - Fuzzing found that a NUL character in text input gave 500. It now gives 422.
   - Weekly charts show complete weeks only.
   - Import stages have labels.
+- **Visual design.** Apple's Human Interface Guidelines with Liquid Glass, translated to the web (DESIGN §4):
+  - glass for the floating sidebar, toolbar and overlays, solid content;
+  - one plum accent, a validated chart palette, system fonts;
+  - light and dark follow the system by default (the account menu can pick one), with opaque fallbacks for Reduce Transparency and Increase Contrast.
 - **Quality.**
   - vitest covers the pure logic: chart choice, formatting, session renewal and SSE parsing.
   - The whole flow was walked through in a browser against `seed-demo` data, in light and dark theme.

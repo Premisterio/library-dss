@@ -13,7 +13,8 @@ import { measureText, rowNames } from "@/lib/chart-text"
 import { numberOf } from "@/lib/charts"
 import { formatAxis } from "@/lib/format"
 
-const BAR_HEIGHT = 28
+const BAR_HEIGHT = 28 // the band per row; the bar itself is thinner, the rest is air
+const BAR_SIZE = 16
 const AXIS_HEIGHT = 40
 
 /** One horizontal bar per row (a category dimension). */
@@ -48,7 +49,14 @@ export function BarView({
         <ChartTooltip
           content={<ChartTooltipContent formatter={(v) => measureText(measure, Number(v))} />}
         />
-        <Bar dataKey="value" fill="var(--color-value)" radius={4} isAnimationActive={false} />
+        {/* Rounded at the data end, square at the baseline. */}
+        <Bar
+          dataKey="value"
+          fill="var(--color-value)"
+          barSize={BAR_SIZE}
+          radius={[0, 4, 4, 0]}
+          isAnimationActive={false}
+        />
       </BarChart>
     </ChartContainer>
   )

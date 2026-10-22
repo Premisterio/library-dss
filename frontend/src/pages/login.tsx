@@ -5,8 +5,8 @@ import { Navigate, useLocation } from "react-router"
 import { useAuth, useLogin } from "@/api/auth"
 import { errorMessage } from "@/api/problem"
 import { paths } from "@/app/paths"
+import { Glass } from "@/components/glass/glass"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
@@ -45,41 +45,42 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+    // The sign-in sheet floats above the page: functional layer, so glass.
+    <main className="flex min-h-svh items-center justify-center p-4">
+      <Glass variant="thick" className="flex w-full max-w-sm flex-col gap-6 rounded-[1.75rem] p-6">
+        <div className="flex flex-col gap-1">
+          <div className="mb-3 flex size-11 items-center justify-center rounded-[14px] bg-primary text-primary-foreground">
             <LibraryIcon className="size-5" />
           </div>
-          <CardTitle className="text-xl">СППР онлайн-бібліотеки</CardTitle>
-          <CardDescription>Увійдіть, щоб працювати з датасетами й аналітикою.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={submit}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="email">E-mail</FieldLabel>
-                <Input id="email" name="email" type="email" autoComplete="username" required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">Пароль</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                />
-              </Field>
-              {login.isError && <FieldError>{errorMessage(login.error)}</FieldError>}
-              <Button type="submit" disabled={login.isPending || !ready}>
-                {login.isPending && <Spinner />}
-                Увійти
-              </Button>
-            </FieldGroup>
-          </form>
-        </CardContent>
-      </Card>
+          <h1 className="text-[22px] leading-7 font-semibold">СППР онлайн-бібліотеки</h1>
+          <p className="text-sm text-muted-foreground">
+            Увійдіть, щоб працювати з датасетами й аналітикою.
+          </p>
+        </div>
+        <form onSubmit={submit}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="email">E-mail</FieldLabel>
+              <Input id="email" name="email" type="email" autoComplete="username" required />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="password">Пароль</FieldLabel>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+              />
+            </Field>
+            {login.isError && <FieldError>{errorMessage(login.error)}</FieldError>}
+            <Button type="submit" disabled={login.isPending || !ready}>
+              {login.isPending && <Spinner />}
+              Увійти
+            </Button>
+          </FieldGroup>
+        </form>
+      </Glass>
     </main>
   )
 }

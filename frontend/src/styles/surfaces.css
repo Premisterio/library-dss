@@ -1,0 +1,109 @@
+/*
+ * Surfaces (DESIGN.md §4, "Visual design"). Glass is only for the functional layer that floats
+ * above the content: the sidebar, the toolbar, menus, dialogs, sheets, toasts and the sign-in
+ * sheet. Cards, tables, KPIs and charts are the content layer and stay solid.
+ */
+
+/* Regular glass: small floating controls (toolbar, segmented control, capsules). */
+@utility glass {
+  background-color: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 0 0 1px var(--glass-rim),
+    var(--glass-shadow);
+}
+
+/* Thick glass: large or text-heavy surfaces (sidebar, menus, dialogs). */
+@utility glass-thick {
+  background-color: var(--glass-fill-thick);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 0 0 1px var(--glass-rim),
+    var(--glass-shadow);
+}
+
+/*
+ * Scroll edge effect under a bar: content fades into the page colour where it meets the bar.
+ */
+@utility scroll-edge {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 -1.25rem 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--page);
+    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent);
+    mask-image: linear-gradient(to bottom, black 55%, transparent);
+  }
+}
+
+body {
+  background-color: var(--page);
+}
+
+/*
+ * Theme layer over the shadcn components, by their `data-slot`, so the CLI can regenerate them
+ * without losing the look. Unlayered, so it wins over the components' utility classes.
+ */
+[data-slot="dialog-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"],
+[data-slot="select-content"],
+[data-slot="sheet-content"],
+[data-slot="sidebar-inner"] {
+  @apply glass-thick;
+}
+
+[data-slot="dialog-content"] {
+  border-radius: 1.25rem;
+}
+[data-slot="dropdown-menu-content"],
+[data-slot="select-content"] {
+  border-radius: 0.875rem;
+}
+[data-slot="sidebar-inner"] {
+  border-radius: 1.25rem;
+}
+
+/* Controls are capsules; icon-only buttons are circles. */
+[data-slot="button"] {
+  border-radius: 9999px;
+}
+
+/* Content cards: solid, with a hairline and the faintest lift off the page. */
+[data-slot="card"] {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+/* Toasts are notifications: glass, a status icon, monochrome text. */
+[data-sonner-toast][data-styled="true"] {
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow);
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--status-good);
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--status-critical);
+}
+
+/* Forced colours: the system draws plain surfaces; drop the effects. */
+@media (forced-colors: active) {
+  .glass,
+  .glass-thick,
+  [data-slot="sidebar-inner"] {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 1px solid CanvasText;
+  }
+}
