@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { Chart, Dimension } from "@/api/types"
-import { chooseView, columnsOf, orderedValues, pivot } from "@/lib/charts"
+import { chooseView, columnsOf, heatStep, orderedValues, pivot } from "@/lib/charts"
 
 function chart(partial: Partial<Chart>): Chart {
   return {
@@ -90,6 +90,17 @@ describe("pivot and order", () => {
     expect(table.value(0, "mon")).toBe(7)
     expect(table.value(1, "mon")).toBeNull()
     expect(table.max).toBe(7)
+  })
+})
+
+describe("heatStep", () => {
+  it("maps a value to a ramp step; zero is the lightest step, no value no fill", () => {
+    expect(heatStep(null, 10)).toBe(0)
+    expect(heatStep(0, 10)).toBe(1)
+    expect(heatStep(1, 10)).toBe(1)
+    expect(heatStep(5, 10)).toBe(4)
+    expect(heatStep(10, 10)).toBe(7)
+    expect(heatStep(3, 0)).toBe(0)
   })
 })
 

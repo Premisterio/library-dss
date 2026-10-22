@@ -4,22 +4,18 @@ import {
   FileTextIcon,
   LayoutDashboardIcon,
   LibraryIcon,
-  LogOutIcon,
 } from "lucide-react"
-import { Link, Outlet, useNavigate } from "react-router"
+import { Link, Outlet } from "react-router"
 
-import { useAuth, useLogout } from "@/api/auth"
 import { paths, useDatasetId } from "@/app/paths"
 import { useRouteTitle } from "@/app/route-title"
-import { IconButton } from "@/components/common/icon-button"
+import { GlassToolbar, ToolbarProvider } from "@/components/glass/toolbar"
+import { AccountMenu } from "@/components/shell/account-menu"
 import { DatasetSwitch } from "@/components/shell/dataset-switch"
 import { NavItem } from "@/components/shell/nav-item"
-import { ThemeSwitch } from "@/components/shell/theme-switch"
-import { Separator } from "@/components/ui/separator"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -38,11 +34,13 @@ function Brand() {
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" asChild>
           <Link to={paths.datasets}>
-            <LibraryIcon />
-            <div className="flex flex-col leading-tight">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground">
+              <LibraryIcon className="size-4" />
+            </span>
+            <span className="flex flex-col leading-tight">
               <span className="font-semibold">СППР бібліотеки</span>
-              <span className="text-xs text-muted-foreground">library-dss</span>
-            </div>
+              <span className="text-xs text-muted-foreground">Аналітика й рішення</span>
+            </span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -76,40 +74,16 @@ function DatasetNav({ datasetId }: { datasetId: number | undefined }) {
   )
 }
 
-function AccountFooter() {
-  const { analyst } = useAuth()
-  const logout = useLogout()
-  const navigate = useNavigate()
-  // An explicit sign-out starts the next session from the dataset list, not from this page.
-  // (mutateAsync: the shell unmounts as the session ends, which would drop a mutate callback.)
-  async function signOut() {
-    await logout.mutateAsync().catch(() => undefined)
-    void navigate(paths.login, { replace: true })
-  }
-  return (
-    <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
-      <div className="min-w-0 flex-1 px-2 group-data-[collapsible=icon]:hidden">
-        <p className="truncate text-sm font-medium">{analyst?.name ?? "…"}</p>
-        <p className="truncate text-xs text-muted-foreground">{analyst?.email}</p>
-      </div>
-      <ThemeSwitch />
-      <IconButton
-        icon={LogOutIcon}
-        label="Вийти"
-        disabled={logout.isPending}
-        onClick={() => void signOut()}
-      />
-    </div>
-  )
-}
-
-/** The signed-in layout: sidebar navigation, a header with the page title, and the page. */
+/**
+ * The signed-in layout. The sidebar and the toolbar float on glass above the content, which
+ * scrolls beneath the toolbar; pages add their own toolbar controls through `ToolbarSlot`.
+ */
 export function AppShell() {
   const datasetId = useDatasetId()
   const title = useRouteTitle()
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
           <Brand />
         </SidebarHeader>
@@ -126,19 +100,18 @@ export function AppShell() {
           </SidebarGroup>
           <DatasetNav datasetId={datasetId} />
         </SidebarContent>
-        <SidebarFooter>
-          <AccountFooter />
-        </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-sm font-medium">{title}</h1>
-        </header>
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-          <Outlet />
-        </main>
+      <SidebarInset className="bg-transparent">
+        <ToolbarProvider>
+          <GlassToolbar
+            leading={<SidebarTrigger aria-label="Бічна панель" />}
+            title={title}
+            actions={<AccountMenu />}
+          />
+          <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+            <Outlet />
+          </main>
+        </ToolbarProvider>
       </SidebarInset>
     </SidebarProvider>
   )

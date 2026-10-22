@@ -275,15 +275,17 @@ There are two file formats, detected by content:
   - `packages/api-client` is generated from the committed `openapi.json` by `tools/api-codegen`. That tool is isolated on TypeScript 5.9 because TypeScript 7 has no JS compiler API.
   - Never edit `src/schema.ts` by hand. CI fails when the client drifts from the backend.
 - **Frontend.**
-  - It is deliberately thin, on shadcn defaults. A later redesign changes presentation only, which is why the backend carries all logic.
+  - It is deliberately thin: shadcn components under a visual design grounded in Apple's Human Interface Guidelines ("Visual design" below). A redesign changes presentation only, which is why the backend carries all logic.
   - It renders and computes no metrics. When a field is missing, extend the backend.
   - Labels come from `meta/enums`. Errors are shown by their Problem `code` (`lib/messages.ts`); an unknown code falls back by status, so a raw code never reaches the user.
 - **Layers** (`frontend/src`). Data and logic stay out of the markup, so a redesign replaces only `components/` and `pages/`.
   - `api/`: everything that talks to the server. That is the client and session, the query keys, and one hook module per resource (`datasets`, `analytics`, `reports`, `jobs`, `auth`, `enums`) holding its queries and mutations. Nothing else calls `api` or `fetch`.
   - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections. Each module has its tests next to it.
   - `app/`: the router, paths (`paths.*`, `parseId`), route titles and the query client.
-  - `components/common/`: building blocks with no data of their own (`QueryView`, `PanelCard`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`).
+  - `components/common/`: content-layer building blocks with no data of their own (`QueryView`, `PanelCard`, `StatTile`, `StatusPill`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`).
+  - `components/glass/`: the functional layer (`Glass`, `GlassToolbar` with `ToolbarSlot`, `SegmentedNav`).
   - `components/<feature>/` (`shell`, `datasets`, `analytics`, `charts`, `reports`): feature parts. They get data through props and may use `api/` hooks for their own actions.
+  - `styles/`: `tokens.css` (every colour, per appearance and accessibility state) and `surfaces.css` (glass utilities, the scroll edge, the theme layer over shadcn).
   - `pages/`: connect the route to hooks and components; no markup of their own beyond composition.
   - Types come from the generated schema through `api/types.ts`; query keys live only in `api/keys.ts`.
 - **Pages and routes** (react-router, `app/router.tsx`):
@@ -291,11 +293,11 @@ There are two file formats, detected by content:
   - `/datasets`: upload with live import progress, list, delete;
   - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
     - the index: overview;
-    - `analytics/:section`: one tab per section;
+    - `analytics/:section`: one section at a time, switched by a segmented control in the toolbar;
     - `reports`: create, list and download reports.
   - The dataset pages, which bring the chart library, are loaded lazily.
   - Every route has an error boundary. Errors below the shell stay inside it, so the navigation keeps working.
-  - Each route names its page title in `handle`, and the shell header reads it.
+  - Each route names its page title in `handle`, and the shell toolbar shows it.
 - **Server state** (TanStack Query):
   - Analytics are keyed apart from datasets, so refreshing the dataset list never refetches the (immutable) analytics.
   - The dataset list and a dataset that is still importing refresh themselves until the import ends.
@@ -319,6 +321,73 @@ There are two file formats, detected by content:
   - Every chart can switch to its table. Animation is off, so screenshots and reports show the final state.
   - A chart that fails to render shows a message in its card; the rest of the page stays.
 - **Formatting** (`lib/format.ts`): `uk-UA` locale; ratios as percent; large minute totals as hours; a missing value as `—`.
+
+### Visual design
+
+Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, translated to the web. The rules come from HIG pages (cited as `page › section`) and, for charts, from a validated data-visualisation palette.
+
+- **Thesis.** A calm analytical instrument: the numbers are the content and the only loud thing. Navigation floats on glass above them. One accent marks the single action that matters on a screen. A snapshot capsule always says which dataset and which date the numbers describe.
+- **Two layers** (`materials › Liquid Glass`):
+  - **Functional layer, glass:** the floating sidebar, the floating toolbar, menus, selects, dialogs, sheets, toasts and the sign-in sheet.
+  - **Content layer, solid:** cards, KPI tiles, tables, charts, forms on a page.
+  - Glass on content is a defect, and so is glass stacked on glass. A control inside a glass bar (the segmented control) is a recessed fill, not glass of its own.
+- **Glass recipe** (`styles/surfaces.css`, utilities `glass` and `glass-thick`):
+  - Backdrop blur 24 px with saturation ×1.4.
+  - A translucent fill: regular 62% / thick 78% white in light, 55% / 74% graphite in dark. Large and text-heavy surfaces such as the sidebar and menus take thick (`color › Liquid Glass color`).
+  - A 1 px light edge, an inner highlight and a soft shadow.
+  - Text and icons on glass stay monochrome.
+- **Scroll edge effect** (`layout › Visual hierarchy`). Content fades into the page colour where it meets the toolbar, through a mask under the bar.
+- **No gradients.** The page is a flat colour; the glass takes its depth from the content that scrolls beneath it.
+- **Accessibility states** (`accessibility › Vision`, `liquid-glass` checklist). Each one swaps token values only:
+  - Reduce Transparency: glass becomes an opaque raised surface.
+  - Increase Contrast: opaque glass, stronger edges and secondary text.
+  - Forced colours: plain system surfaces.
+  - No `backdrop-filter` support: the opaque fallback.
+  - Reduce Motion: animation and transitions collapse to instant; spinners stop.
+- **Appearance** (`app/appearance.ts`).
+  - Light and dark follow the system by default.
+  - The account menu also offers Light and Dark, kept in this browser. The HIG advises against an in-app switch (`dark-mode › Best practices`); it stays at the author's request for demos, behind the menu, with the system as the default.
+  - The resolved value is `data-theme` on `<html>`, which the dark tokens and the Tailwind `dark:` variant read. An inline script in `index.html` sets it before the first paint, so a dark page never flashes light.
+- **Colour tokens** (`styles/tokens.css`; contrast is WCAG against the surface the colour sits on):
+
+  | Role                           | Light                            | Dark                                |
+  | ------------------------------ | -------------------------------- | ----------------------------------- |
+  | Page                           | `#f2f2f7`                        | `#0b0b0d`                           |
+  | Surface (cards)                | `#ffffff`                        | `#1c1c1e`                           |
+  | Text                           | `#1d1d1f` (16.8:1)               | `#f5f5f7` (15.6:1)                  |
+  | Secondary text                 | `#6e6e73` (5.1:1; 4.5:1 on page) | `#a1a1a6` (6.6:1)                   |
+  | Accent (`--primary`)           | `#8e2f8a`, white label 7.2:1     | `#e07fd8` (6.6:1), dark label 7.7:1 |
+  | Destructive                    | `#d70015` (5.4:1)                | `#ff6961` (6.0:1)                   |
+  | Status good / critical (icons) | `#0ca30c` / `#d03b3b`            | same                                |
+
+- **Choosing the accent.** The candidates were measured in OKLab against the chart colours and the status colours:
+  - Indigo sat 8.8 from the chart blue, so action and data would read as one colour (`color › Best practices`). Teal sat 16–18 from the blue and the status green.
+  - Plum is 22 from the blue, 40 from the green and 19 from the red.
+- **Where the accent goes** (`color › Liquid Glass color`, `toolbars › Actions`). One prominent button per view: upload, create report, sign in, the way out of an empty or error page. It also marks selection controls (checkbox, progress), the focus ring and the current sidebar item's icon. Nothing else is tinted.
+- **Status** (`color › Inclusive color`). A status is an icon in the status colour plus a label in text colour (`StatusPill`), never colour alone.
+- **Typography** (`typography`).
+  - Fonts: the system stack, which is SF Pro on Apple devices and Segoe UI on Windows; both have Cyrillic. No web font.
+  - Sizes: body 14 px (macOS default 13); captions 12 px (minimum 10); card titles 15 px semibold; the toolbar title 15 px semibold; KPI values 26 px semibold.
+  - Big standalone numbers keep proportional figures. Tabular figures are only for columns.
+- **Shape.**
+  - Buttons are capsules, and icon-only buttons are circles.
+  - Cards have a radius of about 17 px, a hairline and a faint shadow. Glass bars are about 28 px, dialogs 20 px and menus 14 px.
+  - Hit targets are at least 28 px (desktop default).
+- **Charts** (data-visualisation method; the palette is validated with its script in both appearances):
+  - Series colours: blue `#2a78d6` / `#3987e5`, then orange `#eb6834` / `#d95926`, assigned in that fixed order.
+  - Adjacent pairs pass: colour-blind ΔE 24.7 / 26.8, normal vision 33.6 / 31.8, all marks at least 3:1 on the surface.
+  - Heatmaps use one sequential blue ramp of seven steps (`heatStep`), flipped in dark so low values recede into the surface. Each step carries the label colour it needs.
+  - Bars are 16 px thick, rounded at the data end and square at the baseline. Lines are 2 px.
+  - A legend appears for two or more series. Every chart has a table view.
+- **Shell.**
+  - The sidebar floats (shadcn `variant="floating"`).
+  - The toolbar holds:
+    - the sidebar toggle and the page title;
+    - a center area for view switching;
+    - a trailing area for context (the snapshot capsule) and the account menu.
+  - Pages fill the center and trailing areas through `ToolbarSlot`. Below `xl` the center area takes its own row, so view switching is never squeezed out.
+  - Sign-out lives in the account menu at the top, not at the bottom of the sidebar (`sidebars › Desktop`).
+- **Theme layer over shadcn.** `styles/surfaces.css` styles vendor components by their `data-slot` (dialog, menus, select, sheet, sidebar panel, buttons, cards, toasts). The shadcn CLI can then regenerate them without losing the look. `components/ui/sonner.tsx` is the one customised vendor file: it follows the app's appearance and uses the glass fill.
 - **Tests and style.**
   - vitest covers the pure logic and the transport (`src/**/*.test.ts`, one file per module).
   - shadcn components (`components/ui`, `hooks/use-mobile.ts`) are generated vendor code: the shadcn CLI may overwrite them, and oxlint skips them.

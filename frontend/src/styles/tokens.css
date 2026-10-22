@@ -1,0 +1,213 @@
+/*
+ * Design tokens (DESIGN.md §4, "Visual design"). Light by default, dark under
+ * `data-theme="dark"`; the accessibility states below swap values, never components.
+ * Contrast figures are WCAG ratios against the surface they sit on.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Content layer */
+  --page: #f2f2f7;
+  --background: #f2f2f7;
+  --foreground: #1d1d1f; /* 16.8:1 on surface, 15.1:1 on page */
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --muted: #f2f2f7;
+  --muted-foreground: #6e6e73; /* 5.1:1 on surface, 4.5:1 on page */
+  --tertiary-foreground: #8e8e93; /* non-text only: rules, axis lines */
+  --border: rgb(60 60 67 / 0.14);
+  --input: rgb(60 60 67 / 0.18);
+  --fill: rgb(120 120 128 / 0.12); /* neutral capsules, hover */
+
+  /* The one accent: primary actions, selection, focus, progress */
+  --primary: #8e2f8a; /* white label 7.2:1; dE 22 from chart blue, 40 from status green */
+  --primary-foreground: #ffffff;
+  --ring: #8e2f8a;
+
+  /* shadcn roles kept for vendor components */
+  --secondary: rgb(120 120 128 / 0.12);
+  --secondary-foreground: #1d1d1f;
+  --accent: rgb(120 120 128 / 0.12); /* shadcn "accent" = hover fill, not the brand accent */
+  --accent-foreground: #1d1d1f;
+  --destructive: #d70015; /* 5.4:1 on surface */
+
+  /* Status (fixed hues, always with an icon and a label) */
+  --status-good: #0ca30c;
+  --status-critical: #d03b3b;
+
+  /* Data (dataviz reference palette, validated for this surface) */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  /* Sequential blue for heatmaps: low → high, with the label colour each step needs */
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #184f95;
+  --seq-7: #0d366b;
+  --seq-fg-1: #1d1d1f;
+  --seq-fg-2: #1d1d1f;
+  --seq-fg-3: #1d1d1f;
+  --seq-fg-4: #1d1d1f;
+  --seq-fg-5: #ffffff;
+  --seq-fg-6: #ffffff;
+  --seq-fg-7: #ffffff;
+
+  /* Functional layer: Liquid Glass approximation */
+  --glass-fill: rgb(255 255 255 / 0.62);
+  --glass-fill-thick: rgb(255 255 255 / 0.78);
+  --glass-blur: 24px;
+  --glass-saturate: 1.4;
+  --glass-edge: rgb(255 255 255 / 0.7);
+  --glass-rim: rgb(0 0 0 / 0.07);
+  --glass-highlight: rgb(255 255 255 / 0.85);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 28px rgb(0 0 0 / 0.08);
+  --glass-selected: rgb(255 255 255 / 0.9);
+  --glass-hover: rgb(120 120 128 / 0.12);
+
+  /* shadcn surfaces that float (menus, dialogs, sheets) are glass */
+  --popover: var(--glass-fill-thick);
+  --popover-foreground: #1d1d1f;
+
+  /* Sidebar (glass, see glass.css) */
+  --sidebar: var(--glass-fill-thick);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #8e2f8a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--glass-hover);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: rgb(60 60 67 / 0.14);
+  --sidebar-ring: #8e2f8a;
+
+  --radius: 0.75rem;
+}
+
+/* Dark: set by app/appearance.ts (the system, or the analyst's choice). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #0b0b0d;
+  --background: #0b0b0d;
+  --foreground: #f5f5f7; /* 15.6:1 on surface */
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --muted: #2c2c2e;
+  --muted-foreground: #a1a1a6; /* 6.6:1 on surface */
+  --tertiary-foreground: #8e8e93;
+  --border: rgb(255 255 255 / 0.1);
+  --input: rgb(255 255 255 / 0.16);
+  --fill: rgb(120 120 128 / 0.24);
+
+  --primary: #e07fd8; /* 6.6:1 on surface; dark label 7.7:1 */
+  --primary-foreground: #0b0b0d;
+  --ring: #e07fd8;
+
+  --secondary: rgb(120 120 128 / 0.24);
+  --secondary-foreground: #f5f5f7;
+  --accent: rgb(120 120 128 / 0.24);
+  --accent-foreground: #f5f5f7;
+  --destructive: #ff6961; /* 6.0:1 on surface */
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  /* The anchor flips: low values recede into the dark surface */
+  --seq-1: #0d366b;
+  --seq-2: #184f95;
+  --seq-3: #256abf;
+  --seq-4: #3987e5;
+  --seq-5: #6da7ec;
+  --seq-6: #9ec5f4;
+  --seq-7: #cde2fb;
+  --seq-fg-1: #f5f5f7;
+  --seq-fg-2: #f5f5f7;
+  --seq-fg-3: #f5f5f7;
+  --seq-fg-4: #0b0b0d;
+  --seq-fg-5: #0b0b0d;
+  --seq-fg-6: #0b0b0d;
+  --seq-fg-7: #0b0b0d;
+
+  --glass-fill: rgb(44 44 48 / 0.55);
+  --glass-fill-thick: rgb(36 36 40 / 0.74);
+  --glass-edge: rgb(255 255 255 / 0.12);
+  --glass-rim: rgb(0 0 0 / 0.5);
+  --glass-highlight: rgb(255 255 255 / 0.1);
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px rgb(0 0 0 / 0.45);
+  --glass-selected: rgb(255 255 255 / 0.14);
+  --glass-hover: rgb(255 255 255 / 0.08);
+
+  --popover-foreground: #f5f5f7;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #e07fd8;
+  --sidebar-primary-foreground: #0b0b0d;
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: rgb(255 255 255 / 0.1);
+  --sidebar-ring: #e07fd8;
+}
+
+/* Reduce Transparency: the glass turns into an opaque raised surface. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-fill: #ffffff;
+    --glass-fill-thick: #ffffff;
+    --glass-blur: 0px;
+    --glass-saturate: 1;
+    --glass-edge: rgb(60 60 67 / 0.2);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme="dark"] {
+    --glass-fill: #2c2c2e;
+    --glass-fill-thick: #2c2c2e;
+    --glass-edge: rgb(255 255 255 / 0.16);
+  }
+}
+
+/* Increase Contrast: opaque glass, stronger edges and secondary text. */
+@media (prefers-contrast: more) {
+  :root {
+    --muted-foreground: #48484a;
+    --border: rgb(60 60 67 / 0.45);
+    --glass-fill: #ffffff;
+    --glass-fill-thick: #ffffff;
+    --glass-blur: 0px;
+    --glass-edge: rgb(0 0 0 / 0.55);
+  }
+}
+@media (prefers-contrast: more) {
+  :root[data-theme="dark"] {
+    --muted-foreground: #d1d1d6;
+    --border: rgb(255 255 255 / 0.45);
+    --glass-fill: #1c1c1e;
+    --glass-fill-thick: #1c1c1e;
+    --glass-edge: rgb(255 255 255 / 0.6);
+  }
+}
+
+/* No backdrop-filter support: the same opaque fallback. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  :root[data-theme="dark"] {
+    --glass-fill: var(--card);
+    --glass-fill-thick: var(--card);
+  }
+}
+
+/* Reduce Motion: no animated transitions; state changes still happen. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

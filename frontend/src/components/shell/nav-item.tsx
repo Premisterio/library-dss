@@ -3,7 +3,10 @@ import { Link, useMatch } from "react-router"
 
 import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 
-/** A sidebar link, highlighted on its page (and below it, unless `end`). */
+/**
+ * A sidebar link, highlighted on its page (and below it, unless `end`). Only the current item's
+ * icon takes the accent colour.
+ */
 export function NavItem({
   to,
   icon: Icon,
@@ -18,7 +21,12 @@ export function NavItem({
   const active = useMatch({ path: to, end }) !== null
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={active} tooltip={children}>
+      <SidebarMenuButton
+        asChild
+        isActive={active}
+        tooltip={children}
+        className="data-active:[&_svg]:text-primary"
+      >
         <Link to={to}>
           <Icon />
           <span>{children}</span>

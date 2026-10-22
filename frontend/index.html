@@ -4,7 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>СППР онлайн-бібліотеки</title>
+    <script>
+      // The appearance before the first paint (same rule as src/app/appearance.ts).
+      try {
+        var choice = localStorage.getItem("appearance")
+        var dark =
+          choice === "dark" ||
+          (choice !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)
+        document.documentElement.dataset.theme = dark ? "dark" : "light"
+      } catch (error) {
+        document.documentElement.dataset.theme = "light"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
