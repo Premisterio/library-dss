@@ -30,6 +30,7 @@ dss = "app.cli.main:app"
 [dependency-groups]
 dev = [
     "httpx2>=2.13",
+    "hypothesis>=6.169",
     "libsim",
     "openpyxl>=3.1.5",
     "pypdf>=6.20.1",

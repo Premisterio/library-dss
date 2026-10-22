@@ -158,6 +158,112 @@
         "label": "Утримання когорт"
       }
     ],
+    "churn_feature": [
+      {
+        "code": "plan",
+        "label": "Тариф"
+      },
+      {
+        "code": "monthly_price",
+        "label": "Ціна за місяць"
+      },
+      {
+        "code": "discount",
+        "label": "Знижка поточного періоду"
+      },
+      {
+        "code": "tenure_days",
+        "label": "Стаж платної підписки"
+      },
+      {
+        "code": "days_to_renewal",
+        "label": "Днів до продовження"
+      },
+      {
+        "code": "sessions_7d",
+        "label": "Сесії читання за 7 днів"
+      },
+      {
+        "code": "sessions_30d",
+        "label": "Сесії читання за 30 днів"
+      },
+      {
+        "code": "reading_minutes_30d",
+        "label": "Час читання за 30 днів"
+      },
+      {
+        "code": "sessions_trend",
+        "label": "Зміна читання до попередніх 30 днів"
+      },
+      {
+        "code": "days_since_last_session",
+        "label": "Днів від останньої сесії читання"
+      },
+      {
+        "code": "inactive_14d",
+        "label": "Без читання 14+ днів"
+      },
+      {
+        "code": "active_days_30d",
+        "label": "Активні дні за 30 днів"
+      },
+      {
+        "code": "loans_30d",
+        "label": "Позичення за 30 днів"
+      },
+      {
+        "code": "open_loans",
+        "label": "Книги, позичені зараз"
+      },
+      {
+        "code": "searches_30d",
+        "label": "Пошуки за 30 днів"
+      },
+      {
+        "code": "completed_90d",
+        "label": "Дочитані книги за 90 днів"
+      },
+      {
+        "code": "completion_rate_90d",
+        "label": "Частка дочитаних за 90 днів"
+      },
+      {
+        "code": "avg_rating_90d",
+        "label": "Середня оцінка за 90 днів"
+      },
+      {
+        "code": "low_ratings_90d",
+        "label": "Низькі оцінки (1–2) за 90 днів"
+      },
+      {
+        "code": "lapsed_holds_30d",
+        "label": "Прострочені бронювання за 30 днів"
+      },
+      {
+        "code": "open_holds",
+        "label": "Бронювання в черзі"
+      },
+      {
+        "code": "zero_result_searches_30d",
+        "label": "Пошуки без результатів за 30 днів"
+      },
+      {
+        "code": "age_range",
+        "label": "Вік"
+      },
+      {
+        "code": "education",
+        "label": "Освіта"
+      },
+      {
+        "code": "language_pref",
+        "label": "Мова читання"
+      },
+      {
+        "code": "email_opt_in",
+        "label": "Згода на e-mail"
+      }
+    ],
     "dataset_format": [
       {
         "code": "tabular",

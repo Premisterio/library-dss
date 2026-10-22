@@ -21,7 +21,7 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 | M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done             |
 | M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8) |
 | M3        | Thin frontend on shadcn, run locally                                                     | done             |
-| M4a       | Churn prediction without leakage, explanations                                           | **next**         |
+| M4a       | Churn prediction without leakage, explanations                                           | **in progress**  |
 | M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | —                |
 | M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                |
 | M6        | Thesis experiment harness                                                                | —                |
@@ -100,6 +100,10 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 ### M4a. Churn prediction
 
+- **Progress.**
+  - Done: the target, rolling cutoffs, 26 features and the leakage property test (`domain/churn`, DESIGN §2.9).
+  - Fixed on the way: libsim wrote period ends after a clock change an hour early.
+  - Next: models and metrics, then explanations, the API and the UI.
 - **Target.** Paying members whose period ends in the next 30 days. The label is whether that period ended in churn.
 - **No leakage.**
   - Rolling cutoffs: train on k ≥ 2, calibrate on k = 1, test on k = 0.

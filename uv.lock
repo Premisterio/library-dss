@@ -539,6 +539,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx2" },
+    { name = "hypothesis" },
     { name = "libsim" },
     { name = "openpyxl" },
     { name = "pypdf" },
@@ -574,6 +575,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx2", specifier = ">=2.13" },
+    { name = "hypothesis", specifier = ">=6.169" },
     { name = "libsim", editable = "generator" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pypdf", specifier = ">=6.20.1" },
