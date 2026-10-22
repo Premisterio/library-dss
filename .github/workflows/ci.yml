@@ -111,17 +111,23 @@ jobs:
         run: npm run api:generate
       - name: Fail if the committed contract or client is stale
         run: git diff --exit-code -- packages/api-client
+      - name: Check out the base branch's contract (pull requests)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: .base
+          sparse-checkout: packages/api-client/openapi.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
       - name: No breaking changes to /api/v1 (pull requests)
         if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
         run: |
-          git fetch --no-tags --depth=1 origin "$BASE_REF"
-          git show "origin/$BASE_REF:packages/api-client/openapi.json" > "$RUNNER_TEMP/base-openapi.json"
           docker run --rm \
-            -v "$RUNNER_TEMP:/base:ro" -v "$PWD/packages/api-client:/head:ro" -v "$PWD/.github:/cfg:ro" \
+            -v "$PWD/.base/packages/api-client:/base:ro" -v "$PWD/packages/api-client:/head:ro" \
+            -v "$PWD/.github:/cfg:ro" \
             tufin/oasdiff@sha256:3e5346a0615610adda11ef9cbdab330d00e8b9619103be0f7ef4942ae8d78cef \
-            breaking /base/base-openapi.json /head/openapi.json \
+            breaking /base/openapi.json /head/openapi.json \
             --fail-on ERR --err-ignore /cfg/oasdiff-ignore.txt
 
   docker:

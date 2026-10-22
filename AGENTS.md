@@ -89,4 +89,4 @@ Short rules; the reasons and details are in DESIGN.md.
 - **Settings** come only from environment variables; `SECRET_KEY` has no default (§2.2).
 - **Tests:** every bug fix gets a regression test; pytest treats warnings as errors; backend tests run against PostgreSQL in rolled-back transactions (§2.12).
 - **Simulator:** planted effects live in `libsim/params.py`; after changing the model, rerun `libsim validate` and update `docs/simulation.md` (§3).
-- **Frontend:** data only via TanStack Query + `api-client`; oxfmt style; shadcn components in `frontend/src/components/ui` (§4).
+- **Frontend:** server calls only in `src/api/` (TanStack Query hooks over `api-client`); pure logic in `src/lib/`; markup in `components/` and `pages/`, reusing `components/common`; oxfmt style; shadcn components in `frontend/src/components/ui` (§4).

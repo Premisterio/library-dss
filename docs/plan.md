@@ -73,6 +73,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Stack.** React 19, shadcn/ui (default look), TanStack Query, react-router and recharts.
   - Data comes only through `@library-dss/api-client`, labels come from `meta/enums`, and errors are shown by their `code`.
   - The frontend computes no metrics. The author will redesign it later.
+  - Layers: `api/` (server state), `lib/` (pure logic), `components/` and `pages/` (markup), so a redesign touches only the markup.
 - **Sign-in.** The access token is kept in memory and renewed before it expires. A silent sign-in uses the httpOnly refresh cookie.
 - **Datasets.**
   - Upload `.json`/`.json.gz` and follow the import live (SSE read with `fetch`, with polling as a fallback).
