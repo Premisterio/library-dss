@@ -5,10 +5,11 @@ Guide for AI coding agents (and humans) working on **library-dss**: a decision s
 Read in this order:
 
 1. `HANDOFF.md` if it exists (local, gitignored): the live state, open PRs, uncommitted work and next steps. Update it after every PR (opened, updated or merged) and before you finish.
-2. This file: process rules, stack, commands.
-3. [DESIGN.md](DESIGN.md): how each part of the app works and the rules it follows. Read the section of every part you change.
+2. [docs/plan.md](docs/plan.md): the roadmap, what is done and what comes next. Update it when a milestone (or a notable part of one) is merged.
+3. This file: process rules, stack, commands.
+4. [DESIGN.md](DESIGN.md): how each part of the app works and the rules it follows. Read the section of every part you change.
 
-Keep this file general: rules, stack, commands, conventions. Status and next steps go to `HANDOFF.md`, how things work to DESIGN.md, and the history of changes stays in git and PRs (no dated entries here).
+Keep this file general: rules, stack, commands, conventions. Progress and the roadmap go to docs/plan.md, the live session state to `HANDOFF.md`, how things work to DESIGN.md, and the history of changes stays in git and PRs (no dated entries here).
 
 ## Hard rules
 
@@ -89,19 +90,3 @@ Short rules; the reasons and details are in DESIGN.md.
 - **Tests:** every bug fix gets a regression test; pytest treats warnings as errors; backend tests run against PostgreSQL in rolled-back transactions (§2.12).
 - **Simulator:** planted effects live in `libsim/params.py`; after changing the model, rerun `libsim validate` and update `docs/simulation.md` (§3).
 - **Frontend:** data only via TanStack Query + `api-client`; oxfmt style; shadcn components in `frontend/src/components/ui` (§4).
-
-## Milestones
-
-The current status lives in `HANDOFF.md`.
-
-| Milestone | Scope                                                                                                    |
-| --------- | -------------------------------------------------------------------------------------------------------- |
-| M0        | Monorepo, tooling, skeletons, dev compose, CI                                                            |
-| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, dataset schema            |
-| M2        | Backend platform: auth, jobs + worker, dataset import, analytics, reports and exports, CLI, demo seed    |
-| M3        | Thin shadcn frontend (datasets, overview, analytics, reports) + VPS deploy                               |
-| M4a       | Churn prediction without leakage, explanations                                                           |
-| M4b       | Uplift from the randomized campaign, optimal action plan under a budget, what-if scenarios, decision log |
-| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                                      |
-| M6        | Thesis experiment harness (seeds × presets × budgets vs baselines)                                       |
-| M7        | End-to-end tests, backup drill, user docs, first release                                                 |

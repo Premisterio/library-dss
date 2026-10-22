@@ -283,7 +283,7 @@ There are two file formats, detected by content:
   - `api`: applies migrations, reloads on change;
   - `worker`: restarted by watchfiles on change.
   - The frontend runs natively with a `/api` proxy.
-- **Production** (planned): one docker compose on a VPS with Caddy, api, worker and PostgreSQL; images built by CI.
+- **Production** (planned for the last milestone, see [docs/plan.md](docs/plan.md)): one docker compose on a VPS with Caddy, api, worker and PostgreSQL; images built by CI.
 - **Images.** The `prod` target is non-root. Its HEALTHCHECK probes HTTP, so a production worker service needs its own check.
 - **CI.**
   - Jobs: Python (ruff, ty, pytest with coverage, generator tests), frontend (format, types, lint, tests, build), API contract drift, Docker prod image, workflow lint (actionlint, zizmor).

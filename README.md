@@ -6,7 +6,7 @@ A decision support system (DSS) for an online library, built as a master's thesi
 - **Content acquisition:** multi-criteria choice (AHP + TOPSIS) and selection within a budget.
 - **The `libsim` generator:** a library simulator with planted dependencies, used to measure the quality of decisions experimentally.
 
-> Status: in development.
+> Status: in development; the roadmap and progress are in [docs/plan.md](docs/plan.md).
 
 ## Stack
 
