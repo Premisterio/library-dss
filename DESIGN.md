@@ -203,6 +203,48 @@ There are two file formats, detected by content:
 - **Labels.** Every metric, chart, dimension, unit and category code has a Ukrainian label in `ENUMS`, so clients label everything from `GET /meta/enums`. `test_analytics.py` checks this.
 - **Tests.** Exact numbers are tested on `mini_document`, a hand-made five-member dataset whose expected values were derived by hand. When a definition changes, derive the new value by hand too.
 
+**Churn prediction** (`domain/churn`):
+
+- **Cutoff.** A prediction is made at a cutoff, the end of a local day. It is the same `Context` the analytics use for as_of.
+- **Target.**
+  - The risk group at a cutoff is every member whose paid period is running at the cutoff and ends before the end of the local day 30 days later (`RISK_WINDOW_DAYS`).
+    - Trials are not paid periods.
+    - A member with overlapping paid periods counts once, with the period that started last.
+  - The label is whether that period ended in churn (`churned` vs `renewed`). A period without a decided outcome has no label.
+  - **Churn without an action.** A renewal that received a campaign action gets no label: an assignment with `delivered`, matched by `target_period_end`. The label therefore means churn without any action, the baseline against which the action plan (M4b) compares actions. Assignment was random, so the remaining renewals are still a fair sample.
+- **Rolling cutoffs** (`history_cutoffs`).
+  - Cutoff k is as_of − 30·(k + 1) days, back to the first paid period.
+    - The risk window of k = 0 ends at as_of.
+    - Windows never overlap, so every renewal is labelled at exactly one cutoff.
+  - Roles (`role`): k = 0 tests, k = 1 calibrates, k ≥ 2 train. So everything a model learns from was known before the cutoff it is checked on.
+  - Scoring uses the cutoff at as_of, whose periods are still running.
+  - `examples` returns the labelled rows of every cutoff with their `k`.
+- **No leakage.**
+  - `build_features(frames, cutoff)` is the only feature code, used for training and scoring alike.
+  - It reads only rows dated before the cutoff. Anything resolved later is seen as it was at the cutoff:
+    - a loan returned later is still out, and its completion and rating are unknown;
+    - a hold resolved later is still waiting;
+    - the outcome of the running period is never read.
+  - Assumptions:
+    - Profile fields (age, education, language, e-mail opt-in) are fixed, because the format stores one value per member.
+    - A rating is known when the loan is returned.
+  - A property test (Hypothesis) rewrites the history after random cutoffs of a simulated dataset: it drops, moves and invents later rows and redraws everything that resolves later. No feature may change.
+- **Features.** There are 26. Their keys, kinds and units are in `FEATURES`, and their Ukrainian labels are in enums `churn_feature`.
+
+  | Group                               | Features                                                                                                                                                                                                                                                                            |
+  | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | Running period                      | plan, price per month, discount, days since the first paid period, days to renewal                                                                                                                                                                                                  |
+  | Activity                            | reading sessions in 7 and 30 days; reading minutes in 30 days; trend `ln((1 + sessions in 30 days) / (1 + sessions in the 30 days before))`; days since the last session; no session in 14 days; active local days in 30 days; loans in 30 days; loans out now; searches in 30 days |
+  | Reading (loans returned in 90 days) | completed books, completion rate, average rating, ratings of 1–2                                                                                                                                                                                                                    |
+  | Frustrations                        | holds lapsed in 30 days, holds waiting now, zero-result searches in 30 days                                                                                                                                                                                                         |
+  | Profile                             | age, education, language, e-mail opt-in                                                                                                                                                                                                                                             |
+
+- **Missing values.** Counts without events are 0. A value that is undefined stays null, never 0. Examples: the days since the last session of a member who never read, completion and rating without returned loans, an unknown profile field. Models handle nulls themselves.
+- **Tests.**
+  - Exact values are checked on `churn_document`, which plants an event at every boundary: at the cutoff, resolved after it, starting after it.
+  - On the simulated dataset, the risk group at as_of is checked against libsim's ground truth: the members it renews in the next 30 days.
+  - On the 5k-member demo, the examples of all 24 cutoffs take under 1 s.
+
 ### 2.10 Reports and exports
 
 - **What a report is.** A report is a titled copy of some or all analytics sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
@@ -247,6 +289,8 @@ There are two file formats, detected by content:
   - `tabular_document`: a small libsim dataset.
   - `nested_document`: a hand-made nested-format file, Ukrainian and English content only.
   - `mini_document`: a hand-made tabular file with hand-computed analytics.
+  - `churn_document`: a hand-made tabular file with hand-computed churn features and labels.
+  - `tabular_dataset` and `tabular_truth`: `tabular_document` parsed once per run, and libsim's ground truth for it. They are shared, so tests must not modify them.
 - **Contract and structure:** `test_openapi.py`, `test_architecture.py` and `test_migrations.py`.
 - **Contract fuzzing** (`test_contract.py`, Schemathesis): every operation gets valid and invalid requests (15 examples each in CI). No response may be a 500, and every response must match its documented status, content type, schema and headers. The only exception: registration may reject schema-valid e-mails on reserved domains.
 - **Snapshots** (`test_snapshots.py`, syrupy): the dataset, analytics, report and enum responses on `mini_document`, with ids and timestamps masked. After an intended change, run `pytest --snapshot-update` and review the diff of `tests/__snapshots__`.
@@ -260,6 +304,7 @@ There are two file formats, detected by content:
 - **Determinism.**
   - Randomness comes from `SeedSequence` streams; ids are deterministic; keys are sorted; gzip `mtime` is 0.
   - The same parameters give byte-identical files.
+  - Local times are converted to UTC with the offset of their own day, including the period ends after as_of.
 - **Output.**
   - The dataset is a tabular file; `libsim/schema.py` is the source of the format.
   - `libsim schema` writes the JSON Schema.

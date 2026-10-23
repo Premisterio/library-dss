@@ -1,6 +1,6 @@
 import os
 from collections.abc import Callable, Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # Defaults for running tests on the host: a separate `dss_test` database on the dev compose
 # server (port 5433), created on first use, so the dev worker never picks up test jobs.
@@ -24,10 +24,15 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.db import CONNECT_TIMEOUT_SECONDS, get_engine, get_session
 from app.core.migrations import ALEMBIC_INI
+from app.ingest import reader
+from app.ingest.frames import ParsedDataset
 from app.main import create_app
 from app.models import Analyst
 from app.services import auth
 from app.worker import runner
+
+if TYPE_CHECKING:
+    from libsim.engine import Result
 
 PASSWORD = "correct horse battery"
 
@@ -140,17 +145,38 @@ def auth_headers(client: TestClient, analyst: Analyst) -> dict[str, str]:
 
 
 @cache
-def _simulated_tabular() -> dict[str, Any]:
-    from libsim import engine, writer
+def _simulation() -> Result:
+    from libsim import engine
     from libsim.params import preset
 
-    return writer.build_dataset(engine.simulate(preset("demo", users=200, months=8, seed=11)))
+    return engine.simulate(preset("demo", users=200, months=8, seed=11))
+
+
+@cache
+def _simulated_tabular() -> dict[str, Any]:
+    from libsim import writer
+
+    return writer.build_dataset(_simulation())
 
 
 @pytest.fixture
 def tabular_document() -> dict[str, Any]:
     """A small libsim dataset (200 members, 8 months); safe to modify in a test."""
     return copy.deepcopy(_simulated_tabular())
+
+
+@pytest.fixture(scope="session")
+def tabular_dataset() -> ParsedDataset:
+    """`tabular_document` parsed once and shared, so never modify its frames."""
+    return reader.parse(copy.deepcopy(_simulated_tabular()))
+
+
+@pytest.fixture(scope="session")
+def tabular_truth() -> dict[str, Any]:
+    """libsim's ground truth of `tabular_document`, to check the domain against what it planted."""
+    from libsim import writer
+
+    return writer.build_ground_truth(_simulation())
 
 
 @pytest.fixture
@@ -361,6 +387,103 @@ def mini_document() -> dict[str, Any]:
     return {
         "schema_version": 2,
         "meta": {"as_of": "2026-03-31", "timezone": "Europe/Kyiv", "seed": 0},
+        "tables": {
+            name: {"columns": [col for col, _, _ in spec], "rows": rows[name]}
+            for name, spec in TABLES.items()
+        },
+    }
+
+
+@pytest.fixture
+def churn_document() -> dict[str, Any]:
+    """A hand-made tabular dataset (6 members, as of 2026-06-30, Kyiv) for the churn target.
+
+    Expected features and labels are derived in tests/test_churn_features.py; keep both in sync.
+    Rows marked "later" happen after the cutoff of 2026-05-31 and must not change its features.
+    """
+    from app.ingest.schema import TABLES
+
+    rows: dict[str, list[list[Any]]] = {name: [] for name in TABLES}
+    rows["users"] = [
+        ["u1", "2026-02-20T09:00:00Z", "25-34", "master", "uk+en", True, ["fantasy"]],
+        ["u2", "2026-04-24T09:00:00Z", "18-24", "student", "uk", False, ["science_fiction"]],
+        ["u3", "2026-01-10T09:00:00Z", "45-54", "bachelor", "uk", True, ["history"]],
+        ["u4", "2026-05-01T09:00:00Z", "35-44", "phd", "uk+en", True, ["business"]],
+        ["u5", "2026-04-01T09:00:00Z", "55-64", "secondary", "uk", False, ["classics"]],
+        ["u6", "2026-05-25T09:00:00Z", "16-17", "secondary", "uk", True, ["young_adult"]],
+    ]
+    rows["books"] = [
+        ["b1", "Кобзар", "Тарас Шевченко", "poetry_drama", "uk", 300, 1840, 2],
+        ["b2", "Dune", "Frank Herbert", "science_fiction", "en", 600, 1965, 1],
+        ["b3", "Тигролови", "Іван Багряний", "mystery_thriller", "uk", 280, 1944, 1],
+        ["b4", "Лісова пісня", "Леся Українка", "poetry_drama", "uk", 150, 1911, 1],
+    ]
+
+    def period(user: str, plan: str, start: str, end: str, paid: float, outcome: str) -> list:
+        price = {"trial": 0, "monthly": 149, "student": 79, "annual": 1290}[plan]
+        discount = round(1 - paid / price, 2) if price and paid < price else None
+        return [user, plan, f"{start}Z", f"{end}Z", price, paid, discount, outcome]
+
+    rows["subscription_periods"] = [
+        period("u1", "monthly", "2026-03-03T21:00:00", "2026-04-02T21:00:00", 149, "renewed"),
+        period("u1", "monthly", "2026-04-02T21:00:00", "2026-05-02T21:00:00", 149, "renewed"),
+        period("u1", "monthly", "2026-05-02T21:00:00", "2026-06-01T21:00:00", 119.2, "renewed"),
+        period("u1", "monthly", "2026-06-01T21:00:00", "2026-07-01T21:00:00", 149, "open"),
+        period("u2", "trial", "2026-04-24T21:00:00", "2026-05-08T21:00:00", 0, "converted"),
+        period("u2", "student", "2026-05-08T21:00:00", "2026-06-07T21:00:00", 79, "churned"),
+        period("u3", "annual", "2026-01-10T22:00:00", "2027-01-10T22:00:00", 1290, "open"),
+        period("u4", "monthly", "2026-05-10T21:00:00", "2026-06-09T21:00:00", 149, "renewed"),
+        period("u4", "monthly", "2026-06-09T21:00:00", "2026-07-09T21:00:00", 119.2, "open"),
+        period("u5", "monthly", "2026-05-12T21:00:00", "2026-06-11T21:00:00", 149, "churned"),
+        period("u6", "trial", "2026-05-25T21:00:00", "2026-06-08T21:00:00", 0, "converted"),
+        period("u6", "monthly", "2026-06-08T21:00:00", "2026-07-08T21:00:00", 149, "open"),
+    ]
+    rows["loans"] = [
+        ["l1", "u1", "b1", "2026-04-15T09:00:00Z", "2026-04-28T09:00:00Z", True, 5, False],
+        ["l2", "u1", "b2", "2026-05-05T09:00:00Z", "2026-05-21T09:00:00Z", False, 2, False],
+        ["l3", "u1", "b3", "2026-05-25T09:00:00Z", "2026-06-08T09:00:00Z", True, 4, False],
+        ["l4", "u1", "b4", "2026-06-10T09:00:00Z", None, None, None, True],  # later
+        ["l5", "u2", "b2", "2026-06-02T09:00:00Z", "2026-06-07T20:59:00Z", False, None, False],
+    ]
+    rows["reading_sessions"] = [
+        ["u1", "b1", "2026-04-20T18:00:00Z", 60, 50, "mobile_android"],
+        ["u1", "b2", "2026-05-10T18:00:00Z", 50, 40, "mobile_android"],
+        ["u1", "b2", "2026-05-20T18:00:00Z", 40, 35, "mobile_android"],
+        ["u1", "b3", "2026-05-30T18:00:00Z", 30, 25, "mobile_android"],
+        ["u1", "b3", "2026-05-31T21:00:00Z", 70, 60, "mobile_android"],  # at the cutoff
+        ["u1", "b3", "2026-06-05T18:00:00Z", 80, 70, "mobile_android"],  # later
+        ["u2", "b2", "2026-06-03T18:00:00Z", 20, 15, "mobile_ios"],  # later
+        ["u3", "b1", "2026-05-15T18:00:00Z", 30, 20, "desktop"],
+    ]
+    rows["searches"] = [
+        ["u1", "2026-04-25T09:00:00Z", "Лісова пісня", 2],
+        ["u1", "2026-05-15T09:00:00Z", "Дюна", 0],
+        ["u1", "2026-05-29T22:00:00Z", "Кобзар", 3],  # 05-30 01:00 in Kyiv
+        ["u1", "2026-05-31T21:00:00Z", "Тигролови", 0],  # at the cutoff
+        ["u2", "2026-04-28T09:00:00Z", "Дюна", 0],
+    ]
+    rows["holds"] = [
+        ["h1", "u1", "b4", "2026-04-20T09:00:00Z", "2026-05-11T09:00:00Z", "lapsed"],
+        ["h2", "u1", "b4", "2026-05-28T09:00:00Z", "2026-06-10T09:00:00Z", "fulfilled"],
+        ["h3", "u2", "b1", "2026-05-10T09:00:00Z", "2026-06-01T09:00:00Z", "lapsed"],
+    ]
+    rows["campaigns"] = [
+        [
+            "camp-1",
+            "Утримання підписників",
+            "2026-05-15T00:00:00Z",
+            "2026-06-15T00:00:00Z",
+            "randomized_at_renewal",
+            ["control", "email", "discount"],
+        ]
+    ]
+    rows["campaign_assignments"] = [
+        ["camp-1", "u4", "2026-06-02T07:00:00Z", "discount", True, 0.2, "2026-06-09T21:00:00Z"],
+        ["camp-1", "u5", "2026-06-04T07:00:00Z", "email", False, 0, "2026-06-11T21:00:00Z"],
+    ]
+    return {
+        "schema_version": 2,
+        "meta": {"as_of": "2026-06-30", "timezone": "Europe/Kyiv", "seed": 0},
         "tables": {
             name: {"columns": [col for col, _, _ in spec], "rows": rows[name]}
             for name, spec in TABLES.items()

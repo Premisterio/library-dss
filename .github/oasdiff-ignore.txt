@@ -1,4 +1,0 @@
-POST /api/v1/auth/login added the pattern `^[^\x00]*$` to the request property `email`
-POST /api/v1/auth/register added the pattern `^[^\x00]*$` to the request property `name`
-POST /api/v1/datasets added the pattern `^[^\x00]*$` to the request property `name/anyOf[subschema #1]/`
-POST /api/v1/reports added the pattern `^[^\x00]*$` to the request property `title`

@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from conftest import rows
@@ -78,6 +79,22 @@ def test_nothing_happens_after_as_of(dataset: dict[str, Any], result: Result) ->
             for i in stamps:
                 if row[i] is not None and not (name == "subscription_periods" and i == 3):
                     assert _ts(row[i]) < limit, (name, row)
+
+
+def test_period_ends_after_as_of_keep_their_local_day(
+    dataset: dict[str, Any], result: Result, truth: dict[str, Any]
+) -> None:
+    """Regression: times after as_of took as_of's UTC offset, so after the October clock change
+    a period ending at local midnight was written an hour early, on the day before."""
+    tz = ZoneInfo(result.params.timezone)
+    ends = {
+        row["user_id"]: _ts(row["period_end"]).astimezone(tz)
+        for row in rows(dataset, "subscription_periods")
+        if row["outcome"] == "open" and row["plan"] != "trial"
+    }
+    days = [result.start + timedelta(days=row["period_end_day"]) for row in truth["at_risk"]]
+    assert [ends[row["user_id"]].date() for row in truth["at_risk"]] == days
+    assert any(day.month == 10 and day.day > 25 for day in days), "no end after the change"
 
 
 def test_concurrent_loans_never_exceed_licences(dataset: dict[str, Any]) -> None:
