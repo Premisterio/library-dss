@@ -24,6 +24,19 @@ export function useChurnRuns(datasetId: number) {
   })
 }
 
+/** The run decisions on the dataset use; null when none is active. */
+export function useActiveChurnRun(datasetId: number) {
+  return useQuery({
+    queryKey: keys.activeChurnRun(datasetId),
+    queryFn: async () =>
+      unwrap(
+        await api.GET("/api/v1/churn-runs", {
+          params: { query: { dataset_id: datasetId, active: true, limit: 1 } },
+        })
+      ).items[0] ?? null,
+  })
+}
+
 /** One run with its backtest and explanations, fetched when `enabled` (a trained run). */
 export function useChurnRun(runId: number, enabled = true) {
   return useQuery({
@@ -79,6 +92,7 @@ export function useDeleteChurnRun() {
     onSuccess: (_, run) => {
       queryClient.removeQueries({ queryKey: keys.churnRun(run.id) })
       void queryClient.invalidateQueries({ queryKey: keys.churnRuns(run.dataset_id) })
+      void queryClient.invalidateQueries({ queryKey: keys.activeChurnRun(run.dataset_id) })
     },
   })
 }

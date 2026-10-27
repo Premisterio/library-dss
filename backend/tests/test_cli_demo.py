@@ -13,7 +13,9 @@ from typer.testing import CliRunner
 
 from app.cli.main import app
 from app.core.db import get_sessionmaker
-from app.models import Analyst, Dataset, Report
+from app.domain.enums import JobKind
+from app.models import Analyst, Dataset, Job, Report
+from app.services import jobs
 
 runner = CliRunner()
 ENV = {"DSS_PASSWORD": "long enough password"}
@@ -108,3 +110,19 @@ def test_training_needs_an_existing_dataset_with_retention_data(
     unsupported = runner.invoke(app, ["train-churn", "--dataset", str(dataset_id)])
     assert unsupported.exit_code == 1
     assert "churn.not_supported" in unsupported.output
+
+
+def test_seed_demo_never_runs_a_training_job(email: str) -> None:
+    """Regression: seed-demo took the newest job of the dataset, whatever its kind, so a queued
+    churn training ran (or was waited for) inside seed-demo."""
+    args = ["seed-demo", "--email", email, "--users", "150", "--months", "4", "--seed", "3"]
+    dataset_id, _ = ids(runner.invoke(app, args, env=ENV).output)
+    with get_sessionmaker()() as session:
+        owner = session.get_one(Dataset, dataset_id).owner_id
+        job = jobs.enqueue(session, kind=JobKind.TRAIN_CHURN, owner_id=owner, dataset_id=dataset_id)
+        session.commit()
+        job_id = job.id
+    again = runner.invoke(app, args, env=ENV)
+    assert again.exit_code == 0, again.output
+    with get_sessionmaker()() as session:
+        assert session.get_one(Job, job_id).status == "queued"

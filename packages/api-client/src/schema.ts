@@ -1688,6 +1688,8 @@ export interface operations {
     list_churn_runs: {
         parameters: {
             query?: {
+                /** @description Only the active run(s). */
+                active?: boolean | null;
                 dataset_id?: number | null;
                 limit?: number;
                 offset?: number;
