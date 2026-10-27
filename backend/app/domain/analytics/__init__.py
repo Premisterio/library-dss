@@ -7,6 +7,7 @@ from collections.abc import Callable
 from datetime import date
 
 from app.domain.analytics import (
+    candidates,
     cohorts,
     content,
     overview,
@@ -26,6 +27,7 @@ SECTIONS: dict[str, Callable[[Frames, Context], Section]] = {
     "search": search.build,
     "subscriptions": subscriptions.build,
     "cohorts": cohorts.build,
+    "candidates": candidates.build,
 }
 
 

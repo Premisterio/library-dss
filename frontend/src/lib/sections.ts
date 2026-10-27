@@ -8,6 +8,7 @@ export const ANALYTICS_TABS: readonly AnalyticsKey[] = [
   "search",
   "subscriptions",
   "cohorts",
+  "candidates",
 ]
 
 /** Every section, in the order reports list them. */
