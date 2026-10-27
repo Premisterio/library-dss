@@ -54,5 +54,7 @@ class ChurnScore(Base):
     probability: Mapped[float]
     plan: Mapped[str] = mapped_column(String(20))
     period_end: Mapped[datetime]
+    # list price of the renewal; null for runs scored before it was kept
+    period_price: Mapped[float | None]
     features: Mapped[dict[str, Any]] = mapped_column(JSONB)  # feature key → value
     reasons: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)

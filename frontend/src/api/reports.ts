@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import { keys } from "@/api/keys"
 import { expectOk, unwrap } from "@/api/problem"
-import type { ExportFormat, Report, SectionKey } from "@/api/types"
+import type { ExportFormat, Report, AnalyticsKey } from "@/api/types"
 import { fileNameFrom } from "@/lib/content-disposition"
 
 /** Long enough for every browser to start the download before the blob is released. */
@@ -24,7 +24,7 @@ export function useReports(datasetId: number) {
 export function useCreateReport(datasetId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ title, sections }: { title: string; sections: SectionKey[] }) =>
+    mutationFn: async ({ title, sections }: { title: string; sections: AnalyticsKey[] }) =>
       unwrap(
         await api.POST("/api/v1/reports", { body: { dataset_id: datasetId, title, sections } })
       ),

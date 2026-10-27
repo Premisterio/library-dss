@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Sequence
+from typing import Any
 from urllib.parse import quote
 
 from sqlalchemy import func, select
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ApiError
 from app.domain.analytics import SECTIONS
 from app.exports import EXTENSIONS, ExportFormat, ReportDocument, render
-from app.models import Analyst, Report
+from app.models import Analyst, Dataset, Report
 from app.services import analytics, datasets
 
 FILENAME_LIMIT = 100
@@ -27,9 +28,24 @@ def create(
     dataset = datasets.get_for(session, dataset_id, analyst)
     wanted = set(sections or SECTIONS)
     payloads = [p for p in analytics.sections_for(session, dataset) if p["key"] in wanted]
+    return freeze(session, analyst, dataset, kind="analytics", title=title, payloads=payloads)
+
+
+def freeze(
+    session: Session,
+    analyst: Analyst,
+    dataset: Dataset,
+    *,
+    kind: str,
+    title: str,
+    payloads: list[dict[str, Any]],
+    params: dict[str, Any] | None = None,
+) -> Report:
+    """A report of these section payloads as they are now; a decision keeps its parameters."""
     report = Report(
         owner_id=analyst.id,
         dataset_id=dataset.id,
+        kind=kind,
         title=title.strip(),
         sections=[p["key"] for p in payloads],
         content={
@@ -38,6 +54,7 @@ def create(
             "timezone": dataset.timezone,
             "sections": payloads,
         },
+        params=params,
     )
     session.add(report)
     session.commit()
@@ -56,12 +73,15 @@ def list_for(
     analyst: Analyst,
     *,
     dataset_id: int | None,
+    kind: str | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[Report], int]:
     query = select(Report).where(Report.owner_id == analyst.id)
     if dataset_id is not None:
         query = query.where(Report.dataset_id == dataset_id)
+    if kind is not None:
+        query = query.where(Report.kind == kind)
     total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
     items = session.scalars(
         query.order_by(Report.created_at.desc(), Report.id.desc()).limit(limit).offset(offset)
