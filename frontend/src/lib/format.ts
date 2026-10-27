@@ -10,6 +10,20 @@ function number(value: number, maximumFractionDigits: number): string {
   return new Intl.NumberFormat(LOCALE, { maximumFractionDigits }).format(value)
 }
 
+/** A number with a fixed count of decimals, for scores such as AUC (0,688). */
+export function formatDecimal(value: number | null | undefined, digits: number): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return EMPTY
+  return new Intl.NumberFormat(LOCALE, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
+
+/** A change of a probability in percentage points: 0.112 → "+11,2 в. п.". */
+export function formatPoints(fraction: number): string {
+  return `${fraction > 0 ? "+" : ""}${number(fraction * 100, 1)} в. п.`
+}
+
 export function formatValue(value: number | null | undefined, unit: Unit): string {
   if (value === null || value === undefined || Number.isNaN(value)) return EMPTY
   switch (unit) {
@@ -61,6 +75,11 @@ export function formatMonth(iso: string): string {
 /** "07:00" for an hour of the day. */
 export function formatHour(hour: number | string): string {
   return `${String(hour).padStart(2, "0")}:00`
+}
+
+/** The local date of an instant in the dataset's time zone: "05.10.26". */
+export function formatLocalDay(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(LOCALE, { timeZone, dateStyle: "short" }).format(new Date(iso))
 }
 
 export function formatDateTime(iso: string): string {

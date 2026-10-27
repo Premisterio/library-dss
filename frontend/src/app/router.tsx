@@ -77,6 +77,20 @@ const router = createBrowserRouter([
                 handle: title("Звіти"),
                 lazy: async () => ({ Component: (await import("@/pages/reports")).ReportsPage }),
               },
+              {
+                path: "churn",
+                handle: title("Відтік"),
+                lazy: async () => ({
+                  Component: (await import("@/pages/churn-model")).ChurnModelPage,
+                }),
+              },
+              {
+                path: "churn/risk",
+                handle: title("Відтік"),
+                lazy: async () => ({
+                  Component: (await import("@/pages/churn-risk")).ChurnRiskPage,
+                }),
+              },
             ],
           },
         ],

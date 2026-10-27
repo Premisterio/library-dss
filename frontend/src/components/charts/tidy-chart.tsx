@@ -1,14 +1,12 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 
 import { useLabel } from "@/api/enums"
 import type { Chart } from "@/api/types"
 import { BarView } from "@/components/charts/bar-view"
+import { ChartPanel } from "@/components/charts/chart-panel"
 import { HeatmapView } from "@/components/charts/heatmap-view"
 import { LineView } from "@/components/charts/line-view"
 import { RowsTable } from "@/components/charts/rows-table"
-import { ErrorBoundary } from "@/components/common/error-boundary"
-import { PanelCard } from "@/components/common/panel-card"
-import { Button } from "@/components/ui/button"
 import { chooseView, type ChartView } from "@/lib/charts"
 import { windowText } from "@/lib/format"
 
@@ -31,30 +29,14 @@ function ChartBody({ chart, view }: { chart: Chart; view: ChartView }) {
 export function TidyChart({ chart, className }: { chart: Chart; className?: string }) {
   const label = useLabel()
   const view = useMemo(() => chooseView(chart), [chart])
-  const [showTable, setShowTable] = useState(false)
-  const empty = chart.rows.length === 0
-  const toggle =
-    view.type === "table" || empty ? undefined : (
-      <Button variant="ghost" size="sm" onClick={() => setShowTable((shown) => !shown)}>
-        {showTable ? "Графік" : "Таблиця"}
-      </Button>
-    )
   return (
-    <PanelCard
+    <ChartPanel
       title={label("chart", chart.key)}
       description={windowText(chart.window_days) || undefined}
-      action={toggle}
+      chart={<ChartBody chart={chart} view={view} />}
+      table={view.type === "table" ? undefined : <RowsTable chart={chart} />}
+      empty={chart.rows.length === 0}
       className={className}
-    >
-      {empty ? (
-        <p className="text-sm text-muted-foreground">Немає даних за цей період.</p>
-      ) : (
-        <ErrorBoundary
-          fallback={<p className="text-sm text-destructive">Не вдалося показати цей графік.</p>}
-        >
-          <ChartBody chart={chart} view={showTable ? { type: "table" } : view} />
-        </ErrorBoundary>
-      )}
-    </PanelCard>
+    />
   )
 }

@@ -60,6 +60,7 @@ def run_training(session: Session, job: Job, progress: jobs.Progress) -> dict[st
             "cutoffs": rows["k"].n_unique(),
             "churn_rate": rows.select(pl.col("churned").mean()).item(),
             "scored": len(scores),
+            "expected_churners": sum(s.probability for s in scores),
         },
         "models": [asdict(summary) for summary in summarize(training.evaluations)],
         "backtest": [asdict(evaluation) for evaluation in training.evaluations],

@@ -15,18 +15,18 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 
 ## Progress
 
-| Milestone | Scope                                                                                    | Status           |
-| --------- | ---------------------------------------------------------------------------------------- | ---------------- |
-| M0        | Repository, tooling, dev compose, CI                                                     | done             |
-| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done             |
-| M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8) |
-| M3        | Thin frontend on shadcn, run locally                                                     | done             |
-| M4a       | Churn prediction without leakage, explanations                                           | **in progress**  |
-| M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | —                |
-| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                |
-| M6        | Thesis experiment harness                                                                | —                |
-| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                |
-| M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                |
+| Milestone | Scope                                                                                    | Status             |
+| --------- | ---------------------------------------------------------------------------------------- | ------------------ |
+| M0        | Repository, tooling, dev compose, CI                                                     | done               |
+| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done               |
+| M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8)   |
+| M3        | Thin frontend on shadcn, run locally                                                     | done               |
+| M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16) |
+| M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | **next**           |
+| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                  |
+| M6        | Thesis experiment harness                                                                | —                  |
+| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                  |
+| M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                  |
 
 If time runs short, cut in this order: `libsim continue` → Monte Carlo sensitivity → T-learner → the "more copies" content preset.
 
@@ -96,46 +96,34 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - The whole flow was walked through in a browser against `seed-demo` data, in light and dark theme.
   - CI runs `oasdiff breaking` on pull requests, so `/api/v1` only grows.
 
-## Next
+### M4a. Churn prediction (PRs #12–#16)
 
-### M4a. Churn prediction
-
-- **Progress.**
-  - Done: the target, rolling cutoffs, 26 features and the leakage property test (`domain/churn`, DESIGN §2.9).
-  - Fixed on the way: libsim wrote period ends after a clock change an hour early.
-  - Done: the models, metrics, the backtest and the choice of a model.
-    - On four demo seeds the chosen model's AUC is 0.033–0.070 below the best achievable, 0.049 on average.
-    - It beats the inactivity rule on the Brier score on every dataset tried.
-  - Done: explanations. These are permutation importance, logistic coefficients, and up to three reasons per member from "what if this feature were typical", one per group and never the profile.
-  - Done: runs, scores and activation.
-    - The `train_churn` job, `churn_runs` and `churn_scores`.
-    - The API: `POST /datasets/{id}/churn-runs`, `GET /churn-runs[/{id}]`, `activate`, `scores`, `scores/{user_id}`.
-    - The CLI: `dss train-churn`.
-  - Next: the UI pages "Model" and "Risk group".
-- **Target.** Paying members whose period ends in the next 30 days. The label is whether that period ended in churn.
+- **Target.**
+  - The risk group is the paying members whose period ends in the next 30 days.
+  - The label is churn without any action: renewals that got a campaign action are left out.
 - **No leakage.**
-  - Rolling cutoffs: test on k = 0 and train on every older cutoff. A backtest repeats this at six origins.
-  - One `build_features(frames, cutoff)` for training and scoring, and no snapshot fields.
-  - A property test checks that changing events after the cutoff changes no feature.
-- **About 25 features:**
-  - plan, price, discounts, tenure;
-  - 7- and 30-day activity and its trend;
-  - completion and ratings;
-  - holds and lapses;
-  - zero-result searches;
-  - demographics and e-mail opt-in.
-  - Missing values stay missing, with an indicator.
+  - Rolling 30-day cutoffs; `build_features(frames, cutoff)` is the only feature code.
+  - A Hypothesis property test rewrites the history after random cutoffs and checks that no feature changes.
+- **Features.** 26 features in five groups (subscription, activity, reading, frustrations, profile). Undefined values stay missing.
 - **Models.**
-  - Baseline rule "inactive 14+ days", logistic regression, HistGradientBoosting.
-  - Metrics: ROC-AUC, PR-AUC, Brier (+ skill), ECE with a calibration plot, lift@10%.
-  - The model is chosen by Brier/ECE, because the optimizer uses probabilities.
-- **Explanations.** Coefficients and permutation importance; for each member, the top three reasons in plain words.
-- **API, CLI, UI.** `churn-runs` (job), `activate`, `scores`, `scores/{user}`; pages "Model" and "Risk group".
-- **Done when:**
-  - the leakage test passes;
-  - AUC is within 0.05 of the best achievable (from the ground truth);
-  - Brier beats the rule;
-  - backtesting works.
+  - The rule "inactive 14+ days", logistic regression and gradient boosting, fitted by log-loss.
+  - A backtest at six origins; the model with the lowest mean Brier score is chosen.
+- **Quality on libsim** (5k members).
+  - On four demo seeds, the chosen model's AUC is 0.033–0.070 below the best achievable, 0.049 on average.
+  - It beats the rule on the Brier score on every dataset tried.
+- **Explanations.** Permutation importance, logistic coefficients, and up to three reasons per member ("what if this feature were typical"), one per group and never the profile.
+- **Platform.**
+  - The `train_churn` job, with runs and scores stored in `churn_runs` and `churn_scores`.
+  - The analyst activates the run that decisions use.
+  - The API: `churn-runs`, `activate`, `scores`, `scores/{user_id}`. The CLI: `dss train-churn`.
+- **UI.** A "Відтік" section with two views:
+  - "Модель": runs, training progress, the quality against the rule, calibration, importance, backtest, activation;
+  - "Група ризику": the members at risk with their reasons, and a card with every feature against the typical value.
+- **Fixed on the way.**
+  - libsim wrote period ends after a clock change an hour early.
+  - Any job on a dataset used to change the dataset's status.
+
+## Next
 
 ### M4b. Action effects, optimal plan, decisions
 

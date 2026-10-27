@@ -699,6 +699,11 @@ export type components = {
              */
             examples: number;
             /**
+             * Expected Churners
+             * @description Sum of their probabilities of churn.
+             */
+            expected_churners: number;
+            /**
              * Scored
              * @description Members at risk at as_of, scored by the chosen model.
              */
@@ -851,6 +856,11 @@ export type components = {
         };
         /** FeatureValueOut */
         FeatureValueOut: {
+            /**
+             * Enum
+             * @description Enums group with the labels of a category's codes.
+             */
+            enum: string | null;
             /** Feature */
             feature: string;
             /**
@@ -859,8 +869,19 @@ export type components = {
              * @enum {string}
              */
             group: "subscription" | "activity" | "reading" | "frustration" | "profile";
+            /**
+             * Kind
+             * @description `number`, `flag` (true/false) or `category` (a code).
+             * @enum {string}
+             */
+            kind: "number" | "flag" | "category";
             /** Typical */
             typical: boolean | number | string | null;
+            /**
+             * Unit
+             * @description Unit of a number; null for a unitless number.
+             */
+            unit: ("count" | "ratio" | "UAH" | "minutes" | "days" | "rating") | null;
             /** Value */
             value: boolean | number | string | null;
         };
@@ -1121,15 +1142,31 @@ export type components = {
              */
             effect: number;
             /**
+             * Enum
+             * @description Enums group with the labels of a category's codes.
+             */
+            enum: string | null;
+            /**
              * Feature
              * @description Feature key; label in enums `churn_feature`.
              */
             feature: string;
             /**
+             * Kind
+             * @description `number`, `flag` (true/false) or `category` (a code).
+             * @enum {string}
+             */
+            kind: "number" | "flag" | "category";
+            /**
              * Typical
              * @description The typical value among members.
              */
             typical: boolean | number | string | null;
+            /**
+             * Unit
+             * @description Unit of a number; null for a unitless number.
+             */
+            unit: ("count" | "ratio" | "UAH" | "minutes" | "days" | "rating") | null;
             /**
              * Value
              * @description The member's value.

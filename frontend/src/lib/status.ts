@@ -9,6 +9,11 @@ export function isImporting(dataset: Dataset | undefined): boolean {
   return dataset !== undefined && IMPORTING.has(dataset.status)
 }
 
+/** Whether churn can be predicted on the dataset: it has subscriptions and a campaign. */
+export function supportsRetention(dataset: Pick<Dataset, "capabilities">): boolean {
+  return dataset.capabilities.includes("retention")
+}
+
 export function isFinished(job: Job | undefined): boolean {
   return job !== undefined && FINISHED.has(job.status)
 }

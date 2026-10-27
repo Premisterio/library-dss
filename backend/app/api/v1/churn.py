@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from app.api.deps import CurrentAnalyst
 from app.api.schemas import JobOut, JobStatus, Page, TaskError, Text
 from app.core.db import SessionDep
-from app.domain.churn.features import FEATURES, FeatureGroup
+from app.domain.analytics.model import Unit
+from app.domain.churn.features import FEATURES, FeatureGroup, FeatureKind
 from app.domain.churn.models import ModelKey
 from app.models import ChurnRun, ChurnScore
 from app.services import churn, datasets
@@ -26,6 +27,7 @@ class ChurnSummaryOut(BaseModel):
     cutoffs: int = Field(description="Rolling cutoffs with labelled renewals.")
     churn_rate: float = Field(description="Share of those renewals that ended in churn (0..1).")
     scored: int = Field(description="Members at risk at as_of, scored by the chosen model.")
+    expected_churners: float = Field(description="Sum of their probabilities of churn.")
 
 
 class ChurnRunOut(BaseModel):
@@ -113,7 +115,15 @@ class ChurnRunAccepted(BaseModel):
     job: JobOut
 
 
-class ReasonOut(BaseModel):
+class Described(BaseModel):
+    """How to show a feature's values."""
+
+    kind: FeatureKind = Field(description="`number`, `flag` (true/false) or `category` (a code).")
+    unit: Unit | None = Field(description="Unit of a number; null for a unitless number.")
+    enum: str | None = Field(description="Enums group with the labels of a category's codes.")
+
+
+class ReasonOut(Described):
     """Why the probability is high: with the typical value it would be `effect` lower."""
 
     feature: str = Field(description="Feature key; label in enums `churn_feature`.")
@@ -131,7 +141,7 @@ class ChurnScoreOut(BaseModel):
     reasons: list[ReasonOut] = Field(description="Up to three, strongest first.")
 
 
-class FeatureValueOut(BaseModel):
+class FeatureValueOut(Described):
     feature: str
     group: FeatureGroup = Field(description="Label in enums `churn_feature_group`.")
     value: FeatureValue
@@ -162,6 +172,14 @@ def _run(run: ChurnRun) -> dict[str, Any]:
     }
 
 
+SPEC = {feature.key: feature for feature in FEATURES}
+
+
+def _described(key: str) -> dict[str, Any]:
+    feature = SPEC[key]
+    return {"kind": feature.kind, "unit": feature.unit, "enum": feature.enum}
+
+
 def _score(found: ChurnScore) -> dict[str, Any]:
     return {
         "user_id": found.user_id,
@@ -169,7 +187,7 @@ def _score(found: ChurnScore) -> dict[str, Any]:
         "probability": found.probability,
         "plan": found.plan,
         "period_end": found.period_end,
-        "reasons": found.reasons,
+        "reasons": [{**reason, **_described(reason["feature"])} for reason in found.reasons],
     }
 
 
@@ -282,6 +300,7 @@ def get_churn_score(
         {
             "feature": feature.key,
             "group": feature.group,
+            **_described(feature.key),
             "value": found.features.get(feature.key),
             "typical": typical.get(feature.key),
         }
