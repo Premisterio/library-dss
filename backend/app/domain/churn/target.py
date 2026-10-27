@@ -4,7 +4,6 @@ A cutoff is the end of a local day, a `Context`: the moment a prediction is made
 """
 
 from datetime import date, datetime, timedelta
-from typing import Literal
 
 import polars as pl
 
@@ -13,7 +12,6 @@ from app.domain.analytics.subscriptions import RENEWAL_OUTCOMES, active_at, paid
 from app.utils.dates import end_of_day_utc
 
 RISK_WINDOW_DAYS = 30
-Role = Literal["train", "calibration", "test"]
 
 
 def horizon_end(cutoff: Context) -> datetime:
@@ -61,8 +59,3 @@ def history_cutoffs(frames: Frames, as_of: date, timezone: str) -> list[Context]
             break
         cutoffs.append(cutoff)
     return cutoffs
-
-
-def role(k: int) -> Role:
-    """What cutoff k is for: the newest tests, the one before calibrates, older ones train."""
-    return "test" if k == 0 else "calibration" if k == 1 else "train"

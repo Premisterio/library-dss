@@ -22,7 +22,7 @@ from polars.testing import assert_frame_equal
 from app.domain.analytics.common import Context, Frames
 from app.domain.churn import EXAMPLES_SCHEMA, examples
 from app.domain.churn.features import FEATURES, SCHEMA, build_features
-from app.domain.churn.target import at_risk, history_cutoffs, horizon_end, labels, role
+from app.domain.churn.target import at_risk, history_cutoffs, horizon_end, labels
 from app.domain.enums import ENUMS
 from app.ingest import reader
 from app.ingest.frames import ParsedDataset
@@ -205,7 +205,6 @@ def test_history_cutoffs_tile_the_past(churn: ParsedDataset) -> None:
     ]
     assert horizon_end(cutoffs[0]) == end_of_day_utc(churn.as_of, churn.timezone)
     assert all(horizon_end(older) == newer.end for newer, older in itertools.pairwise(cutoffs))
-    assert [role(k) for k in range(4)] == ["test", "calibration", "train", "train"]
 
 
 def test_examples_of_every_cutoff(churn: ParsedDataset) -> None:
