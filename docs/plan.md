@@ -15,18 +15,18 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 
 ## Progress
 
-| Milestone | Scope                                                                                    | Status             |
-| --------- | ---------------------------------------------------------------------------------------- | ------------------ |
-| M0        | Repository, tooling, dev compose, CI                                                     | done               |
-| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done               |
-| M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8)   |
-| M3        | Thin frontend on shadcn, run locally                                                     | done               |
-| M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16) |
-| M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | **next**           |
-| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                  |
-| M6        | Thesis experiment harness                                                                | —                  |
-| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                  |
-| M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                  |
+| Milestone | Scope                                                                                    | Status              |
+| --------- | ---------------------------------------------------------------------------------------- | ------------------- |
+| M0        | Repository, tooling, dev compose, CI                                                     | done                |
+| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done                |
+| M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8)    |
+| M3        | Thin frontend on shadcn, run locally                                                     | done                |
+| M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16)  |
+| M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | in review (#17–#20) |
+| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                   |
+| M6        | Thesis experiment harness                                                                | —                   |
+| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                   |
+| M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                   |
 
 If time runs short, cut in this order: `libsim continue` → Monte Carlo sensitivity → T-learner → the "more copies" content preset.
 
@@ -130,7 +130,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Progress.**
   - Done: the effects of actions and the optimal plan (`domain/retention`, PR #17).
   - Done: effects kept with each churn run, a synchronous plan preview, and approval as a report (PR #18).
-  - Next: the UI.
+  - Done: the UI, a "План" view in "Відтік" with approval, and decisions marked in the reports list (PR #20).
 - **Scope, trimmed after a review for over-engineering (2026-10-27).**
   - **Effects.** Each arm's effect comes with Newcombe intervals. E-mail is compared among consenting members. Three activity segments are shrunk toward the overall effect; there is a cautious bound and the analyst's assumptions as a fallback.
     - Kept with the churn run, so no new job or table.

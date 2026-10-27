@@ -41,6 +41,8 @@ export function chooseView(chart: Chart): ChartView {
   const downCount = Math.max(...counts)
   if (acrossCount > MAX_PIVOT_COLUMNS || downCount > MAX_PIVOT_ROWS) return { type: "table" }
   const preferred = chart.measures.find((m) => m.unit === "ratio") ?? measure
+  // The colour ramp starts at zero, so negative values (changes, effects) would read as small.
+  if (chart.rows.some((row) => (numberOf(row[preferred.key]) ?? 0) < 0)) return { type: "table" }
   return { type: "heatmap", down, across, measure: preferred }
 }
 

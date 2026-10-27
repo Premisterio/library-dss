@@ -313,6 +313,7 @@ ENUMS: dict[str, dict[str, str]] = {
     # Retention decisions.
     "retention_action": {"email": "E-mail", "discount": "Знижка"},
     "retention_segment": {
+        "all": "Усі сегменти",
         "dormant": "Сплячі (не читали 30+ днів)",
         "declining": "Згасають (читають менше)",
         "steady": "Стабільні",
