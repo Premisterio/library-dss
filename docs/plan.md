@@ -161,7 +161,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Alternatives.** 60 candidate titles offered by a distributor.
 - **Criteria.**
   - They are computed at import as an analytics section `candidates`, stored like the others and rebuilt by `dss refresh-analytics`.
-  - Each one is first measured against libsim's true demand. Only the criteria that carry signal are kept, about five instead of seven, which leaves 10 AHP comparisons instead of 21.
+  - Each one is first measured against libsim's true demand. Only the criteria that carry signal are kept: four of seven, which leaves 6 AHP comparisons instead of 21.
   - The candidate list is about 90 days of zero-result search demand, genre momentum and scarcity, author interest, expected quality and licence cost.
   - Cost is counted once: by the portfolio's budget, or as a criterion, not both.
 - **AHP.** Weights from the eigenvector, with the consistency ratio CR. Approval is blocked when CR > 0.10, and the three most inconsistent judgements are named.
