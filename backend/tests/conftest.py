@@ -13,6 +13,8 @@ os.environ.setdefault("COOKIE_SECURE", "false")  # TestClient talks plain HTTP
 import copy
 from functools import cache
 
+import orjson
+import polars as pl
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -32,6 +34,7 @@ from app.services import auth
 from app.worker import runner
 
 if TYPE_CHECKING:
+    from app.domain.churn.training import Training
     from libsim.engine import Result
 
 PASSWORD = "correct horse battery"
@@ -177,6 +180,28 @@ def tabular_truth() -> dict[str, Any]:
     from libsim import writer
 
     return writer.build_ground_truth(_simulation())
+
+
+@pytest.fixture(scope="session")
+def demo_simulation() -> tuple[ParsedDataset, dict[str, Any], pl.DataFrame]:
+    """The libsim demo (5k members, 24 months, seed 1) for slow tests: the parsed dataset, its
+    ground truth and the churn examples of every cutoff. Shared, so never modify it."""
+    from app.domain.churn import examples
+    from libsim import engine, writer
+    from libsim.params import preset
+
+    result = engine.simulate(preset("demo", seed=1))
+    parsed = reader.parse(reader.decode(orjson.dumps(writer.build_dataset(result))))
+    rows = examples(parsed.frames, parsed.as_of, parsed.timezone)
+    return parsed, writer.build_ground_truth(result), rows
+
+
+@pytest.fixture(scope="session")
+def demo_training(demo_simulation: tuple[ParsedDataset, dict[str, Any], pl.DataFrame]) -> Training:
+    """The churn model trained on `demo_simulation`."""
+    from app.domain.churn.training import train
+
+    return train(demo_simulation[2])
 
 
 @pytest.fixture

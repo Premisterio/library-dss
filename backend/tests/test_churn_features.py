@@ -234,6 +234,7 @@ def test_every_feature_is_described() -> None:
     keys = [feature.key for feature in FEATURES]
     assert len(set(keys)) == len(keys)
     assert set(ENUMS["churn_feature"]) == set(keys)
+    assert {feature.group for feature in FEATURES} == set(ENUMS["churn_feature_group"])
     for feature in FEATURES:
         assert (feature.enum is not None) == (feature.kind == "category"), feature
         assert feature.enum is None or feature.enum in ENUMS, feature

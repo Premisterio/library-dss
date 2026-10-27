@@ -96,7 +96,9 @@ def logistic() -> Any:
     """Counts and durations on a log scale; missing values imputed with an indicator."""
     return make_pipeline(
         ColumnTransformer(
-            [("log", FunctionTransformer(np.log1p), SKEWED)], remainder="passthrough"
+            [("log", FunctionTransformer(np.log1p, feature_names_out="one-to-one"), SKEWED)],
+            remainder="passthrough",
+            verbose_feature_names_out=False,
         ),
         SimpleImputer(strategy="median", add_indicator=True, keep_empty_features=True),
         StandardScaler(),

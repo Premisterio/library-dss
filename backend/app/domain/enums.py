@@ -250,4 +250,11 @@ ENUMS: dict[str, dict[str, str]] = {
         "language_pref": "Мова читання",
         "email_opt_in": "Згода на e-mail",
     },
+    "churn_feature_group": {
+        "subscription": "Підписка",
+        "activity": "Активність",
+        "reading": "Прочитане",
+        "frustration": "Невдачі в бібліотеці",
+        "profile": "Профіль",
+    },
 }

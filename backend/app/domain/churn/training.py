@@ -5,6 +5,14 @@ from dataclasses import dataclass
 import numpy as np
 import polars as pl
 
+from app.domain.churn.explain import (
+    Coefficient,
+    Importance,
+    Value,
+    coefficients,
+    permutation_importance,
+    typical_values,
+)
 from app.domain.churn.metrics import Metrics, evaluate
 from app.domain.churn.models import MODELS, Model, ModelKey, outcomes
 
@@ -44,6 +52,9 @@ class Training:
     evaluations: list[Evaluation]  # every model at every usable backtest origin
     chosen: ModelKey
     model: Model  # the chosen model refitted on every cutoff, for scoring
+    importance: list[Importance]  # of the chosen model trained for origin 0, on its test rows
+    coefficients: list[Coefficient]  # of `model`, when it is logistic regression
+    typical: dict[str, Value]  # the typical feature values of every cutoff, for reasons
 
     def mean(self, model: ModelKey, metric: str) -> float:
         """A metric of a model averaged over the backtest origins."""
@@ -71,7 +82,7 @@ def backtest(rows: pl.DataFrame, origins: int = BACKTEST_ORIGINS) -> list[Evalua
 
 def train(rows: pl.DataFrame, origins: int = BACKTEST_ORIGINS) -> Training:
     """Choose the learned model with the lowest mean Brier score over the backtest (then the
-    lowest mean ECE) and refit it on every cutoff."""
+    lowest mean ECE), refit it on every cutoff and explain it."""
     evaluations = backtest(rows, origins)
 
     def score(key: ModelKey) -> tuple[float, float]:
@@ -79,7 +90,17 @@ def train(rows: pl.DataFrame, origins: int = BACKTEST_ORIGINS) -> Training:
         return float(np.mean([m.brier for m in mine])), float(np.mean([m.ece for m in mine]))
 
     chosen = min(LEARNED, key=score)
-    return Training(evaluations, chosen, MODELS[chosen]().fit(rows))
+    newest = Split.at(rows, 0)
+    tested = MODELS[chosen]().fit(newest.train)
+    model = MODELS[chosen]().fit(rows)
+    return Training(
+        evaluations,
+        chosen,
+        model,
+        importance=permutation_importance(tested, newest.test),
+        coefficients=coefficients(model),
+        typical=typical_values(rows),
+    )
 
 
 def _both_outcomes(rows: pl.DataFrame) -> bool:

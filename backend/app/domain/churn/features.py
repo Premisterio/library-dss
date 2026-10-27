@@ -13,12 +13,14 @@ from app.domain.analytics.model import Unit
 from app.domain.analytics.subscriptions import paid_periods
 from app.domain.churn.target import at_risk
 
+FeatureGroup = Literal["subscription", "activity", "reading", "frustration", "profile"]
 FeatureKind = Literal["number", "flag", "category"]
 
 
 @dataclass(frozen=True)
 class Feature:
     key: str  # column of the features frame, label in enums "churn_feature"
+    group: FeatureGroup  # label in enums "churn_feature_group"
     kind: FeatureKind
     unit: Unit | None = None  # numbers only; None: a unitless number
     enum: str | None = None  # categories: the enums group of their codes
@@ -26,37 +28,32 @@ class Feature:
 
 
 FEATURES: tuple[Feature, ...] = (
-    # the running paid period
-    Feature("plan", "category", enum="plan"),
-    Feature("monthly_price", "number", "UAH"),
-    Feature("discount", "number", "ratio", missing=True),
-    Feature("tenure_days", "number", "days"),
-    Feature("days_to_renewal", "number", "days"),
-    # activity
-    Feature("sessions_7d", "number", "count"),
-    Feature("sessions_30d", "number", "count"),
-    Feature("reading_minutes_30d", "number", "minutes"),
-    Feature("sessions_trend", "number"),
-    Feature("days_since_last_session", "number", "days", missing=True),
-    Feature("inactive_14d", "flag"),
-    Feature("active_days_30d", "number", "count"),
-    Feature("loans_30d", "number", "count"),
-    Feature("open_loans", "number", "count"),
-    Feature("searches_30d", "number", "count"),
-    # what the member read
-    Feature("completed_90d", "number", "count"),
-    Feature("completion_rate_90d", "number", "ratio", missing=True),
-    Feature("avg_rating_90d", "number", "rating", missing=True),
-    Feature("low_ratings_90d", "number", "count"),
-    # frustrations
-    Feature("lapsed_holds_30d", "number", "count"),
-    Feature("open_holds", "number", "count"),
-    Feature("zero_result_searches_30d", "number", "count"),
-    # profile
-    Feature("age_range", "category", enum="age_range", missing=True),
-    Feature("education", "category", enum="education", missing=True),
-    Feature("language_pref", "category", enum="language_pref", missing=True),
-    Feature("email_opt_in", "flag", missing=True),
+    Feature("plan", "subscription", "category", enum="plan"),
+    Feature("monthly_price", "subscription", "number", "UAH"),
+    Feature("discount", "subscription", "number", "ratio", missing=True),
+    Feature("tenure_days", "subscription", "number", "days"),
+    Feature("days_to_renewal", "subscription", "number", "days"),
+    Feature("sessions_7d", "activity", "number", "count"),
+    Feature("sessions_30d", "activity", "number", "count"),
+    Feature("reading_minutes_30d", "activity", "number", "minutes"),
+    Feature("sessions_trend", "activity", "number"),
+    Feature("days_since_last_session", "activity", "number", "days", missing=True),
+    Feature("inactive_14d", "activity", "flag"),
+    Feature("active_days_30d", "activity", "number", "count"),
+    Feature("loans_30d", "activity", "number", "count"),
+    Feature("open_loans", "activity", "number", "count"),
+    Feature("searches_30d", "activity", "number", "count"),
+    Feature("completed_90d", "reading", "number", "count"),
+    Feature("completion_rate_90d", "reading", "number", "ratio", missing=True),
+    Feature("avg_rating_90d", "reading", "number", "rating", missing=True),
+    Feature("low_ratings_90d", "reading", "number", "count"),
+    Feature("lapsed_holds_30d", "frustration", "number", "count"),
+    Feature("open_holds", "frustration", "number", "count"),
+    Feature("zero_result_searches_30d", "frustration", "number", "count"),
+    Feature("age_range", "profile", "category", enum="age_range", missing=True),
+    Feature("education", "profile", "category", enum="education", missing=True),
+    Feature("language_pref", "profile", "category", enum="language_pref", missing=True),
+    Feature("email_opt_in", "profile", "flag", missing=True),
 )
 DTYPES = {"number": pl.Float64, "flag": pl.Boolean, "category": pl.String}
 SCHEMA: dict[str, pl.DataType] = {

@@ -229,7 +229,7 @@ There are two file formats, detected by content:
     - Profile fields (age, education, language, e-mail opt-in) are fixed, because the format stores one value per member.
     - A rating is known when the loan is returned.
   - A property test (Hypothesis) rewrites the history after random cutoffs of a simulated dataset: it drops, moves and invents later rows and redraws everything that resolves later. No feature may change.
-- **Features.** There are 26. Their keys, kinds and units are in `FEATURES`, and their Ukrainian labels are in enums `churn_feature`.
+- **Features.** There are 26, in five groups. Their keys, groups, kinds and units are in `FEATURES`. Their Ukrainian labels are in enums `churn_feature`, and the group labels in `churn_feature_group`.
 
   | Group                               | Features                                                                                                                                                                                                                                                                            |
   | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -259,6 +259,22 @@ There are two file formats, detected by content:
   - Every model is trained and tested at origins k = 0…5. Origins without both churn and renewal in their training or test rows are skipped, but origin 0 must be usable (`NotEnoughHistoryError`).
   - The chosen model is the learned one with the lowest mean Brier score over the origins, with mean ECE breaking ties. The choice uses probabilities rather than ranking, because the action plan works with probabilities.
   - The chosen model is then refitted on every cutoff and scores the risk group at as_of.
+- **Explanations** (`explain.py`). They are computed when a model is trained and kept with it.
+  - **Importance** of every feature for the chosen model.
+    - It is measured on the test cutoff of origin 0, with the model trained on the older cutoffs, so the rows are ones the model has not seen.
+    - It is the mean increase of the Brier score over 5 shuffles of the feature. A category is shuffled as a whole.
+  - **Coefficients** of logistic regression, on the standardized scale. There is one per number or flag, one per category code, and one per missing-value indicator. Boosting has none.
+  - **Typical values** are taken over every labelled row: the median of each number, and the most common flag or category. A tie goes to the first value in sort order.
+  - **Reasons per member.**
+    - For each feature, the member's probability is recomputed with that feature at its typical value. The reasons are the features whose typical value would lower the probability most.
+    - Limits:
+      - at most three reasons;
+      - each lowers the probability by at least 0.1 percentage points;
+      - at most one per group, so that three ways of saying "reads little" do not crowd out the rest.
+    - Profile features are never reasons: they describe who a member is, not why they might leave.
+    - A missing value counts as a value, so "no ratings in 90 days" can be a reason.
+  - **Shape of a reason.** A reason is structured: `feature`, the member's `value`, the `typical` value and the `effect`. Clients write the sentence from the enums labels, as they do with KPIs, so the API formats no numbers. For example: "Прострочені бронювання за 30 днів: 2 (типово 0)".
+  - **Demo example (seed 1).** The most important features are the plan, lapsed holds and tenure. The riskiest member is explained by an annual plan (+19 percentage points), 2 lapsed holds (+11) and 1 active day in 30 (+3).
 - **Quality on libsim.** The chosen model scores the members at risk at as_of, and the result is compared with the ground truth (5k members, 24 months; the best achievable AUC comes from the true probabilities):
 
   | Data                  | Best achievable AUC | AUC gap of the chosen model | Brier: chosen / inactivity rule |
@@ -278,7 +294,7 @@ There are two file formats, detected by content:
 - **Tests.**
   - Exact values are checked on `churn_document`, which plants an event at every boundary: at the cutoff, resolved after it, starting after it.
   - On the simulated dataset, the risk group at as_of is checked against libsim's ground truth: the members it renews in the next 30 days.
-  - Metrics are checked against values worked out by hand.
+  - Metrics are checked against values worked out by hand. Reasons, typical values and importance are checked by hand with a stub model whose effects are known.
   - A slow test trains on the demo (seed 1) and checks the done criteria against the ground truth: AUC within 0.05 of the best achievable, and a better Brier score than the rule.
   - On the 5k-member demo, the examples of all 24 cutoffs take under 1 s.
 

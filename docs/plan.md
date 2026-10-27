@@ -106,7 +106,8 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - Done: the models, metrics, the backtest and the choice of a model.
     - On four demo seeds the chosen model's AUC is 0.033–0.070 below the best achievable, 0.049 on average.
     - It beats the inactivity rule on the Brier score on every dataset tried.
-  - Next: explanations, then the API and the UI.
+  - Done: explanations. These are permutation importance, logistic coefficients, and up to three reasons per member from "what if this feature were typical", one per group and never the profile.
+  - Next: the API, the job and the CLI, then the UI.
 - **Target.** Paying members whose period ends in the next 30 days. The label is whether that period ended in churn.
 - **No leakage.**
   - Rolling cutoffs: test on k = 0 and train on every older cutoff. A backtest repeats this at six origins.
