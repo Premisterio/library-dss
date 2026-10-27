@@ -310,7 +310,7 @@ def test_candidate_criteria_track_true_demand(
     demo_simulation: tuple[Any, dict[str, Any], pl.DataFrame],
 ) -> None:
     """Every criterion leans toward the titles libsim's members will actually ask for in the
-    next 30 days, and the searches strongly so (DESIGN.md §2.10 measures it on more seeds)."""
+    next 30 days, and the searches strongly so (DESIGN.md §2.9 measures it on more seeds)."""
     from scipy.stats import spearmanr
 
     parsed, truth, _ = demo_simulation
