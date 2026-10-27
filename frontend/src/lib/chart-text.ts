@@ -13,6 +13,7 @@ export function dimensionText(dimension: Dimension, value: Cell | undefined, lab
   }
   if (dimension.enum) return label(dimension.enum, value)
   if (dimension.key === "hour") return formatHour(String(value))
+  if (dimension.key === "budget") return formatValue(numberOf(value), "UAH")
   return String(value)
 }
 

@@ -1010,6 +1010,10 @@
     ],
     "retention_segment": [
       {
+        "code": "all",
+        "label": "Усі сегменти"
+      },
+      {
         "code": "dormant",
         "label": "Сплячі (не читали 30+ днів)"
       },

@@ -61,8 +61,10 @@ def test_the_preview_is_a_plan_within_the_budget(
     assert {(row["action"], row["segment"]) for row in effects} == {
         (action, segment)
         for action in ENUMS["retention_action"]
-        for segment in ENUMS["retention_segment"]
+        for segment in ENUMS["retention_segment"]  # "all": the overall effect plans use
     }
+    overall = [row for row in effects if row["segment"] == "all"]
+    assert all(row["effect_shrunk"] == row["effect"] for row in overall)
 
 
 def test_cautious_and_assumed_effects(

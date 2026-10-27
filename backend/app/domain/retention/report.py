@@ -10,6 +10,8 @@ from app.domain.retention.plan import Plan, Scenario
 
 ACTION = Dimension("action", "category", enum="retention_action", order=ACTIONS)
 SEGMENT = Dimension("segment", "category", enum="retention_segment", order=SEGMENTS)
+ALL = "all"  # the segment code of an action's overall effect, the one plans use by default
+EFFECT_SEGMENT = Dimension("segment", "category", enum="retention_segment", order=(ALL, *SEGMENTS))
 ASSUMED = Note(
     "retention.assumed_effects",
     "Ефекти дій задав аналітик, а не оцінено з кампанії.",
@@ -74,7 +76,7 @@ def plan_section(
             ),
             Chart(
                 "action_effects",
-                (ACTION, SEGMENT),
+                (ACTION, EFFECT_SEGMENT),
                 (
                     Measure("effect_shrunk", "ratio"),
                     Measure("effect", "ratio"),
@@ -87,7 +89,7 @@ def plan_section(
                 [
                     {
                         "action": e.action,
-                        "segment": e.segment,
+                        "segment": e.segment or ALL,
                         "effect_shrunk": e.shrunk,
                         "effect": e.difference,
                         "effect_low": e.low,
@@ -97,7 +99,6 @@ def plan_section(
                         "control": e.control,
                     }
                     for e in effects
-                    if e.segment is not None
                 ],
             ),
             Chart(

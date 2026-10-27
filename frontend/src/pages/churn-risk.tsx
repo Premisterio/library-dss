@@ -1,20 +1,16 @@
-import { UsersRoundIcon } from "lucide-react"
 import { useState } from "react"
-import { Link } from "react-router"
 
 import { SCORES_PAGE_SIZE, useActiveChurnRun, useChurnScore, useChurnScores } from "@/api/churn"
 import type { ChurnRun } from "@/api/types"
-import { paths } from "@/app/paths"
 import { ChurnNav } from "@/components/churn/churn-nav"
 import { MemberCard } from "@/components/churn/member-card"
+import { NoActiveRun } from "@/components/churn/no-active-run"
 import { NoRetention } from "@/components/churn/no-retention"
 import { RiskTable } from "@/components/churn/risk-table"
 import { RiskTiles } from "@/components/churn/risk-tiles"
-import { EmptyState } from "@/components/common/empty-state"
 import { Pager } from "@/components/common/pager"
 import { PanelCard } from "@/components/common/panel-card"
 import { QueryView } from "@/components/common/query-view"
-import { Button } from "@/components/ui/button"
 import {
   Sheet,
   SheetContent,
@@ -80,15 +76,7 @@ export function ChurnRiskPage() {
             run ? (
               <RiskGroup key={run.id} run={run} timezone={dataset.timezone} />
             ) : (
-              <EmptyState
-                icon={UsersRoundIcon}
-                title="Немає активної моделі"
-                description="Навчіть модель відтоку й активуйте її: тоді тут з'являться читачі з найвищим ризиком і причини."
-              >
-                <Button asChild>
-                  <Link to={paths.churnModel(dataset.id)}>До моделі</Link>
-                </Button>
-              </EmptyState>
+              <NoActiveRun datasetId={dataset.id} />
             )
           }
         </QueryView>

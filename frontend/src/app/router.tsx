@@ -91,6 +91,13 @@ const router = createBrowserRouter([
                   Component: (await import("@/pages/churn-risk")).ChurnRiskPage,
                 }),
               },
+              {
+                path: "churn/plan",
+                handle: title("Відтік"),
+                lazy: async () => ({
+                  Component: (await import("@/pages/churn-plan")).ChurnPlanPage,
+                }),
+              },
             ],
           },
         ],
