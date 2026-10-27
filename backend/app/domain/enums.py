@@ -212,6 +212,7 @@ ENUMS: dict[str, dict[str, str]] = {
         "plan_value": "Очікуваний чистий виграш",
         "greedy_value": "Виграш жадібного плану",
         "expected_saved": "Очікувано утриманих читачів",
+        "offered_discount": "Знижка в плані",
         "effect_shrunk": "Ефект сегмента (уточнений)",
         "effect": "Ефект у сегменті",
         "effect_low": "Нижня межа 95%",

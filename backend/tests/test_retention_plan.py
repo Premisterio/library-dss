@@ -2,6 +2,7 @@
 table and the speed on a realistic risk group (DESIGN.md §2.9)."""
 
 import itertools
+import math
 import time
 from typing import Any
 
@@ -14,6 +15,7 @@ from app.domain.retention.effects import ACTIONS, SEGMENTS, Effect
 from app.domain.retention.plan import (
     EffectTable,
     Scenario,
+    capped,
     curve,
     effect_table,
     greedy,
@@ -107,40 +109,51 @@ def test_harmful_actions_are_never_taken() -> None:
 
 
 def test_members_from_scores() -> None:
+    """A kept member is worth the list price per month: the renewal's over the plan's months,
+    or, without it, what they pay undone by their discount."""
     scored = pl.DataFrame(
         {
-            "user_id": ["u1", "u2"],
-            "probability": [0.2, 0.1],
-            "period_price": [1290.0, None],
-            "days_since_last_session": [40.0, 1.0],
-            "sessions_trend": [0.0, 0.5],
-            "email_opt_in": [True, None],
-            "discount": [0.2, 0.0],
-            "monthly_price": [80.0, 149.0],
+            "user_id": ["u1", "u2", "u3"],
+            "probability": [0.2, 0.1, 0.3],
+            "plan": ["annual", "monthly", "monthly"],
+            "period_price": [1290.0, None, 149.0],
+            "days_since_last_session": [40.0, 1.0, 2.0],
+            "sessions_trend": [0.0, 0.5, -0.5],
+            "email_opt_in": [True, None, True],
+            "discount": [0.2, 0.0, 1.0],
+            "monthly_price": [86.0, 149.0, 0.0],
         }
     )
     assert members(scored).rows() == [
-        ("u1", 0.2, "dormant", True, True, pytest.approx(100.0), 1290.0),
+        ("u1", 0.2, "dormant", True, True, pytest.approx(107.5), 1290.0),
         ("u2", 0.1, "steady", None, False, 149.0, None),
+        # Regression: a free running period made the member worth nothing to keep.
+        ("u3", 0.3, "declining", True, True, 149.0, 149.0),
     ]
 
 
 def test_effect_table() -> None:
-    def effect(action: Any, segment: Any, shrunk: float, cautious: float) -> Effect:
-        return Effect(action, segment, 100, 100, 5, 10, shrunk, None, None, shrunk, cautious)
+    def effect(
+        action: Any, segment: Any, shrunk: float, cautious: float, control: int = 10
+    ) -> Effect:
+        return Effect(action, segment, 100, 100, 5, control, shrunk, None, None, shrunk, cautious)
 
     effects = [
         effect("discount", None, -0.03, 0.01),
         effect("discount", "steady", -0.04, -0.01),
+        effect("discount", "dormant", -0.06, -0.02, control=30),
         effect("email", "steady", -0.02, 0.005),
     ]
-    # Shifts are taken at the control group's churn rate: 10 of 100.
+    # The arm's overall effect shifts at its control rate, 10 of 100, in every segment.
     overall = effect_table(effects, scenario(100), base_rate=0.5)
-    assert overall["discount", "steady"] == pytest.approx(shift(0.1, -0.03))  # the arm's
-    assert overall["discount", "dormant"] == 0.0  # no segment row: no effect
-    assert overall["email", "steady"] == pytest.approx(shift(0.5, -0.02))  # no overall row
+    assert overall["discount", "steady"] == pytest.approx(shift(0.1, -0.03))
+    assert overall["discount", "dormant"] == pytest.approx(shift(0.1, -0.03))
+    assert overall["discount", "declining"] == 0.0  # no segment row: no effect
+    assert overall["email", "steady"] == pytest.approx(shift(0.1, -0.02))  # no overall row
+    # Regression: a segment's own effect shifted at the arm's rate, not the segment's (30%).
     found = effect_table(effects, scenario(100, by_segment=True), base_rate=0.5)
     assert found["discount", "steady"] == pytest.approx(shift(0.1, -0.04))
+    assert found["discount", "dormant"] == pytest.approx(shift(0.3, -0.06))
     assert found["email", "dormant"] == 0.0  # no estimate: no effect
     cautious = effect_table(effects, scenario(100, cautious=True), base_rate=0.5)
     assert cautious["discount", "steady"] == pytest.approx(shift(0.1, 0.01))
@@ -149,6 +162,18 @@ def test_effect_table() -> None:
     assumed = effect_table(effects, scenario(100, assumed={"email": -0.01}), base_rate=0.2)
     assert assumed["email", "dormant"] == pytest.approx(shift(0.2, -0.01))
     assert assumed["discount", "steady"] == 0.0
+
+
+def test_an_action_prevents_at_most_ninety_percent() -> None:
+    """Regression: an effect at least as large as the base rate (a treated arm without churns,
+    an assumption larger than the risk) clipped the rate to 1e-6, so the action removed churn
+    for everyone. It now prevents at most 90% at its base rate, and the plan says so."""
+    assert shift(0.148, -0.2) == pytest.approx(shift(0.148, -0.9 * 0.148))
+    assert shift(0.148, -0.2) > -3
+    assert shift(0.148, -0.1) == pytest.approx(math.log(0.048 / 0.952) - math.log(0.148 / 0.852))
+    big = scenario(100, assumed={"email": -0.01, "discount": -0.2})
+    assert capped([], big, base_rate=0.1) == ["discount"]
+    assert capped([], scenario(100, assumed={"email": -0.01}), base_rate=0.1) == []
 
 
 def random_problem(rng: np.random.Generator) -> tuple[pl.DataFrame, EffectTable, Scenario]:
@@ -201,7 +226,7 @@ def brute_force(choices: pl.DataFrame, scenario: Scenario) -> float:
 
 
 def test_milp_equals_brute_force_on_small_problems() -> None:
-    """Done criteria of M4b: the MILP finds the optimum, within its 0.01% gap (200 problems)."""
+    """Done criteria of M4b: the MILP finds the optimum, within its 0.5% gap (200 problems)."""
     rng = np.random.default_rng(7)
     for _ in range(200):
         people, effects, chosen_scenario = random_problem(rng)
@@ -222,6 +247,18 @@ def test_value_grows_with_the_budget() -> None:
     people, effects, chosen_scenario = random_problem(np.random.default_rng(3))
     values = [value for _, value in curve(people, effects, chosen_scenario)]
     assert values == sorted(values)
+
+
+def test_the_curve_runs_until_more_money_gains_nothing() -> None:
+    """Regression: the curve ended at the spend of every member's best action, ignoring the
+    per-action limits, so with e-mails capped it stopped long before it levelled off."""
+    people = group(*({"user_id": f"u{i}", "probability": 0.3} for i in range(100)))
+    limited = scenario(5000, max_emails=0)
+    points = curve(people, EFFECTS, limited)
+    best = plan(people, EFFECTS, limited)
+    assert best.chosen["action"].unique().to_list() == ["discount"]
+    assert points[-1][0] == pytest.approx(best.spend, rel=1e-6)
+    assert points[-1][1] >= best.value - 1e-6
 
 
 def test_a_plan_for_two_thousand_members_is_quick() -> None:
@@ -254,6 +291,30 @@ def test_a_plan_for_two_thousand_members_is_quick() -> None:
     assert (result.chosen["action"] == "email").sum() <= 500
     assert len(points) == 9
     assert elapsed < 2.0, elapsed  # about 0.6 s here; the margin keeps slow CI machines green
+
+
+@pytest.mark.parametrize(("seed", "budget", "max_emails"), [(0, 1000, 200), (2, 1000, None)])
+def test_hard_plans_stop_at_the_gap(seed: int, budget: float, max_emails: int | None) -> None:
+    """Regression: proving these 2k-member plans optimal to 0.01% took over a minute (seed 0)
+    and over six (seed 2); within the 0.5% gap they take about a second."""
+    rng = np.random.default_rng(seed)
+    n = 2000
+    people = pl.DataFrame(
+        {
+            "user_id": [f"u{i:05d}" for i in range(n)],
+            "probability": rng.beta(1.2, 12, n),
+            "segment": rng.choice(list(SEGMENTS), n),
+            "email_opt_in": rng.random(n) < 0.7,
+            "discounted": rng.random(n) < 0.05,
+            "monthly_value": rng.choice([79, 107.5, 149], n).astype(float),
+            "period_price": rng.choice([79.0, 149.0, 1290.0], n),
+        }
+    )
+    effects = table(email=shift(0.08, -0.02), discount=shift(0.08, -0.04))
+    started = time.perf_counter()
+    result = plan(people, effects, scenario(budget, max_emails=max_emails))
+    assert time.perf_counter() - started < 10
+    assert result.value >= result.greedy_value
 
 
 @pytest.mark.slow

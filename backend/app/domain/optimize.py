@@ -9,7 +9,11 @@ import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, milp
 from scipy.sparse import coo_array, vstack
 
-MIP_GAP = 1e-4  # HiGHS's default relative gap: optimal within 0.01%
+# Stop within 0.5% of the best possible gain. Proving 0.01% took minutes on some ordinary
+# 2k-member plans; 0.5% takes about a second, and stopping on the gap keeps results
+# deterministic (a time limit would not).
+MIP_GAP = 5e-3
+TIME_LIMIT = 20.0  # seconds; only a safety net, the best plan found by then is used
 
 
 @dataclass(frozen=True)
@@ -42,10 +46,16 @@ def choose(
         upper += [1.0] * (int(group.max()) + 1)
     result = milp(
         c=-gain,
-        constraints=LinearConstraint(vstack(rows), -np.inf, np.array(upper)) if rows else None,
+        constraints=LinearConstraint(
+            vstack(rows),
+            -np.inf,
+            np.array(upper),  # pyright: ignore[reportArgumentType]  (annotated float, takes arrays)
+        )
+        if rows
+        else None,
         integrality=np.full(n, 1 if integral else 0),
         bounds=Bounds(0, 1),
-        options={"mip_rel_gap": MIP_GAP},
+        options={"mip_rel_gap": MIP_GAP, "time_limit": TIME_LIMIT},
     )
     if result.x is None:
         raise RuntimeError(f"no choice could be made: {result.message}")
