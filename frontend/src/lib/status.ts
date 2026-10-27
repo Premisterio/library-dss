@@ -14,6 +14,11 @@ export function supportsRetention(dataset: Pick<Dataset, "capabilities">): boole
   return dataset.capabilities.includes("retention")
 }
 
+/** Whether the content decision applies: the dataset has a distributor's offer and searches. */
+export function supportsContent(dataset: Pick<Dataset, "capabilities">): boolean {
+  return dataset.capabilities.includes("content")
+}
+
 export function isFinished(job: Job | undefined): boolean {
   return job !== undefined && FINISHED.has(job.status)
 }
