@@ -12,4 +12,9 @@ export const keys = {
   reports: ["reports"] as const,
   reportList: (datasetId: number) => ["reports", "list", datasetId] as const,
   job: (id: string) => ["jobs", id] as const,
+  churn: ["churn"] as const,
+  churnRuns: (datasetId: number) => ["churn", "runs", datasetId] as const,
+  churnRun: (id: number) => ["churn", "run", id] as const,
+  churnScores: (runId: number, offset: number) => ["churn", "scores", runId, offset] as const,
+  churnScore: (runId: number, userId: string) => ["churn", "score", runId, userId] as const,
 }

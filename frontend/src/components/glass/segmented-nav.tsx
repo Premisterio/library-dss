@@ -12,7 +12,7 @@ export function SegmentedNav({
   items,
 }: {
   label: string
-  items: { to: string; label: string }[]
+  items: { to: string; label: string; end?: boolean }[]
 }) {
   return (
     <nav aria-label={label} className="max-w-full">
@@ -21,6 +21,7 @@ export function SegmentedNav({
           <li key={item.to}>
             <NavLink
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 cn(
                   "flex h-8 items-center rounded-full px-3 text-[13px] whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",

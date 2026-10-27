@@ -2,7 +2,7 @@ import type { TaskError } from "@/api/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { messageFor } from "@/lib/messages"
 
-/** Why an import failed, with the individual problems found in the file. */
+/** Why a job failed, with the individual problems it found (in a file, say). */
 export function ProblemList({ error }: { error: TaskError }) {
   return (
     <Alert variant="destructive">

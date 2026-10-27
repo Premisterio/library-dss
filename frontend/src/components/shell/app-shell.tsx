@@ -4,6 +4,7 @@ import {
   FileTextIcon,
   LayoutDashboardIcon,
   LibraryIcon,
+  UserMinusIcon,
 } from "lucide-react"
 import { Link, Outlet } from "react-router"
 
@@ -63,6 +64,9 @@ function DatasetNav({ datasetId }: { datasetId: number | undefined }) {
             </NavItem>
             <NavItem to={paths.analytics(datasetId)} icon={BarChart3Icon}>
               Аналітика
+            </NavItem>
+            <NavItem to={paths.churnModel(datasetId)} icon={UserMinusIcon}>
+              Відтік
             </NavItem>
             <NavItem to={paths.reports(datasetId)} icon={FileTextIcon}>
               Звіти

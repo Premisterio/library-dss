@@ -81,6 +81,7 @@ def test_a_run_is_trained_explained_and_scored(
     assert run["chosen_model"] in {"logistic", "boosting"}
     assert run["active"] is False
     assert run["summary"]["scored"] > 0
+    assert 0 < run["summary"]["expected_churners"] < run["summary"]["scored"]
     assert [m["model"] for m in run["models"]] == ["inactivity_rule", "logistic", "boosting"]
     assert len(run["backtest"]) == 6 * 3
     assert len(run["importance"]) == len(FEATURES)
@@ -103,8 +104,15 @@ def test_a_run_is_trained_explained_and_scored(
         f"/api/v1/churn-runs/{run['id']}/scores/{top['user_id']}", headers=auth_headers
     ).json()
     assert detail["probability"] == top["probability"]
-    assert [f["feature"] for f in detail["features"]] == [f.key for f in FEATURES]
-    assert {f["group"] for f in detail["features"]} == {f.group for f in FEATURES}
+    assert [
+        (f["feature"], f["group"], f["kind"], f["unit"], f["enum"]) for f in detail["features"]
+    ] == [(f.key, f.group, f.kind, f.unit, f.enum) for f in FEATURES]
+    spec = {f.key: f for f in FEATURES}
+    for reason in (r for s in page["items"] for r in s["reasons"]):
+        assert (reason["kind"], reason["unit"]) == (
+            spec[reason["feature"]].kind,
+            spec[reason["feature"]].unit,
+        )
 
 
 def test_activation_keeps_one_run_per_dataset(

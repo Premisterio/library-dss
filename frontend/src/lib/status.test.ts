@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest"
 
 import type { LabelFn } from "@/lib/labels"
-import { stageText } from "@/lib/status"
+import { stageText, supportsRetention } from "@/lib/status"
 
 const LABELS: Record<string, Record<string, string>> = {
   job_stage: { load: "Запис у базу", parse: "Розбір файлу" },
   dataset_table: { loans: "Позичення" },
 }
 const label: LabelFn = (group, code) => LABELS[group]?.[String(code)] ?? String(code)
+
+describe("supportsRetention", () => {
+  it("needs the retention capability", () => {
+    expect(supportsRetention({ capabilities: ["descriptive", "retention"] })).toBe(true)
+    expect(supportsRetention({ capabilities: ["descriptive"] })).toBe(false)
+  })
+})
 
 describe("stageText", () => {
   it("names the stage and the table being loaded", () => {

@@ -625,6 +625,11 @@
             "title": "Examples",
             "type": "integer"
           },
+          "expected_churners": {
+            "description": "Sum of their probabilities of churn.",
+            "title": "Expected Churners",
+            "type": "number"
+          },
           "scored": {
             "description": "Members at risk at as_of, scored by the chosen model.",
             "title": "Scored",
@@ -635,7 +640,8 @@
           "examples",
           "cutoffs",
           "churn_rate",
-          "scored"
+          "scored",
+          "expected_churners"
         ],
         "title": "ChurnSummaryOut",
         "type": "object"
@@ -962,6 +968,18 @@
       },
       "FeatureValueOut": {
         "properties": {
+          "enum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Enums group with the labels of a category's codes.",
+            "title": "Enum"
+          },
           "feature": {
             "title": "Feature",
             "type": "string"
@@ -976,6 +994,16 @@
               "profile"
             ],
             "title": "Group",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`number`, `flag` (true/false) or `category` (a code).",
+            "enum": [
+              "number",
+              "flag",
+              "category"
+            ],
+            "title": "Kind",
             "type": "string"
           },
           "typical": {
@@ -994,6 +1022,26 @@
               }
             ],
             "title": "Typical"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "count",
+                  "ratio",
+                  "UAH",
+                  "minutes",
+                  "days",
+                  "rating"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Unit of a number; null for a unitless number.",
+            "title": "Unit"
           },
           "value": {
             "anyOf": [
@@ -1014,6 +1062,9 @@
           }
         },
         "required": [
+          "kind",
+          "unit",
+          "enum",
           "feature",
           "group",
           "value",
@@ -1612,9 +1663,31 @@
             "title": "Effect",
             "type": "number"
           },
+          "enum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Enums group with the labels of a category's codes.",
+            "title": "Enum"
+          },
           "feature": {
             "description": "Feature key; label in enums `churn_feature`.",
             "title": "Feature",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`number`, `flag` (true/false) or `category` (a code).",
+            "enum": [
+              "number",
+              "flag",
+              "category"
+            ],
+            "title": "Kind",
             "type": "string"
           },
           "typical": {
@@ -1634,6 +1707,26 @@
             ],
             "description": "The typical value among members.",
             "title": "Typical"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "count",
+                  "ratio",
+                  "UAH",
+                  "minutes",
+                  "days",
+                  "rating"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Unit of a number; null for a unitless number.",
+            "title": "Unit"
           },
           "value": {
             "anyOf": [
@@ -1655,6 +1748,9 @@
           }
         },
         "required": [
+          "kind",
+          "unit",
+          "enum",
           "feature",
           "value",
           "typical",

@@ -32,3 +32,18 @@ type ExportQuery = NonNullable<
   paths["/api/v1/reports/{report_id}/export"]["get"]["parameters"]["query"]
 >
 export type ExportFormat = NonNullable<ExportQuery["format"]>
+
+export type ChurnRun = Schemas["ChurnRunOut"]
+export type ChurnRunDetail = Schemas["ChurnRunDetailOut"]
+export type ChurnRunAccepted = Schemas["ChurnRunAccepted"]
+export type ChurnModel = NonNullable<ChurnRun["chosen_model"]>
+export type ModelSummary = Schemas["ModelSummaryOut"]
+export type Evaluation = Schemas["EvaluationOut"]
+export type CalibrationBin = Schemas["CalibrationBinOut"]
+export type Importance = Schemas["ImportanceOut"]
+export type ChurnScore = Schemas["ChurnScoreOut"]
+export type ChurnScoreDetail = Schemas["ChurnScoreDetailOut"]
+export type Reason = Schemas["ReasonOut"]
+export type FeatureValue = Schemas["FeatureValueOut"]
+/** How to show a feature's values: its kind, unit and the enums group of its codes. */
+export type Described = Pick<Reason, "kind" | "unit" | "enum">

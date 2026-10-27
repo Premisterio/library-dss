@@ -275,7 +275,7 @@ There are two file formats, detected by content:
       - at most one per group, so that three ways of saying "reads little" do not crowd out the rest.
     - Profile features are never reasons: they describe who a member is, not why they might leave.
     - A missing value counts as a value, so "no ratings in 90 days" can be a reason.
-  - **Shape of a reason.** A reason is structured: `feature`, the member's `value`, the `typical` value and the `effect`. Clients write the sentence from the enums labels, as they do with KPIs, so the API formats no numbers. For example: "Прострочені бронювання за 30 днів: 2 (типово 0)".
+  - **Shape of a reason.** A reason is structured: `feature`, the member's `value`, the `typical` value and the `effect`. The API adds how to show the values (`kind`, `unit`, `enum`), and so does every feature value of a member. Clients write the sentence from the enums labels, as they do with KPIs, so the API formats no numbers. For example: "Прострочені бронювання за 30 днів: 2 (типово 0)".
   - **Demo example (seed 1).** The most important features are the plan, lapsed holds and tenure. The riskiest member is explained by an annual plan (+19 percentage points), 2 lapsed holds (+11) and 1 active day in 30 (+3).
 - **Quality on libsim.** The chosen model scores the members at risk at as_of, and the result is compared with the ground truth (5k members, 24 months; the best achievable AUC comes from the true probabilities):
 
@@ -299,7 +299,7 @@ There are two file formats, detected by content:
   - The job parses the stored upload and builds the examples. It then backtests, chooses and explains a model, and scores the risk group at as_of. Its stages are `parse`, `features`, `backtest`, `scoring`.
   - Too little history fails the job with `churn.not_enough_history`; the dataset stays ready.
   - The run keeps the chosen model's key and a JSON result:
-    - the summary (examples, cutoffs, churn rate, members scored);
+    - the summary (examples, cutoffs, churn rate, members scored and the expected churners, the sum of their probabilities);
     - each model's metrics averaged over the backtest, and every evaluation with its calibration bins;
     - importance, coefficients and typical values.
   - The fitted model itself is not stored. Scores are computed once, the dataset never changes, and training again takes seconds.
@@ -400,12 +400,12 @@ There are two file formats, detected by content:
   - It renders and computes no metrics. When a field is missing, extend the backend.
   - Labels come from `meta/enums`. Errors are shown by their Problem `code` (`lib/messages.ts`); an unknown code falls back by status, so a raw code never reaches the user.
 - **Layers** (`frontend/src`). Data and logic stay out of the markup, so a redesign replaces only `components/` and `pages/`.
-  - `api/`: everything that talks to the server. That is the client and session, the query keys, and one hook module per resource (`datasets`, `analytics`, `reports`, `jobs`, `auth`, `enums`) holding its queries and mutations. Nothing else calls `api` or `fetch`.
-  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections. Each module has its tests next to it.
+  - `api/`: everything that talks to the server. That is the client and session, the query keys, and one hook module per resource (`datasets`, `analytics`, `reports`, `churn`, `jobs`, `auth`, `enums`) holding its queries and mutations. Nothing else calls `api` or `fetch`.
+  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections, and churn (which run to show, feature values and reasons as text, metric text). Each module has its tests next to it.
   - `app/`: the router, paths (`paths.*`, `parseId`), route titles and the query client.
-  - `components/common/`: content-layer building blocks with no data of their own (`QueryView`, `PanelCard`, `StatTile`, `StatusPill`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`).
+  - `components/common/`: content-layer building blocks with no data of their own (`QueryView`, `PanelCard`, `StatTile`, `StatusPill`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`, `JobProgress`, `ProblemList`, `Pager`).
   - `components/glass/`: the functional layer (`Glass`, `GlassToolbar` with `ToolbarSlot`, `SegmentedNav`).
-  - `components/<feature>/` (`shell`, `datasets`, `analytics`, `charts`, `reports`): feature parts. They get data through props and may use `api/` hooks for their own actions.
+  - `components/<feature>/` (`shell`, `datasets`, `analytics`, `charts`, `reports`, `churn`): feature parts. They get data through props and may use `api/` hooks for their own actions.
   - `styles/`: `tokens.css` (every colour, per appearance and accessibility state) and `surfaces.css` (glass utilities, the scroll edge, the theme layer over shadcn).
   - `pages/`: connect the route to hooks and components; no markup of their own beyond composition.
   - Types come from the generated schema through `api/types.ts`; query keys live only in `api/keys.ts`.
@@ -415,13 +415,18 @@ There are two file formats, detected by content:
   - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
     - the index: overview;
     - `analytics/:section`: one section at a time, switched by a segmented control in the toolbar;
-    - `reports`: create, list and download reports.
+    - `reports`: create, list and download reports;
+    - `churn` ("Модель") and `churn/risk` ("Група ризику"), switched by a segmented control in the toolbar:
+      - The model view lists the runs and follows a training job live.
+      - It shows the chosen run's quality against the rule, calibration, importance and backtest, and activates it. `?run=` picks another run.
+      - The risk view pages through the active run's members at risk with their reasons, and a sheet shows one member's features against the typical values.
+      - A dataset without retention data says so instead.
   - The dataset pages, which bring the chart library, are loaded lazily.
   - Every route has an error boundary. Errors below the shell stay inside it, so the navigation keeps working.
   - Each route names its page title in `handle`, and the shell toolbar shows it.
 - **Server state** (TanStack Query):
   - Analytics are keyed apart from datasets, so refreshing the dataset list never refetches the (immutable) analytics.
-  - The dataset list and a dataset that is still importing refresh themselves until the import ends.
+  - The dataset list and a dataset that is still importing refresh themselves until the import ends. The churn runs of a dataset refresh themselves while one is training, and every churn query is refreshed when a training job finishes.
   - A failed mutation shows a toast from the mutation cache. A form that shows its own error opts out with `meta: { silent: true }`.
 - **Session** (`api/session.ts`, `api/auth.tsx`):
   - The access token lives in memory only and is renewed shortly before it expires, one request at a time.
@@ -441,6 +446,8 @@ There are two file formats, detected by content:
   - Otherwise → a table.
   - Every chart can switch to its table. Animation is off, so screenshots and reports show the final state.
   - A chart that fails to render shows a message in its card; the rest of the page stays.
+  - `ChartPanel` is the card with the chart/table switch, and `HorizontalBars` draws the bars for tidy charts and for feature importance.
+  - `CalibrationChart` puts the predicted probability against the share that churned, with the diagonal dashed.
 - **Formatting** (`lib/format.ts`): `uk-UA` locale; ratios as percent; large minute totals as hours; a missing value as `—`.
 
 ### Visual design

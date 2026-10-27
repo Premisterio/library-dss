@@ -10,7 +10,7 @@ import { paths } from "@/app/paths"
 import { ConfirmDialog } from "@/components/common/confirm-dialog"
 import { IconButton } from "@/components/common/icon-button"
 import { CapabilityBadges, StatusBadge } from "@/components/datasets/dataset-badges"
-import { ProblemList } from "@/components/datasets/problem-list"
+import { ProblemList } from "@/components/common/problem-list"
 import { Badge } from "@/components/ui/badge"
 import {
   Table,
