@@ -409,6 +409,34 @@ There are two file formats, detected by content:
   - `test_candidate_criteria_track_true_demand` checks every criterion's direction on the 30-day ground truth of seed 1.
   - The searches alone are a strong signal, so the experiment compares the decision with a "searches per hryvnia" baseline.
 
+- **Weights** (`domain/content/ahp.py`). The analyst compares the criteria in pairs on Saaty's scale (1/9..9); a pair without a judgement counts as equal.
+  - The weights are the principal eigenvector. CI = (λmax − n) / (n − 1), and CR = CI / RI with Saaty's random index.
+  - CR above 0.10 blocks approval. The three judgements furthest from the weights are named: those where the error a_ij · w_j / w_i is furthest from 1, each with the value w_i / w_j that would agree with the weights.
+- **Rankings** (`ranking.py`).
+  - TOPSIS (Hwang & Yoon): vector-normalized, weighted columns; the closeness is the distance to the worst over the sum of the distances to the best and the worst.
+  - SAW for comparison: x / max for a benefit, min / x for a cost.
+  - Kendall's τ-b between them shows how much the method matters.
+- **Sensitivity.**
+  - A sweep sets one criterion's weight from 0 to 1 in 101 steps, keeping the others' proportions, and records the TOPSIS leader at each step. This shows where the leader changes.
+  - Stability: 2000 weight vectors from a Dirichlet distribution centred on the analyst's weights (concentration 20, so a weight of 0.25 varies by about ±0.09). It reports the share of draws in which each title stays in the top k.
+- **Portfolio** (`portfolio.py`). The titles with the most total TOPSIS score whose licences fit the budget, with an optional cap per genre: a 0/1 knapsack on the solver shared with the retention plan. Titles with no score are never licensed.
+- **Validation** (`test_content.py`).
+  - Textbook examples: Saaty's 3 × 3 matrix (weights 0.637 / 0.258 / 0.105, CR 0.033) and Hwang & Yoon's fighter aircraft (closeness 0.643 / 0.268 / 0.614 / 0.312). SAW on the aircraft is worked out by hand.
+  - Properties: consistent judgements give back their weights with CR 0; a dominated title never scores above its dominator; column units and the order of titles or criteria change nothing.
+  - The portfolio equals brute force on 150 small problems.
+- **On the truth.** These are the requests in the 180 days after as_of for titles licensed with a budget of a quarter of the offer (the demo, 60 titles; MCDA portfolios capped at 5 per genre):
+
+  | Portfolio                                    | Seed 1 | Seed 2 | Seed 3 |
+  | -------------------------------------------- | -----: | -----: | -----: |
+  | Random (mean of 500)                         |    112 |     86 |     91 |
+  | TOPSIS, equal weights                        |    229 |    163 |    134 |
+  | SAW, equal weights                           |    202 |    161 |    145 |
+  | TOPSIS, half the weight on searches          |    253 |    155 |    173 |
+  | Searches per hryvnia (greedy)                |    261 |    174 |    193 |
+  | The true demand itself (knapsack, the bound) |    280 |    213 |    210 |
+  - The decision doubles what chance finds. Zero-result searches alone do better still: in libsim a missing title's demand shows up directly as searches, and the genre-level criteria add noise. More weight on the searches closes most of the gap.
+  - The thesis reports this as it is. The experiment (M6) varies the presets and the budget.
+
 ### 2.10 Reports and exports
 
 - **What a report is.** A report is a titled copy of sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.

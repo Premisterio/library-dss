@@ -1,5 +1,5 @@
 """Candidates: the titles a distributor offers, with the evidence of demand the content decision
-weighs (DESIGN.md §2.10). Only signals that track libsim's true demand are kept."""
+weighs (DESIGN.md §2.9). Only signals that track libsim's true demand are kept."""
 
 import polars as pl
 
