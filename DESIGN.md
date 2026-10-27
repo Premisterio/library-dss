@@ -319,6 +319,37 @@ There are two file formats, detected by content:
   - `test_churn_api.py` trains through the API and the job runner on an 800-member, 10-month simulation. It covers scores, activation, ownership, deleting, and failures that leave the dataset ready. The CLI test runs `seed-demo` and then `train-churn`.
   - On the 5k-member demo, the examples of all 24 cutoffs take under 1 s.
 
+**Retention decisions** (`domain/retention`): what to do about the members at risk, within a budget.
+
+- **Effects of actions** (`effects.py`). They come from the past randomized retention campaign: arms control, e-mail and a discount, assigned at a renewal.
+  - An effect is a difference of churn rates at the targeted renewal: with the action minus without (negative means fewer churns). It has a 95% Newcombe hybrid score interval (method 10, from Wilson intervals).
+  - E-mail is compared among members who agreed to e-mails only, because nobody else can get one. The discount is compared among everyone.
+  - **Segments.** Three segments are fixed in advance from the churn features on the day before the assignment:
+    - dormant: no reading for 30 days, or never;
+    - declining: fewer sessions in the last 30 days than in the 30 before;
+    - steady: the rest.
+    - The idea is that a reminder may help a member who drifts away and annoy one who has left in spirit.
+  - **Shrinkage.** Each segment's difference is pulled toward the effect on everyone (empirical Bayes). The pull is stronger the noisier the segment is and the less the segments differ (DerSimonian–Laird between-segment variance). A segment without data takes the overall effect.
+  - **Cautious bound.** The upper 95% bound of the shrunk value (its least favourable value) is used in cautious mode.
+  - Checked on libsim: the intervals contain the true average effects. On demo seed 1, every overall and segment interval does; another seed misses one, as a 95% interval should now and then.
+- **The plan** (`plan.py`). For each member at risk and each action, the plan knows:
+  - the probability of churn without an action (the churn model's) and with it (plus the segment's effect, or the analyst's assumed effect for everyone);
+  - the expected spend: an e-mail's cost, or the share of the renewal's list price a discount gives away if the member renews;
+  - the gain: (p_none − p_action) · monthly list price · horizon in months − spend.
+  - **Effects used.** A discount's campaign effect is scaled by its size against the campaign's discount, which is an assumption. Effects that raise churn are never chosen, because their gain is negative.
+  - **The choice** is a multiple-choice knapsack solved as a MILP with `scipy.optimize.milp` (HiGHS), optimal within its default 0.01% gap. It maximizes the total gain, under these constraints:
+    - at most one action per member;
+    - the expected spend within the budget;
+    - optional limits per action;
+    - e-mail only with consent;
+    - no discount for a member whose running period is already discounted.
+  - **Baseline.** A greedy plan (best gain per hryvnia first) is reported for comparison.
+  - **Budget curve.** The budget → value curve uses the LP relaxation, which is fast and differs from the integer optimum by at most a few fractional options.
+  - **Tests.**
+    - The MILP equals brute force on 200 random small problems.
+    - Gains are checked by hand.
+    - A plan for 2,000 members takes about 0.6 s.
+
 ### 2.10 Reports and exports
 
 - **What a report is.** A report is a titled copy of some or all analytics sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.

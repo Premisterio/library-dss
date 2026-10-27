@@ -127,6 +127,9 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 ### M4b. Action effects, optimal plan, decisions
 
+- **Progress.**
+  - Done: the effects of actions from the campaign and the optimal plan (`domain/retention`, DESIGN §2.9).
+  - Next: storage and API (preview, decisions, CSV), then the UI.
 - **Effects from the campaign:**
   - ATE per arm with Newcombe intervals;
   - segment estimates with shrinkage;
