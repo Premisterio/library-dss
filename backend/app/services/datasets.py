@@ -11,12 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.errors import ApiError
-from app.domain.enums import JobStage
+from app.domain.enums import JobKind, JobStage
 from app.ingest import IngestError, load, reader
 from app.models import Analyst, Dataset, DatasetFile, Job
 from app.services import analytics, jobs
-
-IMPORT_JOB = "import_dataset"
 
 
 def create_from_upload(
@@ -66,7 +64,9 @@ def create_from_upload(
             dataset_id=dataset.id, original_name=filename, size_bytes=len(raw), content=stored
         )
     )
-    job = jobs.enqueue(session, kind=IMPORT_JOB, owner_id=owner.id, dataset_id=dataset.id)
+    job = jobs.enqueue(
+        session, kind=JobKind.IMPORT_DATASET, owner_id=owner.id, dataset_id=dataset.id
+    )
     session.commit()
     return dataset, job
 

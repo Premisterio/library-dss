@@ -85,6 +85,31 @@
         "title": "Body_upload_dataset",
         "type": "object"
       },
+      "CalibrationBinOut": {
+        "properties": {
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "observed": {
+            "description": "Share of the bin that churned.",
+            "title": "Observed",
+            "type": "number"
+          },
+          "predicted": {
+            "description": "Mean predicted probability in the bin.",
+            "title": "Predicted",
+            "type": "number"
+          }
+        },
+        "required": [
+          "predicted",
+          "observed",
+          "members"
+        ],
+        "title": "CalibrationBinOut",
+        "type": "object"
+      },
       "ChartOut": {
         "description": "A tidy table: one row per combination of dimension values.",
         "properties": {
@@ -160,6 +185,497 @@
           "rows"
         ],
         "title": "ChartOut",
+        "type": "object"
+      },
+      "ChurnRunAccepted": {
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/JobOut"
+          },
+          "run": {
+            "$ref": "#/components/schemas/ChurnRunOut"
+          }
+        },
+        "required": [
+          "run",
+          "job"
+        ],
+        "title": "ChurnRunAccepted",
+        "type": "object"
+      },
+      "ChurnRunDetailOut": {
+        "properties": {
+          "active": {
+            "description": "Decisions on this dataset use this run.",
+            "title": "Active",
+            "type": "boolean"
+          },
+          "backtest": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationOut"
+            },
+            "title": "Backtest",
+            "type": "array"
+          },
+          "chosen_model": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inactivity_rule",
+                  "logistic",
+                  "boosting"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The learned model with the lowest mean Brier score; label in enums `churn_model`. null until trained.",
+            "title": "Chosen Model"
+          },
+          "coefficients": {
+            "description": "Logistic regression only.",
+            "items": {
+              "$ref": "#/components/schemas/CoefficientOut"
+            },
+            "title": "Coefficients",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "importance": {
+            "description": "Of the chosen model, highest first.",
+            "items": {
+              "$ref": "#/components/schemas/ImportanceOut"
+            },
+            "title": "Importance",
+            "type": "array"
+          },
+          "job_id": {
+            "description": "The training job.",
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "models": {
+            "description": "Every model, averaged over the backtest.",
+            "items": {
+              "$ref": "#/components/schemas/ModelSummaryOut"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChurnSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "dataset_id",
+          "job_id",
+          "status",
+          "error",
+          "active",
+          "chosen_model",
+          "summary",
+          "created_at",
+          "finished_at",
+          "models",
+          "backtest",
+          "importance",
+          "coefficients"
+        ],
+        "title": "ChurnRunDetailOut",
+        "type": "object"
+      },
+      "ChurnRunOut": {
+        "description": "A churn model trained by a job; `status` and `error` are the job's.",
+        "properties": {
+          "active": {
+            "description": "Decisions on this dataset use this run.",
+            "title": "Active",
+            "type": "boolean"
+          },
+          "chosen_model": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inactivity_rule",
+                  "logistic",
+                  "boosting"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The learned model with the lowest mean Brier score; label in enums `churn_model`. null until trained.",
+            "title": "Chosen Model"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "description": "The training job.",
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChurnSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "dataset_id",
+          "job_id",
+          "status",
+          "error",
+          "active",
+          "chosen_model",
+          "summary",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "ChurnRunOut",
+        "type": "object"
+      },
+      "ChurnRunPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChurnRunOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Number of items across all pages.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ChurnRunPage",
+        "type": "object"
+      },
+      "ChurnScoreDetailOut": {
+        "properties": {
+          "features": {
+            "description": "Every feature, in the model's order.",
+            "items": {
+              "$ref": "#/components/schemas/FeatureValueOut"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "period_end": {
+            "description": "When the paid period ends and renewal is due.",
+            "format": "date-time",
+            "title": "Period End",
+            "type": "string"
+          },
+          "plan": {
+            "description": "Plan code; label in enums `plan`.",
+            "title": "Plan",
+            "type": "string"
+          },
+          "probability": {
+            "description": "Probability of churn at the renewal (0..1).",
+            "title": "Probability",
+            "type": "number"
+          },
+          "rank": {
+            "description": "1 is the highest probability.",
+            "title": "Rank",
+            "type": "integer"
+          },
+          "reasons": {
+            "description": "Up to three, strongest first.",
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "rank",
+          "probability",
+          "plan",
+          "period_end",
+          "reasons",
+          "features"
+        ],
+        "title": "ChurnScoreDetailOut",
+        "type": "object"
+      },
+      "ChurnScoreOut": {
+        "properties": {
+          "period_end": {
+            "description": "When the paid period ends and renewal is due.",
+            "format": "date-time",
+            "title": "Period End",
+            "type": "string"
+          },
+          "plan": {
+            "description": "Plan code; label in enums `plan`.",
+            "title": "Plan",
+            "type": "string"
+          },
+          "probability": {
+            "description": "Probability of churn at the renewal (0..1).",
+            "title": "Probability",
+            "type": "number"
+          },
+          "rank": {
+            "description": "1 is the highest probability.",
+            "title": "Rank",
+            "type": "integer"
+          },
+          "reasons": {
+            "description": "Up to three, strongest first.",
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "rank",
+          "probability",
+          "plan",
+          "period_end",
+          "reasons"
+        ],
+        "title": "ChurnScoreOut",
+        "type": "object"
+      },
+      "ChurnScorePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChurnScoreOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Number of items across all pages.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ChurnScorePage",
+        "type": "object"
+      },
+      "ChurnSummaryOut": {
+        "properties": {
+          "churn_rate": {
+            "description": "Share of those renewals that ended in churn (0..1).",
+            "title": "Churn Rate",
+            "type": "number"
+          },
+          "cutoffs": {
+            "description": "Rolling cutoffs with labelled renewals.",
+            "title": "Cutoffs",
+            "type": "integer"
+          },
+          "examples": {
+            "description": "Labelled renewals the models learned from.",
+            "title": "Examples",
+            "type": "integer"
+          },
+          "scored": {
+            "description": "Members at risk at as_of, scored by the chosen model.",
+            "title": "Scored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "examples",
+          "cutoffs",
+          "churn_rate",
+          "scored"
+        ],
+        "title": "ChurnSummaryOut",
+        "type": "object"
+      },
+      "CoefficientOut": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Category code of a one-hot column.",
+            "title": "Code"
+          },
+          "feature": {
+            "title": "Feature",
+            "type": "string"
+          },
+          "missing": {
+            "description": "The column says the value is missing.",
+            "title": "Missing",
+            "type": "boolean"
+          },
+          "value": {
+            "description": "Change of the log-odds per standard deviation.",
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "feature",
+          "code",
+          "missing",
+          "value"
+        ],
+        "title": "CoefficientOut",
         "type": "object"
       },
       "DatasetOut": {
@@ -416,6 +932,96 @@
         "title": "EnumsOut",
         "type": "object"
       },
+      "EvaluationOut": {
+        "properties": {
+          "metrics": {
+            "$ref": "#/components/schemas/MetricsOut"
+          },
+          "model": {
+            "enum": [
+              "inactivity_rule",
+              "logistic",
+              "boosting"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "origin": {
+            "description": "Test cutoff k (0 is the newest); older cutoffs train.",
+            "title": "Origin",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "origin",
+          "model",
+          "metrics"
+        ],
+        "title": "EvaluationOut",
+        "type": "object"
+      },
+      "FeatureValueOut": {
+        "properties": {
+          "feature": {
+            "title": "Feature",
+            "type": "string"
+          },
+          "group": {
+            "description": "Label in enums `churn_feature_group`.",
+            "enum": [
+              "subscription",
+              "activity",
+              "reading",
+              "frustration",
+              "profile"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "typical": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "feature",
+          "group",
+          "value",
+          "typical"
+        ],
+        "title": "FeatureValueOut",
+        "type": "object"
+      },
       "FieldError": {
         "properties": {
           "loc": {
@@ -467,6 +1073,26 @@
           "version"
         ],
         "title": "HealthOut",
+        "type": "object"
+      },
+      "ImportanceOut": {
+        "properties": {
+          "brier_increase": {
+            "description": "Brier score increase when the feature is shuffled.",
+            "title": "Brier Increase",
+            "type": "number"
+          },
+          "feature": {
+            "description": "Feature key; label in enums `churn_feature`.",
+            "title": "Feature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feature",
+          "brier_increase"
+        ],
+        "title": "ImportanceOut",
         "type": "object"
       },
       "JobOut": {
@@ -714,6 +1340,174 @@
         "title": "MeasureOut",
         "type": "object"
       },
+      "MetricsOut": {
+        "description": "Quality on one test cutoff; labels in enums `churn_metric`. null: undefined.",
+        "properties": {
+          "brier": {
+            "title": "Brier",
+            "type": "number"
+          },
+          "brier_skill": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier Skill"
+          },
+          "calibration": {
+            "description": "Equal-count bins by risk.",
+            "items": {
+              "$ref": "#/components/schemas/CalibrationBinOut"
+            },
+            "title": "Calibration",
+            "type": "array"
+          },
+          "churned": {
+            "title": "Churned",
+            "type": "integer"
+          },
+          "ece": {
+            "title": "Ece",
+            "type": "number"
+          },
+          "lift": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lift"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "pr_auc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Auc"
+          },
+          "roc_auc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roc Auc"
+          }
+        },
+        "required": [
+          "members",
+          "churned",
+          "roc_auc",
+          "pr_auc",
+          "brier",
+          "brier_skill",
+          "ece",
+          "lift",
+          "calibration"
+        ],
+        "title": "MetricsOut",
+        "type": "object"
+      },
+      "ModelSummaryOut": {
+        "description": "A model's metrics averaged over the backtest origins where they are defined.",
+        "properties": {
+          "brier": {
+            "title": "Brier",
+            "type": "number"
+          },
+          "brier_skill": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier Skill"
+          },
+          "ece": {
+            "title": "Ece",
+            "type": "number"
+          },
+          "lift": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lift"
+          },
+          "model": {
+            "enum": [
+              "inactivity_rule",
+              "logistic",
+              "boosting"
+            ],
+            "title": "Model",
+            "type": "string"
+          },
+          "origins": {
+            "title": "Origins",
+            "type": "integer"
+          },
+          "pr_auc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Auc"
+          },
+          "roc_auc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roc Auc"
+          }
+        },
+        "required": [
+          "model",
+          "origins",
+          "roc_auc",
+          "pr_auc",
+          "brier",
+          "brier_skill",
+          "ece",
+          "lift"
+        ],
+        "title": "ModelSummaryOut",
+        "type": "object"
+      },
       "NoteOut": {
         "properties": {
           "code": {
@@ -808,6 +1602,65 @@
           }
         },
         "title": "ReadyOut",
+        "type": "object"
+      },
+      "ReasonOut": {
+        "description": "Why the probability is high: with the typical value it would be `effect` lower.",
+        "properties": {
+          "effect": {
+            "description": "Probability drop with the typical value (0..1).",
+            "title": "Effect",
+            "type": "number"
+          },
+          "feature": {
+            "description": "Feature key; label in enums `churn_feature`.",
+            "title": "Feature",
+            "type": "string"
+          },
+          "typical": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The typical value among members.",
+            "title": "Typical"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The member's value.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "feature",
+          "value",
+          "typical",
+          "effect"
+        ],
+        "title": "ReasonOut",
         "type": "object"
       },
       "RegisterIn": {
@@ -1442,6 +2295,413 @@
         ]
       }
     },
+    "/api/v1/churn-runs": {
+      "get": {
+        "operationId": "list_churn_runs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChurnRunPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Your churn runs, newest first",
+        "tags": [
+          "churn"
+        ]
+      }
+    },
+    "/api/v1/churn-runs/{run_id}": {
+      "delete": {
+        "operationId": "delete_churn_run",
+        "parameters": [
+          {
+            "description": "Churn run id.",
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "description": "Churn run id.",
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a churn run with its scores",
+        "tags": [
+          "churn"
+        ]
+      },
+      "get": {
+        "operationId": "get_churn_run",
+        "parameters": [
+          {
+            "description": "Churn run id.",
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "description": "Churn run id.",
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChurnRunDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One churn run with its backtest and explanations",
+        "tags": [
+          "churn"
+        ]
+      }
+    },
+    "/api/v1/churn-runs/{run_id}/activate": {
+      "post": {
+        "operationId": "activate_churn_run",
+        "parameters": [
+          {
+            "description": "Churn run id.",
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "description": "Churn run id.",
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChurnRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Make a trained run the one decisions use for its dataset",
+        "tags": [
+          "churn"
+        ]
+      }
+    },
+    "/api/v1/churn-runs/{run_id}/scores": {
+      "get": {
+        "operationId": "list_churn_scores",
+        "parameters": [
+          {
+            "description": "Churn run id.",
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "description": "Churn run id.",
+              "title": "Run Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChurnScorePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The members at risk, the riskiest first",
+        "tags": [
+          "churn"
+        ]
+      }
+    },
+    "/api/v1/churn-runs/{run_id}/scores/{user_id}": {
+      "get": {
+        "operationId": "get_churn_score",
+        "parameters": [
+          {
+            "description": "Churn run id.",
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "description": "Churn run id.",
+              "title": "Run Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "pattern": "^[^\\x00]*$",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChurnScoreDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "One member at risk with every feature and its typical value",
+        "tags": [
+          "churn"
+        ]
+      }
+    },
     "/api/v1/datasets": {
       "get": {
         "operationId": "list_datasets",
@@ -1802,6 +3062,64 @@
         "summary": "One analytics section",
         "tags": [
           "analytics"
+        ]
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/churn-runs": {
+      "post": {
+        "description": "Queues a job that backtests the models, chooses one, explains it and scores the members at risk at the dataset's as_of. The `Location` header points to the job.",
+        "operationId": "create_churn_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChurnRunAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Train a churn model on a dataset",
+        "tags": [
+          "churn"
         ]
       }
     },

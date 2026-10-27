@@ -156,3 +156,13 @@ def test_no_reasons_without_members_or_known_values(features: pl.DataFrame) -> N
     assert reasons(Stub(), features.clear(), typical_values(features)) == {}
     unknown = dict.fromkeys(typical_values(features))
     assert reasons(Stub(), features, unknown) == {user: [] for user in features["user_id"]}
+
+
+def test_nobody_to_score(churn: ParsedDataset) -> None:
+    from app.domain.churn.scoring import score
+    from app.domain.churn.training import Training
+
+    training = Training([], "logistic", Stub(), [], [], {})
+    assert (
+        score(training, churn.frames, date(2025, 1, 1), churn.timezone) == []
+    )  # before anyone paid

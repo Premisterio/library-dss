@@ -4,6 +4,7 @@ The quality test runs the demo simulation (5k members, 24 months) and compares t
 model with libsim's ground truth on the members at risk at as_of (DESIGN.md §2.9).
 """
 
+from dataclasses import fields
 from datetime import date
 from typing import Any
 
@@ -18,7 +19,15 @@ from app.domain.churn import examples
 from app.domain.churn.features import build_features
 from app.domain.churn.metrics import evaluate
 from app.domain.churn.models import COLUMNS, MODELS, InactivityRule, matrix
-from app.domain.churn.training import LEARNED, NotEnoughHistoryError, Training, backtest, train
+from app.domain.churn.training import (
+    LEARNED,
+    ModelSummary,
+    NotEnoughHistoryError,
+    Training,
+    backtest,
+    train,
+)
+from app.domain.enums import ENUMS
 from app.ingest import reader
 from app.ingest.frames import ParsedDataset
 
@@ -46,6 +55,12 @@ def test_metrics_by_hand() -> None:
     assert (third.predicted, third.observed, third.members) == (pytest.approx(0.35), 0.5, 2)
     assert metrics.ece == pytest.approx(1.7 / 10)
     assert metrics.lift == pytest.approx(1 / 0.4)  # the riskiest 10%: both 0.95 churned
+
+
+def test_models_and_metrics_have_labels() -> None:
+    assert set(ENUMS["churn_model"]) == set(MODELS)
+    metrics = {field.name for field in fields(ModelSummary)} - {"model", "origins"}
+    assert set(ENUMS["churn_metric"]) == metrics
 
 
 def test_metrics_of_one_class() -> None:

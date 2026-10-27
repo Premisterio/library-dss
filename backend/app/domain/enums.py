@@ -3,13 +3,23 @@
 from enum import StrEnum
 
 
+class JobKind(StrEnum):
+    """What a background job does."""
+
+    IMPORT_DATASET = "import_dataset"
+    TRAIN_CHURN = "train_churn"
+
+
 class JobStage(StrEnum):
-    """Stages an import job reports; `load:<table>` also names the table being written."""
+    """Stages jobs report; `load:<table>` also names the table being written."""
 
     STARTED = "started"
     PARSE = "parse"
     LOAD = "load"
     ANALYTICS = "analytics"
+    FEATURES = "features"
+    BACKTEST = "backtest"
+    SCORING = "scoring"
     DONE = "done"
 
 
@@ -100,7 +110,14 @@ ENUMS: dict[str, dict[str, str]] = {
         "parse": "Розбір і перевірка файлу",
         "load": "Запис у базу",
         "analytics": "Розрахунок аналітики",
+        "features": "Розрахунок ознак",
+        "backtest": "Навчання й перевірка моделей",
+        "scoring": "Оцінка ризику читачів",
         "done": "Готово",
+    },
+    "job_kind": {
+        "import_dataset": "Імпорт датасету",
+        "train_churn": "Навчання моделі відтоку",
     },
     "dataset_status": {
         "pending": "Очікує",
@@ -249,6 +266,20 @@ ENUMS: dict[str, dict[str, str]] = {
         "education": "Освіта",
         "language_pref": "Мова читання",
         "email_opt_in": "Згода на e-mail",
+    },
+    "churn_model": {
+        "inactivity_rule": "Правило «14+ днів без читання»",
+        "logistic": "Логістична регресія",
+        "boosting": "Градієнтний бустинг",
+    },
+    # Quality of churn probabilities on the test cutoff.
+    "churn_metric": {
+        "roc_auc": "ROC-AUC",
+        "pr_auc": "PR-AUC",
+        "brier": "Оцінка Браєра",
+        "brier_skill": "Виграш оцінки Браєра",
+        "ece": "Помилка калібрування (ECE)",
+        "lift": "Ліфт у 10 % найризиковіших",
     },
     "churn_feature_group": {
         "subscription": "Підписка",

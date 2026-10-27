@@ -11,13 +11,11 @@ from typing import Any
 
 from sqlalchemy import select
 
+from app.cli.jobs import run_job
 from app.core.config import Settings
 from app.ingest import reader
 from app.models import Analyst, Dataset, Job, Report
 from app.services import auth, datasets, jobs, reports
-from app.worker import runner
-
-IMPORT_TIMEOUT_SECONDS = 600
 
 
 @dataclass(frozen=True)
@@ -56,10 +54,7 @@ def _import(session_factory: jobs.SessionFactory, dataset_id: int) -> str:
             select(Job).where(Job.dataset_id == dataset_id).order_by(Job.created_at.desc())
         ).first()
     if job is not None and job.status not in jobs.TERMINAL:
-        if jobs.claim(session_factory, job.id):
-            runner.execute(session_factory, job.id)
-        else:
-            jobs.wait(session_factory, job.id, timeout=IMPORT_TIMEOUT_SECONDS)
+        run_job(session_factory, job.id)
     with session_factory() as session:
         return session.get_one(Dataset, dataset_id).status
 

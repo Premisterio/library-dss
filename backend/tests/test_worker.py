@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
+from app.domain.enums import JobKind
 from app.ingest import load
 from app.ingest.schema import DB_TABLE
 from app.models import Analyst, Dataset, Job
@@ -129,25 +130,35 @@ def test_failed_import_leaves_no_rows(
 
 
 def test_abandoned_jobs_are_recovered(factory: sessionmaker[Session], owner: Analyst) -> None:
+    """An interrupted import fails its dataset; an interrupted training leaves the dataset ready."""
+    hour_ago = utc_now() - timedelta(hours=1)
     with factory() as session:
-        dataset = Dataset(owner_id=owner.id, name="x", sha256="0" * 64)
-        session.add(dataset)
+        importing = Dataset(owner_id=owner.id, name="x", sha256="0" * 64, status="importing")
+        ready = Dataset(owner_id=owner.id, name="y", sha256="1" * 64, status="ready")
+        session.add_all([importing, ready])
         session.flush()
-        stale = jobs.enqueue(session, kind="noop", owner_id=owner.id, dataset_id=dataset.id)
+        stale = jobs.enqueue(
+            session, kind=JobKind.IMPORT_DATASET, owner_id=owner.id, dataset_id=importing.id
+        )
+        training = jobs.enqueue(
+            session, kind=JobKind.TRAIN_CHURN, owner_id=owner.id, dataset_id=ready.id
+        )
         fresh = jobs.enqueue(session, kind="noop", owner_id=owner.id)
-        stale.status, stale.heartbeat_at = "running", utc_now() - timedelta(hours=1)
+        for job in (stale, training):
+            job.status, job.heartbeat_at = "running", hour_ago
         fresh.status, fresh.heartbeat_at = "running", utc_now()
-        dataset.status = "importing"
         session.commit()
 
-    assert jobs.recover_stale(factory, stale_seconds=300) == 1
+    assert jobs.recover_stale(factory, stale_seconds=300) == 2
     recovered = get_job(factory, stale.id)
     assert recovered.status == "failed"
     assert recovered.error is not None
     assert recovered.error["code"] == "job.interrupted"
+    assert get_job(factory, training.id).status == "failed"
     assert get_job(factory, fresh.id).status == "running"
     with factory() as session:
-        assert session.get_one(Dataset, dataset.id).status == "failed"
+        assert session.get_one(Dataset, importing.id).status == "failed"
+        assert session.get_one(Dataset, ready.id).status == "ready"
 
 
 def test_worker_loop_recovers_runs_and_stops(

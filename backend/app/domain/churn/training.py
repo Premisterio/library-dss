@@ -48,6 +48,20 @@ class Evaluation:
 
 
 @dataclass(frozen=True)
+class ModelSummary:
+    """A model's metrics averaged over the backtest origins where they are defined."""
+
+    model: ModelKey
+    origins: int
+    roc_auc: float | None
+    pr_auc: float | None
+    brier: float
+    brier_skill: float | None
+    ece: float
+    lift: float | None
+
+
+@dataclass(frozen=True)
 class Training:
     evaluations: list[Evaluation]  # every model at every usable backtest origin
     chosen: ModelKey
@@ -60,6 +74,29 @@ class Training:
         """A metric of a model averaged over the backtest origins."""
         values = [getattr(e.metrics, metric) for e in self.evaluations if e.model == model]
         return float(np.mean(values))
+
+
+def summarize(evaluations: list[Evaluation]) -> list[ModelSummary]:
+    def mean(values: list[float | None]) -> float | None:
+        known = [value for value in values if value is not None]
+        return float(np.mean(known)) if known else None
+
+    summaries = []
+    for key in MODELS:
+        mine = [e.metrics for e in evaluations if e.model == key]
+        summaries.append(
+            ModelSummary(
+                model=key,
+                origins=len(mine),
+                roc_auc=mean([m.roc_auc for m in mine]),
+                pr_auc=mean([m.pr_auc for m in mine]),
+                brier=float(np.mean([m.brier for m in mine])),
+                brier_skill=mean([m.brier_skill for m in mine]),
+                ece=float(np.mean([m.ece for m in mine])),
+                lift=mean([m.lift for m in mine]),
+            )
+        )
+    return summaries
 
 
 def backtest(rows: pl.DataFrame, origins: int = BACKTEST_ORIGINS) -> list[Evaluation]:

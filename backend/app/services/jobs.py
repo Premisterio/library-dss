@@ -16,7 +16,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
-from app.domain.enums import JobStage
+from app.domain.enums import JobKind, JobStage
 from app.models import Analyst, Dataset, Job
 from app.utils.dates import utc_now
 
@@ -53,7 +53,7 @@ def _start(session: Session, job: Job) -> None:
         utc_now(),
         JobStage.STARTED,
     )
-    if job.dataset_id is not None:
+    if job.kind == JobKind.IMPORT_DATASET:
         session.execute(
             update(Dataset).where(Dataset.id == job.dataset_id).values(status="importing")
         )
@@ -123,7 +123,7 @@ def mark_failed(session_factory: SessionFactory, job_id: uuid.UUID, error: dict[
         if job is None:
             return
         job.status, job.error, job.finished_at = "failed", error, utc_now()
-        if job.dataset_id is not None:
+        if job.kind == JobKind.IMPORT_DATASET:
             session.execute(
                 update(Dataset)
                 .where(Dataset.id == job.dataset_id)

@@ -76,3 +76,35 @@ def test_seed_demo_reports_a_failed_import(email: str, tmp_path: Path) -> None:
     result = runner.invoke(app, ["seed-demo", "--email", email, "--file", str(file)], env=ENV)
     assert result.exit_code == 1
     assert "failed" in result.output
+
+
+def test_a_demo_dataset_trains_a_churn_model(email: str) -> None:
+    seeded = runner.invoke(
+        app,
+        ["seed-demo", "--email", email, "--users", "800", "--months", "10", "--seed", "1"],
+        env=ENV,
+    )
+    assert seeded.exit_code == 0, seeded.output
+    dataset_id, _ = ids(seeded.output)
+
+    trained = runner.invoke(app, ["train-churn", "--dataset", str(dataset_id), "--activate"])
+    assert trained.exit_code == 0, trained.output
+    assert re.search(r"run #\d+: (logistic|boosting) chosen", trained.output), trained.output
+    assert "inactivity_rule" in trained.output
+    assert re.search(r"scored \d+ members at risk, active", trained.output), trained.output
+
+
+def test_training_needs_an_existing_dataset_with_retention_data(
+    email: str, tmp_path: Path, nested_document: dict[str, Any]
+) -> None:
+    missing = runner.invoke(app, ["train-churn", "--dataset", "0"])
+    assert missing.exit_code == 1
+    assert "does not exist" in missing.output
+
+    file = tmp_path / "library.json"
+    file.write_bytes(orjson.dumps(nested_document))
+    seeded = runner.invoke(app, ["seed-demo", "--email", email, "--file", str(file)], env=ENV)
+    dataset_id, _ = ids(seeded.output)
+    unsupported = runner.invoke(app, ["train-churn", "--dataset", str(dataset_id)])
+    assert unsupported.exit_code == 1
+    assert "churn.not_supported" in unsupported.output
