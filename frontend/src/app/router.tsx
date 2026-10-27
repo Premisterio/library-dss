@@ -98,6 +98,11 @@ const router = createBrowserRouter([
                   Component: (await import("@/pages/churn-plan")).ChurnPlanPage,
                 }),
               },
+              {
+                path: "content",
+                handle: title("Закупівля"),
+                lazy: async () => ({ Component: (await import("@/pages/content")).ContentPage }),
+              },
             ],
           },
         ],

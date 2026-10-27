@@ -735,6 +735,65 @@
         "title": "CoefficientOut",
         "type": "object"
       },
+      "ContentApproveIn": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ContentIn"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\\x00]*$",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "decision"
+        ],
+        "title": "ContentApproveIn",
+        "type": "object"
+      },
+      "ContentIn": {
+        "properties": {
+          "budget": {
+            "description": "UAH for the licences.",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Budget",
+            "type": "number"
+          },
+          "judgements": {
+            "description": "Pairwise judgements; a pair left out counts as equally important, and a later judgement of the same pair wins.",
+            "items": {
+              "$ref": "#/components/schemas/JudgementIn"
+            },
+            "maxItems": 50,
+            "title": "Judgements",
+            "type": "array"
+          },
+          "max_per_genre": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "At most this many titles of one genre.",
+            "title": "Max Per Genre"
+          }
+        },
+        "required": [
+          "budget"
+        ],
+        "title": "ContentIn",
+        "type": "object"
+      },
       "DatasetOut": {
         "properties": {
           "as_of": {
@@ -1315,6 +1374,45 @@
           "finished_at"
         ],
         "title": "JobOut",
+        "type": "object"
+      },
+      "JudgementIn": {
+        "description": "How many times more important `criterion` is than `compared_with` (Saaty's scale).",
+        "properties": {
+          "compared_with": {
+            "enum": [
+              "demand_searches",
+              "author_loans",
+              "genre_loans",
+              "genre_holds_per_copy"
+            ],
+            "title": "Compared With",
+            "type": "string"
+          },
+          "criterion": {
+            "enum": [
+              "demand_searches",
+              "author_loans",
+              "genre_loans",
+              "genre_holds_per_copy"
+            ],
+            "title": "Criterion",
+            "type": "string"
+          },
+          "value": {
+            "description": "1/9..9; 1: equal.",
+            "maximum": 9.0,
+            "minimum": 0.1111111111111111,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "criterion",
+          "compared_with",
+          "value"
+        ],
+        "title": "JudgementIn",
         "type": "object"
       },
       "KpiOut": {
@@ -1986,7 +2084,8 @@
                 "subscriptions",
                 "cohorts",
                 "candidates",
-                "retention_plan"
+                "retention_plan",
+                "content_portfolio"
               ],
               "type": "string"
             },
@@ -2123,7 +2222,8 @@
                 "subscriptions",
                 "cohorts",
                 "candidates",
-                "retention_plan"
+                "retention_plan",
+                "content_portfolio"
               ],
               "type": "string"
             },
@@ -2211,7 +2311,8 @@
               "subscriptions",
               "cohorts",
               "candidates",
-              "retention_plan"
+              "retention_plan",
+              "content_portfolio"
             ],
             "title": "Key",
             "type": "string"
@@ -3617,6 +3718,140 @@
         "summary": "Train a churn model on a dataset",
         "tags": [
           "churn"
+        ]
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/content/approve": {
+      "post": {
+        "operationId": "approve_content",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentApproveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve the portfolio: freeze it as a decision (a report of kind `content`)",
+        "tags": [
+          "content"
+        ]
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/content/evaluate": {
+      "post": {
+        "operationId": "evaluate_content",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rank the titles on offer and pick the portfolio",
+        "tags": [
+          "content"
         ]
       }
     },

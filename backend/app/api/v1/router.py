@@ -4,6 +4,7 @@ from app.api.v1 import (
     analytics,
     auth,
     churn,
+    content,
     datasets,
     jobs,
     meta,
@@ -23,3 +24,4 @@ api_router.include_router(analytics.router)
 api_router.include_router(reports.router)
 api_router.include_router(churn.router)
 api_router.include_router(retention.router)
+api_router.include_router(content.router)
