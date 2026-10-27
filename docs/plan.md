@@ -128,52 +128,51 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 ### M4b. Action effects, optimal plan, decisions
 
 - **Progress.**
-  - Done: the effects of actions from the campaign and the optimal plan (`domain/retention`, DESIGN §2.9).
-  - Next: storage and API (preview, decisions, CSV), then the UI.
-- **Effects from the campaign:**
-  - ATE per arm with Newcombe intervals;
-  - segment estimates with shrinkage;
-  - a T-learner only if it wins on Qini;
-  - fallback to the analyst's assumptions, marked as such;
-  - a "cautious" mode that uses the interval bound.
-- **Optimization.**
-  - A multiple-choice knapsack with `scipy.optimize.milp` (HiGHS): value of a member `V_i`; gain `g_ia = (p_none − p_a)·V_i − (1 − p_a)·d_a·price − c_a`.
-  - Constraints: one action per member, the budget, per-action limits, e-mail only with consent, a cooldown between discounts.
-  - A greedy baseline and a budget → value curve.
-- **What-if.**
-  - Inputs: budget, horizon, discount sizes, costs, limits, the source of effects, risk attitude.
-  - Compare up to three scenarios; the synchronous preview takes under 1 s for 2k members.
-- **Decisions.**
-  - Approving a scenario freezes it and exports a CSV of members.
-  - An optional random 10% holdout.
-  - Evaluation by backtest, and a decision log.
+  - Done: the effects of actions and the optimal plan (`domain/retention`, PR #17).
+  - Done: effects kept with each churn run, a synchronous plan preview, and approval as a report (PR #18).
+  - Next: the UI.
+- **Scope, trimmed after a review for over-engineering (2026-10-27).**
+  - **Effects.** Each arm's effect comes with Newcombe intervals. E-mail is compared among consenting members. Three activity segments are shrunk toward the overall effect; there is a cautious bound and the analyst's assumptions as a fallback.
+    - Kept with the churn run, so no new job or table.
+    - By default the plan uses each action's overall effect, because on libsim the segment estimates cost more than they gained (DESIGN §2.9).
+  - **Plan.** A multiple-choice knapsack (`scipy.optimize.milp`, solver shared with M5), a greedy baseline and a budget → value curve. Effects shift the churn logit, so they grow with a member's risk.
+  - **Preview and decision.**
+    - A synchronous preview answers an analytics-shaped section that every client and export can show.
+    - Approval freezes it as a report of kind `retention`. The decision log is the list of reports.
+  - **Cut:**
+    - the T-learner and Qini: too few churns per arm;
+    - discount sizes other than the campaign's: no data;
+    - comparing three scenarios side by side: the budget curve covers it;
+    - the 10% holdout and in-app evaluation: the experiment harness evaluates;
+    - new CLI commands.
 - **Done when:**
-  - MILP equals brute force on 200 small problems;
-  - the campaign interval contains the true effect;
-  - the preview takes under 1 s;
-  - approval produces the CSV.
+  - the MILP equals brute force on 200 small problems (done);
+  - the campaign interval contains the true effect (done, demo seed 1);
+  - the preview takes under 1 s (plan and curve for 2k members: about 0.6 s);
+  - approval produces the export (done).
 
 ### M5. Content acquisition (MCDA)
 
 - **Alternatives.** 60 candidate titles offered by a distributor.
-- **Criteria** (last 90 days):
-  - C1 zero-result search demand;
-  - C2 genre momentum;
-  - C3 genre scarcity (holds per copy);
-  - C4 author interest;
-  - C5 expected quality (with shrinkage);
-  - C6 importance for retention (the share of at-risk members with this genre in their top two);
-  - C7 licence cost (a cost criterion).
-- **AHP.**
-  - Weights from the eigenvector, with the consistency ratio CR.
-  - Approval is blocked when CR > 0.10, and the UI points to the three most inconsistent judgements.
+- **Criteria.**
+  - They are computed at import as an analytics section `candidates`, stored like the others and rebuilt by `dss refresh-analytics`.
+  - Each one is first measured against libsim's true demand. Only the criteria that carry signal are kept, about five instead of seven, which leaves 10 AHP comparisons instead of 21.
+  - The candidate list is about 90 days of zero-result search demand, genre momentum and scarcity, author interest, expected quality and licence cost.
+  - Cost is counted once: by the portfolio's budget, or as a criterion, not both.
+- **AHP.** Weights from the eigenvector, with the consistency ratio CR. Approval is blocked when CR > 0.10, and the three most inconsistent judgements are named.
 - **Ranking and sensitivity.**
   - TOPSIS, plus SAW for comparison, with Kendall τ between them.
-  - Sensitivity: sweep one weight and find where the leader changes; Monte Carlo over 2000 Dirichlet weight vectors.
-- **Portfolio and UI.** A budget portfolio (knapsack with per-genre limits) and a wizard: criteria → AHP → ranking → sensitivity → portfolio → approval.
+  - Sensitivity sweeps one weight to find where the leader changes. A Monte Carlo over 2000 Dirichlet weight vectors gives each title a stability figure.
+- **Portfolio.** A knapsack under the budget with per-genre limits, using the solver shared with the retention plan (`domain/optimize.py`).
+- **API and UI.**
+  - One synchronous evaluation endpoint.
+  - Approval freezes the result as a report of kind `content`.
+  - One page with three panels instead of a wizard: comparisons with a live CR, the ranking with stability and the portfolio, and approval.
 - **Validation.**
-  - Textbook examples (Saaty; Hwang & Yoon) and a cross-check with `pymcdm`.
+  - Textbook examples (Saaty; Hwang & Yoon).
   - Property tests: a dominated title never beats its dominator; column scale and order do not matter.
+  - The cross-check with `pymcdm` is cut.
+  - A "searches per hryvnia" baseline joins the experiment, because zero-result searches already track true demand closely.
 
 ### M6. Experiment harness
 

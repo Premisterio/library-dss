@@ -126,6 +126,8 @@
   "dataset_id": "<dataset_id>",
   "dataset_name": "Ручний набір",
   "id": "<id>",
+  "kind": "analytics",
+  "params": null,
   "sections": [
     "overview"
   ],

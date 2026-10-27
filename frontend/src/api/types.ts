@@ -17,7 +17,9 @@ export type Job = Schemas["JobOut"]
 
 export type Section = Schemas["SectionOut"]
 export type SectionKey = Section["key"]
-export type Sections = Partial<Record<SectionKey, Section>>
+/** The analytics sections a dataset has (the others belong to decisions). */
+export type AnalyticsKey = NonNullable<Schemas["ReportIn"]["sections"]>[number]
+export type Sections = Partial<Record<AnalyticsKey, Section>>
 export type Kpi = Schemas["KpiOut"]
 export type Note = Schemas["NoteOut"]
 export type Chart = Schemas["ChartOut"]
