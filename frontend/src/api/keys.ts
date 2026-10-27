@@ -14,6 +14,7 @@ export const keys = {
   job: (id: string) => ["jobs", id] as const,
   churn: ["churn"] as const,
   churnRuns: (datasetId: number) => ["churn", "runs", datasetId] as const,
+  activeChurnRun: (datasetId: number) => ["churn", "active", datasetId] as const,
   churnRun: (id: number) => ["churn", "run", id] as const,
   churnScores: (runId: number, offset: number) => ["churn", "scores", runId, offset] as const,
   churnScore: (runId: number, userId: string) => ["churn", "score", runId, userId] as const,

@@ -2655,6 +2655,24 @@
             }
           },
           {
+            "description": "Only the active run(s).",
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only the active run(s).",
+              "title": "Active"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,

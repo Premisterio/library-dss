@@ -3,7 +3,7 @@
 import json
 import re
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -95,6 +95,22 @@ def test_period_ends_after_as_of_keep_their_local_day(
     days = [result.start + timedelta(days=row["period_end_day"]) for row in truth["at_risk"]]
     assert [ends[row["user_id"]].date() for row in truth["at_risk"]] == days
     assert any(day.month == 10 and day.day > 25 for day in days), "no end after the change"
+
+
+@pytest.mark.parametrize(
+    ("day", "local_hour", "expected"),
+    [
+        (28, 0, "2026-03-28T22:00:00Z"),  # 2026-03-29 00:00, still UTC+2
+        (28, 5, "2026-03-29T02:00:00Z"),  # after clocks went forward: UTC+3
+        (238, 0, "2026-10-24T21:00:00Z"),  # 2026-10-25 00:00, still UTC+3
+        (238, 5, "2026-10-25T03:00:00Z"),  # after clocks went back: UTC+2
+    ],
+)
+def test_times_on_clock_change_days(day: int, local_hour: int, expected: str) -> None:
+    """Regression: a whole day took the offset of its noon, so midnight on the day the clocks
+    changed was written an hour off."""
+    iso = writer._clock(date(2026, 3, 1), "Europe/Kyiv")
+    assert iso(day * 86400 + local_hour * 3600) == expected
 
 
 def test_concurrent_loans_never_exceed_licences(dataset: dict[str, Any]) -> None:

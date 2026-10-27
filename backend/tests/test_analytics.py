@@ -1,12 +1,12 @@
 """Descriptive analytics: exact numbers on hand-made files, contract checks on a simulated one.
 
 The expected values below are computed by hand from the `mini_document` fixture (as of
-2026-03-31 in Kyiv: the window "last 30 days" starts 2026-03-01T21:00Z, "last 90 days"
-starts 2025-12-31T21:00Z).
+2026-03-31 in Kyiv: the window "last 30 days" starts at local midnight of 03-02,
+2026-03-01T22:00Z, and "last 90 days" at 2025-12-31T22:00Z).
 """
 
 import math
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import orjson
@@ -341,3 +341,12 @@ def test_complete_weeks_at_the_boundary(as_of: date, last_week: date) -> None:
     mondays = pl.DataFrame({"week": [date(2026, 3, 16), date(2026, 3, 23), date(2026, 3, 30)]})
     kept = mondays.filter(Context.at(as_of, "Europe/Kyiv").complete_weeks())["week"]
     assert kept.max() == last_week
+
+
+def test_windows_hold_whole_local_days() -> None:
+    """Regression: a window was N × 24 h back in UTC, so one that crossed a clock change began
+    at 23:00 or 01:00 local time. It now begins at a local midnight."""
+    end_of_march = Context.at(date(2026, 3, 31), "Europe/Kyiv")  # summer time from 03-29
+    assert end_of_march.since(30) == datetime(2026, 3, 1, 22, tzinfo=UTC)  # 03-02 00:00, UTC+2
+    assert end_of_march.since(1) == datetime(2026, 3, 30, 21, tzinfo=UTC)  # 03-31 00:00, UTC+3
+    assert end_of_march.end - end_of_march.since(30) == timedelta(days=30) - timedelta(hours=1)
