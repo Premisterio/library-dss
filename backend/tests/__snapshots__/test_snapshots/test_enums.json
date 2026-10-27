@@ -60,6 +60,10 @@
         "label": "Когорти"
       },
       {
+        "code": "candidates",
+        "label": "Кандидати"
+      },
+      {
         "code": "retention_plan",
         "label": "План утримання"
       }
@@ -176,6 +180,10 @@
       {
         "code": "planned_members",
         "label": "Читачі в плані"
+      },
+      {
+        "code": "candidate_criteria",
+        "label": "Кандидати та ознаки попиту"
       }
     ],
     "churn_feature": [
@@ -514,6 +522,14 @@
       {
         "code": "user_id",
         "label": "Читач"
+      },
+      {
+        "code": "candidate_id",
+        "label": "Кандидат"
+      },
+      {
+        "code": "language",
+        "label": "Мова"
       }
     ],
     "education": [
@@ -920,6 +936,38 @@
       {
         "code": "spend",
         "label": "Витрати"
+      },
+      {
+        "code": "candidates",
+        "label": "Кандидатів"
+      },
+      {
+        "code": "candidates_searched",
+        "label": "Кандидатів, яких шукали"
+      },
+      {
+        "code": "candidates_cost",
+        "label": "Вартість усіх пропозицій"
+      },
+      {
+        "code": "demand_searches",
+        "label": "Пошуки без результату (назва чи автор)"
+      },
+      {
+        "code": "author_loans",
+        "label": "Позичення книг автора"
+      },
+      {
+        "code": "genre_loans",
+        "label": "Позичення в жанрі"
+      },
+      {
+        "code": "genre_holds_per_copy",
+        "label": "Бронювань на копію в жанрі"
+      },
+      {
+        "code": "license_cost",
+        "label": "Ліцензія"
       }
     ],
     "period_outcome": [

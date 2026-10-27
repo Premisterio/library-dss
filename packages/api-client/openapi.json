@@ -1985,6 +1985,7 @@
                 "search",
                 "subscriptions",
                 "cohorts",
+                "candidates",
                 "retention_plan"
               ],
               "type": "string"
@@ -2034,7 +2035,8 @@
                     "segments",
                     "search",
                     "subscriptions",
-                    "cohorts"
+                    "cohorts",
+                    "candidates"
                   ],
                   "type": "string"
                 },
@@ -2120,6 +2122,7 @@
                 "search",
                 "subscriptions",
                 "cohorts",
+                "candidates",
                 "retention_plan"
               ],
               "type": "string"
@@ -2207,6 +2210,7 @@
               "search",
               "subscriptions",
               "cohorts",
+              "candidates",
               "retention_plan"
             ],
             "title": "Key",
@@ -2264,7 +2268,8 @@
               "segments",
               "search",
               "subscriptions",
-              "cohorts"
+              "cohorts",
+              "candidates"
             ],
             "title": "Key",
             "type": "string"
@@ -3506,7 +3511,8 @@
                 "segments",
                 "search",
                 "subscriptions",
-                "cohorts"
+                "cohorts",
+                "candidates"
               ],
               "title": "Section",
               "type": "string"

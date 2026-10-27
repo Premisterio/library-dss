@@ -18,7 +18,7 @@ from app.services import analytics, datasets
 router = APIRouter(prefix="/datasets/{dataset_id}/analytics", tags=["analytics"])
 
 AnalyticsKey = Literal[
-    "overview", "usage", "content", "segments", "search", "subscriptions", "cohorts"
+    "overview", "usage", "content", "segments", "search", "subscriptions", "cohorts", "candidates"
 ]
 # Every section the API serves: the analytics, and the sections of decisions.
 SectionKey = Literal[
@@ -29,6 +29,7 @@ SectionKey = Literal[
     "search",
     "subscriptions",
     "cohorts",
+    "candidates",
     "retention_plan",
 ]
 WINDOW = Field(
