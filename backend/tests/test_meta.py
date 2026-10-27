@@ -2,7 +2,7 @@ import re
 
 from fastapi.testclient import TestClient
 
-from app.domain.enums import ENUMS, JobStage
+from app.domain.enums import ENUMS, JobKind, JobStage
 
 
 def test_enums_endpoint(client: TestClient) -> None:
@@ -33,3 +33,4 @@ def test_progress_labels_cover_the_import() -> None:
 
     assert set(ENUMS["dataset_table"]) == set(TABLES)
     assert {stage.value for stage in JobStage} == set(ENUMS["job_stage"])
+    assert {kind.value for kind in JobKind} == set(ENUMS["job_kind"])

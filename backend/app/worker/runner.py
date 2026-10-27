@@ -11,16 +11,19 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
-from app.domain.enums import JobStage
+from app.domain.enums import JobKind, JobStage
 from app.ingest import IngestError
 from app.models import Job
-from app.services import datasets, jobs
+from app.services import churn, datasets, jobs
 from app.utils.dates import utc_now
 
 logger = logging.getLogger("app.worker")
 
 Handler = Callable[[Session, Job, jobs.Progress], dict[str, Any]]
-HANDLERS: dict[str, Handler] = {datasets.IMPORT_JOB: datasets.run_import}
+HANDLERS: dict[str, Handler] = {
+    JobKind.IMPORT_DATASET: datasets.run_import,
+    JobKind.TRAIN_CHURN: churn.run_training,
+}
 RECOVERY_INTERVAL_SECONDS = 60
 
 

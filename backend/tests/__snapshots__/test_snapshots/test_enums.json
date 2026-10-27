@@ -286,6 +286,46 @@
         "label": "Профіль"
       }
     ],
+    "churn_metric": [
+      {
+        "code": "roc_auc",
+        "label": "ROC-AUC"
+      },
+      {
+        "code": "pr_auc",
+        "label": "PR-AUC"
+      },
+      {
+        "code": "brier",
+        "label": "Оцінка Браєра"
+      },
+      {
+        "code": "brier_skill",
+        "label": "Виграш оцінки Браєра"
+      },
+      {
+        "code": "ece",
+        "label": "Помилка калібрування (ECE)"
+      },
+      {
+        "code": "lift",
+        "label": "Ліфт у 10 % найризиковіших"
+      }
+    ],
+    "churn_model": [
+      {
+        "code": "inactivity_rule",
+        "label": "Правило «14+ днів без читання»"
+      },
+      {
+        "code": "logistic",
+        "label": "Логістична регресія"
+      },
+      {
+        "code": "boosting",
+        "label": "Градієнтний бустинг"
+      }
+    ],
     "dataset_format": [
       {
         "code": "tabular",
@@ -566,6 +606,16 @@
         "label": "Скасовано"
       }
     ],
+    "job_kind": [
+      {
+        "code": "import_dataset",
+        "label": "Імпорт датасету"
+      },
+      {
+        "code": "train_churn",
+        "label": "Навчання моделі відтоку"
+      }
+    ],
     "job_stage": [
       {
         "code": "started",
@@ -582,6 +632,18 @@
       {
         "code": "analytics",
         "label": "Розрахунок аналітики"
+      },
+      {
+        "code": "features",
+        "label": "Розрахунок ознак"
+      },
+      {
+        "code": "backtest",
+        "label": "Навчання й перевірка моделей"
+      },
+      {
+        "code": "scoring",
+        "label": "Оцінка ризику читачів"
       },
       {
         "code": "done",

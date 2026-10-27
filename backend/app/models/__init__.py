@@ -2,6 +2,7 @@
 
 from app.models.analyst import Analyst
 from app.models.base import NAMING_CONVENTION, Base
+from app.models.churn import ChurnRun, ChurnScore
 from app.models.dataset import Dataset, DatasetAnalytics, DatasetFile
 from app.models.job import Job
 from app.models.library import (
@@ -26,6 +27,8 @@ __all__ = [
     "Campaign",
     "CampaignAssignment",
     "CandidateTitle",
+    "ChurnRun",
+    "ChurnScore",
     "Dataset",
     "DatasetAnalytics",
     "DatasetFile",

@@ -139,6 +139,52 @@ def seed_demo(
     typer.echo(f"report   #{result.report_id}")
 
 
+@app.command("train-churn")
+def train_churn(
+    dataset: Annotated[int, typer.Option(help="Dataset id.")],
+    activate: Annotated[bool, typer.Option(help="Make the run the one decisions use.")] = False,
+) -> None:
+    """Train a churn model on a dataset, as its owner, and print how good it is."""
+    from app.cli.jobs import run_job
+    from app.core.db import get_sessionmaker
+    from app.core.errors import ApiError
+    from app.models import Analyst, ChurnRun, Dataset
+    from app.services import churn
+
+    factory = get_sessionmaker()
+    with factory() as session:
+        target = session.get(Dataset, dataset)
+        if target is None:
+            typer.echo(f"error: dataset #{dataset} does not exist", err=True)
+            raise typer.Exit(1)
+        try:
+            run = churn.create_run(session, session.get_one(Analyst, target.owner_id), target)
+        except ApiError as exc:
+            typer.echo(f"error: {exc.code}: {exc.detail}", err=True)
+            raise typer.Exit(1) from exc
+        run_id, job_id = run.id, run.job_id
+    run_job(factory, job_id)
+    with factory() as session:
+        run = session.get_one(ChurnRun, run_id)
+        if run.job.status != "succeeded" or run.result is None:
+            error = run.job.error or {}
+            typer.echo(f"error: {error.get('code')}: {error.get('detail')}", err=True)
+            raise typer.Exit(1)
+        if activate:
+            churn.activate(session, run)
+        summary = run.result["summary"]
+        typer.echo(
+            f"run #{run.id}: {run.chosen_model} chosen; {summary['examples']} renewals over "
+            f"{summary['cutoffs']} cutoffs, churn rate {summary['churn_rate']:.3f}"
+        )
+        for model in run.result["models"]:
+            typer.echo(
+                f"  {model['model']:16} Brier {model['brier']:.4f}  ECE {model['ece']:.4f}  "
+                f"ROC-AUC {model['roc_auc'] or float('nan'):.3f}  ({model['origins']} origins)"
+            )
+        typer.echo(f"scored {summary['scored']} members at risk" + (", active" if activate else ""))
+
+
 @app.command()
 def openapi(
     out: Annotated[Path | None, typer.Option(help="Write to this file instead of stdout.")] = None,

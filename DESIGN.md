@@ -130,6 +130,7 @@ There are two file formats, detected by content:
 ### 2.6 Jobs and the worker
 
 - **The queue** is the `jobs` table, with statuses `queued → running → succeeded | failed`.
+  - Kinds are `JobKind` codes (`import_dataset`, `train_churn`), labelled in enums `job_kind`.
   - `claim_next` takes the oldest queued job with `SELECT … FOR UPDATE SKIP LOCKED` in its own transaction, so workers never share a job.
   - Redis and Celery are not needed.
 - **Handlers** are registered in `app/worker/runner.HANDLERS[kind]`.
@@ -140,8 +141,9 @@ There are two file formats, detected by content:
   - Each report also refreshes the heartbeat.
 - **Recovery.** Every 60 s the worker fails `running` jobs whose heartbeat is older than `JOB_STALE_SECONDS`, as `job.interrupted`. They cannot resume.
 - **Shutdown.** On SIGINT/SIGTERM the current job is finished first; compose allows 60 s for that.
-- **Adding a job kind:** enqueue it in a service, register the handler, and report progress.
-- **Running a job outside the worker.** `claim(job_id)` takes one specific queued job, for example from the CLI. If a worker already took it, `wait(job_id)` blocks until the job finishes.
+- **Dataset status.** Only import jobs move their dataset to `importing` and, on failure, to `failed`. Any other job on a dataset, such as training, leaves it as it is.
+- **Adding a job kind:** add a `JobKind` with its label, enqueue it in a service, register the handler, and report progress with `JobStage` codes.
+- **Running a job outside the worker.** `claim(job_id)` takes one specific queued job, for example from the CLI. If a worker already took it, `wait(job_id)` blocks until the job finishes. The CLI does both through `cli/jobs.run_job`.
 
 ### 2.7 Models and migrations
 
@@ -291,11 +293,30 @@ There are two file formats, detected by content:
     - The scaling rests on one cutoff, about 65 churns, and that cutoff is then lost to training.
   - Training and the backtest take about 2 s.
 
+- **Runs** (`services/churn.py`, model `ChurnRun`).
+  - `POST /datasets/{id}/churn-runs` checks that the dataset is ready and has retention data (`churn.not_supported` otherwise). It creates a run and queues a `train_churn` job, and answers `202 {run, job}` with `Location` pointing at the job.
+  - The run's status and error are its job's, so nothing is kept twice.
+  - The job parses the stored upload and builds the examples. It then backtests, chooses and explains a model, and scores the risk group at as_of. Its stages are `parse`, `features`, `backtest`, `scoring`.
+  - Too little history fails the job with `churn.not_enough_history`; the dataset stays ready.
+  - The run keeps the chosen model's key and a JSON result:
+    - the summary (examples, cutoffs, churn rate, members scored);
+    - each model's metrics averaged over the backtest, and every evaluation with its calibration bins;
+    - importance, coefficients and typical values.
+  - The fitted model itself is not stored. Scores are computed once, the dataset never changes, and training again takes seconds.
+  - A run that is still queued or running cannot be deleted (`churn.busy`).
+- **Activation.** `POST /churn-runs/{id}/activate` makes a trained run the one decisions use for its dataset, and deactivates the others. The analyst chooses it after reviewing the quality, so training never activates a run by itself. A partial unique index allows one active run per dataset.
+- **Scores** (`ChurnScore`).
+  - One row per member at risk: rank, probability, plan, period end, every feature value and the reasons.
+  - `GET /churn-runs/{id}/scores` lists them, the riskiest first.
+  - `GET /churn-runs/{id}/scores/{user_id}` adds every feature with its group and typical value.
+  - Scores of a run that is not trained answer `409 churn.not_trained`.
+- **Labels.** Clients label everything from the enums: `churn_model`, `churn_metric`, `churn_feature`, `churn_feature_group` and `job_stage`.
 - **Tests.**
   - Exact values are checked on `churn_document`, which plants an event at every boundary: at the cutoff, resolved after it, starting after it.
   - On the simulated dataset, the risk group at as_of is checked against libsim's ground truth: the members it renews in the next 30 days.
   - Metrics are checked against values worked out by hand. Reasons, typical values and importance are checked by hand with a stub model whose effects are known.
   - A slow test trains on the demo (seed 1) and checks the done criteria against the ground truth: AUC within 0.05 of the best achievable, and a better Brier score than the rule.
+  - `test_churn_api.py` trains through the API and the job runner on an 800-member, 10-month simulation. It covers scores, activation, ownership, deleting, and failures that leave the dataset ready. The CLI test runs `seed-demo` and then `train-churn`.
   - On the 5k-member demo, the examples of all 24 cutoffs take under 1 s.
 
 ### 2.10 Reports and exports
@@ -319,7 +340,8 @@ There are two file formats, detected by content:
 
 ### 2.11 CLI
 
-- `dss` (Typer) runs the same use cases as the API: `create-user`, `seed-demo`, `refresh-analytics`, `openapi`, ….
+- `dss` (Typer) runs the same use cases as the API: `create-user`, `seed-demo`, `refresh-analytics`, `train-churn`, `openapi`, ….
+- `dss train-churn --dataset ID [--activate]` trains a churn model as the dataset's owner, runs the job here or waits for the worker, and prints each model's mean metrics.
 - Imports that touch the database are local to commands, so `dss openapi` needs no database.
 - **`dss seed-demo`** gives any client realistic data with one command:
   - it creates the demo analyst (`DSS_PASSWORD` or a prompt);

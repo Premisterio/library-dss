@@ -86,6 +86,92 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/churn-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your churn runs, newest first */
+        get: operations["list_churn_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/churn-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One churn run with its backtest and explanations */
+        get: operations["get_churn_run"];
+        put?: never;
+        post?: never;
+        /** Delete a churn run with its scores */
+        delete: operations["delete_churn_run"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/churn-runs/{run_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a trained run the one decisions use for its dataset */
+        post: operations["activate_churn_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/churn-runs/{run_id}/scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The members at risk, the riskiest first */
+        get: operations["list_churn_scores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/churn-runs/{run_id}/scores/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One member at risk with every feature and its typical value */
+        get: operations["get_churn_score"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets": {
         parameters: {
             query?: never;
@@ -153,6 +239,26 @@ export type paths = {
         get: operations["get_analytics_section"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/churn-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Train a churn model on a dataset
+         * @description Queues a job that backtests the models, chooses one, explains it and scores the members at risk at the dataset's as_of. The `Location` header points to the job.
+         */
+        post: operations["create_churn_run"];
         delete?: never;
         options?: never;
         head?: never;
@@ -337,6 +443,21 @@ export type components = {
             /** Name */
             name?: string | null;
         };
+        /** CalibrationBinOut */
+        CalibrationBinOut: {
+            /** Members */
+            members: number;
+            /**
+             * Observed
+             * @description Share of the bin that churned.
+             */
+            observed: number;
+            /**
+             * Predicted
+             * @description Mean predicted probability in the bin.
+             */
+            predicted: number;
+        };
         /**
          * ChartOut
          * @description A tidy table: one row per combination of dimension values.
@@ -365,6 +486,243 @@ export type components = {
              * @description The value covers the last N days up to as_of; null: the whole history, or the state at the end of as_of for current counts (paying subscribers, MRR).
              */
             window_days: number | null;
+        };
+        /** ChurnRunAccepted */
+        ChurnRunAccepted: {
+            job: components["schemas"]["JobOut"];
+            run: components["schemas"]["ChurnRunOut"];
+        };
+        /** ChurnRunDetailOut */
+        ChurnRunDetailOut: {
+            /**
+             * Active
+             * @description Decisions on this dataset use this run.
+             */
+            active: boolean;
+            /** Backtest */
+            backtest: components["schemas"]["EvaluationOut"][];
+            /**
+             * Chosen Model
+             * @description The learned model with the lowest mean Brier score; label in enums `churn_model`. null until trained.
+             */
+            chosen_model: ("inactivity_rule" | "logistic" | "boosting") | null;
+            /**
+             * Coefficients
+             * @description Logistic regression only.
+             */
+            coefficients: components["schemas"]["CoefficientOut"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: number;
+            error: components["schemas"]["TaskError"] | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Importance
+             * @description Of the chosen model, highest first.
+             */
+            importance: components["schemas"]["ImportanceOut"][];
+            /**
+             * Job Id
+             * Format: uuid
+             * @description The training job.
+             */
+            job_id: string;
+            /**
+             * Models
+             * @description Every model, averaged over the backtest.
+             */
+            models: components["schemas"]["ModelSummaryOut"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            summary: components["schemas"]["ChurnSummaryOut"] | null;
+        };
+        /**
+         * ChurnRunOut
+         * @description A churn model trained by a job; `status` and `error` are the job's.
+         */
+        ChurnRunOut: {
+            /**
+             * Active
+             * @description Decisions on this dataset use this run.
+             */
+            active: boolean;
+            /**
+             * Chosen Model
+             * @description The learned model with the lowest mean Brier score; label in enums `churn_model`. null until trained.
+             */
+            chosen_model: ("inactivity_rule" | "logistic" | "boosting") | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Dataset Id */
+            dataset_id: number;
+            error: components["schemas"]["TaskError"] | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Job Id
+             * Format: uuid
+             * @description The training job.
+             */
+            job_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "succeeded" | "failed";
+            summary: components["schemas"]["ChurnSummaryOut"] | null;
+        };
+        /** ChurnRunPage */
+        ChurnRunPage: {
+            /** Items */
+            items: components["schemas"]["ChurnRunOut"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /**
+             * Total
+             * @description Number of items across all pages.
+             */
+            total: number;
+        };
+        /** ChurnScoreDetailOut */
+        ChurnScoreDetailOut: {
+            /**
+             * Features
+             * @description Every feature, in the model's order.
+             */
+            features: components["schemas"]["FeatureValueOut"][];
+            /**
+             * Period End
+             * Format: date-time
+             * @description When the paid period ends and renewal is due.
+             */
+            period_end: string;
+            /**
+             * Plan
+             * @description Plan code; label in enums `plan`.
+             */
+            plan: string;
+            /**
+             * Probability
+             * @description Probability of churn at the renewal (0..1).
+             */
+            probability: number;
+            /**
+             * Rank
+             * @description 1 is the highest probability.
+             */
+            rank: number;
+            /**
+             * Reasons
+             * @description Up to three, strongest first.
+             */
+            reasons: components["schemas"]["ReasonOut"][];
+            /** User Id */
+            user_id: string;
+        };
+        /** ChurnScoreOut */
+        ChurnScoreOut: {
+            /**
+             * Period End
+             * Format: date-time
+             * @description When the paid period ends and renewal is due.
+             */
+            period_end: string;
+            /**
+             * Plan
+             * @description Plan code; label in enums `plan`.
+             */
+            plan: string;
+            /**
+             * Probability
+             * @description Probability of churn at the renewal (0..1).
+             */
+            probability: number;
+            /**
+             * Rank
+             * @description 1 is the highest probability.
+             */
+            rank: number;
+            /**
+             * Reasons
+             * @description Up to three, strongest first.
+             */
+            reasons: components["schemas"]["ReasonOut"][];
+            /** User Id */
+            user_id: string;
+        };
+        /** ChurnScorePage */
+        ChurnScorePage: {
+            /** Items */
+            items: components["schemas"]["ChurnScoreOut"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /**
+             * Total
+             * @description Number of items across all pages.
+             */
+            total: number;
+        };
+        /** ChurnSummaryOut */
+        ChurnSummaryOut: {
+            /**
+             * Churn Rate
+             * @description Share of those renewals that ended in churn (0..1).
+             */
+            churn_rate: number;
+            /**
+             * Cutoffs
+             * @description Rolling cutoffs with labelled renewals.
+             */
+            cutoffs: number;
+            /**
+             * Examples
+             * @description Labelled renewals the models learned from.
+             */
+            examples: number;
+            /**
+             * Scored
+             * @description Members at risk at as_of, scored by the chosen model.
+             */
+            scored: number;
+        };
+        /** CoefficientOut */
+        CoefficientOut: {
+            /**
+             * Code
+             * @description Category code of a one-hot column.
+             */
+            code: string | null;
+            /** Feature */
+            feature: string;
+            /**
+             * Missing
+             * @description The column says the value is missing.
+             */
+            missing: boolean;
+            /**
+             * Value
+             * @description Change of the log-odds per standard deviation.
+             */
+            value: number;
         };
         /** DatasetOut */
         DatasetOut: {
@@ -477,6 +835,35 @@ export type components = {
                 [key: string]: components["schemas"]["EnumItem"][];
             };
         };
+        /** EvaluationOut */
+        EvaluationOut: {
+            metrics: components["schemas"]["MetricsOut"];
+            /**
+             * Model
+             * @enum {string}
+             */
+            model: "inactivity_rule" | "logistic" | "boosting";
+            /**
+             * Origin
+             * @description Test cutoff k (0 is the newest); older cutoffs train.
+             */
+            origin: number;
+        };
+        /** FeatureValueOut */
+        FeatureValueOut: {
+            /** Feature */
+            feature: string;
+            /**
+             * Group
+             * @description Label in enums `churn_feature_group`.
+             * @enum {string}
+             */
+            group: "subscription" | "activity" | "reading" | "frustration" | "profile";
+            /** Typical */
+            typical: boolean | number | string | null;
+            /** Value */
+            value: boolean | number | string | null;
+        };
         /** FieldError */
         FieldError: {
             /**
@@ -499,6 +886,19 @@ export type components = {
             status: "ok";
             /** Version */
             version: string;
+        };
+        /** ImportanceOut */
+        ImportanceOut: {
+            /**
+             * Brier Increase
+             * @description Brier score increase when the feature is shuffled.
+             */
+            brier_increase: number;
+            /**
+             * Feature
+             * @description Feature key; label in enums `churn_feature`.
+             */
+            feature: string;
         };
         /**
          * JobOut
@@ -602,6 +1002,58 @@ export type components = {
              */
             window_days: number | null;
         };
+        /**
+         * MetricsOut
+         * @description Quality on one test cutoff; labels in enums `churn_metric`. null: undefined.
+         */
+        MetricsOut: {
+            /** Brier */
+            brier: number;
+            /** Brier Skill */
+            brier_skill: number | null;
+            /**
+             * Calibration
+             * @description Equal-count bins by risk.
+             */
+            calibration: components["schemas"]["CalibrationBinOut"][];
+            /** Churned */
+            churned: number;
+            /** Ece */
+            ece: number;
+            /** Lift */
+            lift: number | null;
+            /** Members */
+            members: number;
+            /** Pr Auc */
+            pr_auc: number | null;
+            /** Roc Auc */
+            roc_auc: number | null;
+        };
+        /**
+         * ModelSummaryOut
+         * @description A model's metrics averaged over the backtest origins where they are defined.
+         */
+        ModelSummaryOut: {
+            /** Brier */
+            brier: number;
+            /** Brier Skill */
+            brier_skill: number | null;
+            /** Ece */
+            ece: number;
+            /** Lift */
+            lift: number | null;
+            /**
+             * Model
+             * @enum {string}
+             */
+            model: "inactivity_rule" | "logistic" | "boosting";
+            /** Origins */
+            origins: number;
+            /** Pr Auc */
+            pr_auc: number | null;
+            /** Roc Auc */
+            roc_auc: number | null;
+        };
         /** NoteOut */
         NoteOut: {
             /** Code */
@@ -657,6 +1109,32 @@ export type components = {
              * @constant
              */
             status: "ready";
+        };
+        /**
+         * ReasonOut
+         * @description Why the probability is high: with the typical value it would be `effect` lower.
+         */
+        ReasonOut: {
+            /**
+             * Effect
+             * @description Probability drop with the typical value (0..1).
+             */
+            effect: number;
+            /**
+             * Feature
+             * @description Feature key; label in enums `churn_feature`.
+             */
+            feature: string;
+            /**
+             * Typical
+             * @description The typical value among members.
+             */
+            typical: boolean | number | string | null;
+            /**
+             * Value
+             * @description The member's value.
+             */
+            value: boolean | number | string | null;
         };
         /** RegisterIn */
         RegisterIn: {
@@ -1018,6 +1496,255 @@ export interface operations {
             };
         };
     };
+    list_churn_runs: {
+        parameters: {
+            query?: {
+                dataset_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChurnRunPage"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_churn_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Churn run id. */
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChurnRunDetailOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_churn_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Churn run id. */
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    activate_churn_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Churn run id. */
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChurnRunOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_churn_scores: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Churn run id. */
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChurnScorePage"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_churn_score: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Churn run id. */
+                run_id: number;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChurnScoreDetailOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_datasets: {
         parameters: {
             query?: {
@@ -1238,6 +1965,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SectionOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_churn_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChurnRunAccepted"];
                 };
             };
             /** @description Request validation failed */
