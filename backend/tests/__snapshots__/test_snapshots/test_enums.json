@@ -264,6 +264,28 @@
         "label": "Згода на e-mail"
       }
     ],
+    "churn_feature_group": [
+      {
+        "code": "subscription",
+        "label": "Підписка"
+      },
+      {
+        "code": "activity",
+        "label": "Активність"
+      },
+      {
+        "code": "reading",
+        "label": "Прочитане"
+      },
+      {
+        "code": "frustration",
+        "label": "Невдачі в бібліотеці"
+      },
+      {
+        "code": "profile",
+        "label": "Профіль"
+      }
+    ],
     "dataset_format": [
       {
         "code": "tabular",
