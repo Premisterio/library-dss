@@ -26,13 +26,21 @@ function ChartBody({ chart, view }: { chart: Chart; view: ChartView }) {
 }
 
 /** Any tidy chart of the API, drawn from its description: bars, line, heatmap or table. */
-export function TidyChart({ chart, className }: { chart: Chart; className?: string }) {
+export function TidyChart({
+  chart,
+  description,
+  className,
+}: {
+  chart: Chart
+  description?: string
+  className?: string
+}) {
   const label = useLabel()
   const view = useMemo(() => chooseView(chart), [chart])
   return (
     <ChartPanel
       title={label("chart", chart.key)}
-      description={windowText(chart.window_days) || undefined}
+      description={description ?? (windowText(chart.window_days) || undefined)}
       chart={<ChartBody chart={chart} view={view} />}
       table={view.type === "table" ? undefined : <RowsTable chart={chart} />}
       empty={chart.rows.length === 0}
