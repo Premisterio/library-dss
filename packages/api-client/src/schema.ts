@@ -299,6 +299,40 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/datasets/{dataset_id}/content/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve the portfolio: freeze it as a decision (a report of kind `content`) */
+        post: operations["approve_content"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/content/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rank the titles on offer and pick the portfolio */
+        post: operations["evaluate_content"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -793,6 +827,30 @@ export type components = {
              */
             value: number;
         };
+        /** ContentApproveIn */
+        ContentApproveIn: {
+            decision: components["schemas"]["ContentIn"];
+            /** Title */
+            title: string;
+        };
+        /** ContentIn */
+        ContentIn: {
+            /**
+             * Budget
+             * @description UAH for the licences.
+             */
+            budget: number;
+            /**
+             * Judgements
+             * @description Pairwise judgements; a pair left out counts as equally important, and a later judgement of the same pair wins.
+             */
+            judgements?: components["schemas"]["JudgementIn"][];
+            /**
+             * Max Per Genre
+             * @description At most this many titles of one genre.
+             */
+            max_per_genre?: number | null;
+        };
         /** DatasetOut */
         DatasetOut: {
             /**
@@ -1028,6 +1086,27 @@ export type components = {
              * @enum {string}
              */
             status: "queued" | "running" | "succeeded" | "failed";
+        };
+        /**
+         * JudgementIn
+         * @description How many times more important `criterion` is than `compared_with` (Saaty's scale).
+         */
+        JudgementIn: {
+            /**
+             * Compared With
+             * @enum {string}
+             */
+            compared_with: "demand_searches" | "author_loans" | "genre_loans" | "genre_holds_per_copy";
+            /**
+             * Criterion
+             * @enum {string}
+             */
+            criterion: "demand_searches" | "author_loans" | "genre_loans" | "genre_holds_per_copy";
+            /**
+             * Value
+             * @description 1/9..9; 1: equal.
+             */
+            value: number;
         };
         /** KpiOut */
         KpiOut: {
@@ -1324,7 +1403,7 @@ export type components = {
                 [key: string]: unknown;
             } | null;
             /** Sections */
-            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan")[];
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan" | "content_portfolio")[];
             /** Timezone */
             timezone: string;
             /** Title */
@@ -1374,7 +1453,7 @@ export type components = {
                 [key: string]: unknown;
             } | null;
             /** Sections */
-            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan")[];
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan" | "content_portfolio")[];
             /** Timezone */
             timezone: string;
             /** Title */
@@ -1410,7 +1489,7 @@ export type components = {
              * Key
              * @enum {string}
              */
-            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan";
+            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan" | "content_portfolio";
             /** Kpis */
             kpis: components["schemas"]["KpiOut"][];
             /** Notes */
@@ -2284,6 +2363,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChurnRunAccepted"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentApproveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    evaluate_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSectionOut"];
                 };
             };
             /** @description Request validation failed */

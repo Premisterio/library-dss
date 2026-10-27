@@ -66,6 +66,10 @@
       {
         "code": "retention_plan",
         "label": "План утримання"
+      },
+      {
+        "code": "content_portfolio",
+        "label": "Портфель закупівлі"
       }
     ],
     "campaign_arm": [
@@ -184,6 +188,18 @@
       {
         "code": "candidate_criteria",
         "label": "Кандидати та ознаки попиту"
+      },
+      {
+        "code": "criterion_weights",
+        "label": "Ваги критеріїв"
+      },
+      {
+        "code": "title_ranking",
+        "label": "Рейтинг кандидатів"
+      },
+      {
+        "code": "inconsistent_judgements",
+        "label": "Найменш узгоджені судження"
       }
     ],
     "churn_feature": [
@@ -352,6 +368,34 @@
       {
         "code": "boosting",
         "label": "Градієнтний бустинг"
+      }
+    ],
+    "content_choice": [
+      {
+        "code": "licensed",
+        "label": "Ліцензувати"
+      },
+      {
+        "code": "skipped",
+        "label": "Не брати"
+      }
+    ],
+    "content_criterion": [
+      {
+        "code": "demand_searches",
+        "label": "Пошуки без результату"
+      },
+      {
+        "code": "author_loans",
+        "label": "Позичення книг автора"
+      },
+      {
+        "code": "genre_loans",
+        "label": "Позичення в жанрі"
+      },
+      {
+        "code": "genre_holds_per_copy",
+        "label": "Бронювань на копію в жанрі"
       }
     ],
     "dataset_format": [
@@ -530,6 +574,18 @@
       {
         "code": "language",
         "label": "Мова"
+      },
+      {
+        "code": "criterion",
+        "label": "Критерій"
+      },
+      {
+        "code": "compared_with",
+        "label": "Порівняно з"
+      },
+      {
+        "code": "choice",
+        "label": "Рішення"
       }
     ],
     "education": [
@@ -972,6 +1028,66 @@
       {
         "code": "license_cost",
         "label": "Ліцензія"
+      },
+      {
+        "code": "consistency_ratio",
+        "label": "Узгодженість суджень (CR)"
+      },
+      {
+        "code": "portfolio_titles",
+        "label": "Назв у портфелі"
+      },
+      {
+        "code": "portfolio_spend",
+        "label": "Вартість портфеля"
+      },
+      {
+        "code": "portfolio_searches",
+        "label": "Пошуки назв із портфеля"
+      },
+      {
+        "code": "ranking_agreement",
+        "label": "Згода TOPSIS і SAW (τ Кендалла)"
+      },
+      {
+        "code": "weight",
+        "label": "Вага"
+      },
+      {
+        "code": "stable_from",
+        "label": "Лідер не зміниться від"
+      },
+      {
+        "code": "stable_to",
+        "label": "Лідер не зміниться до"
+      },
+      {
+        "code": "rank_topsis",
+        "label": "Місце (TOPSIS)"
+      },
+      {
+        "code": "topsis",
+        "label": "Близькість до ідеалу (TOPSIS)"
+      },
+      {
+        "code": "rank_saw",
+        "label": "Місце (SAW)"
+      },
+      {
+        "code": "saw",
+        "label": "Зважена сума (SAW)"
+      },
+      {
+        "code": "stability",
+        "label": "Стійкість у портфелі"
+      },
+      {
+        "code": "judgement_given",
+        "label": "Судження"
+      },
+      {
+        "code": "judgement_consistent",
+        "label": "Узгоджене значення"
       }
     ],
     "period_outcome": [

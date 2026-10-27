@@ -53,3 +53,5 @@ export type FeatureValue = Schemas["FeatureValueOut"]
 export type Described = Pick<Reason, "kind" | "unit" | "enum">
 
 export type PlanIn = Schemas["PlanIn"]
+export type ContentIn = Schemas["ContentIn"]
+export type CriterionKey = Schemas["JudgementIn"]["criterion"]

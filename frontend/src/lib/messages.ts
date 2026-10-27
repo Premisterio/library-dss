@@ -39,6 +39,8 @@ const MESSAGES: Record<string, string> = {
   "retention.no_campaign": "У датасеті немає кампанії, тож ефекти дій невідомі. Задайте їх вручну.",
   "retention.nobody_at_risk": "У групі ризику нікого немає.",
   "retention.not_active": "Затвердити можна лише план активної моделі.",
+  "content.no_candidates": "У датасеті немає пропозицій дистриб'ютора.",
+  "content.inconsistent": "Судження суперечать одне одному (CR понад 10 %). Перегляньте їх.",
   "request.invalid": "Некоректний запит.",
   "server.error": SERVER_ERROR,
   "system.database_unavailable": "База даних недоступна.",

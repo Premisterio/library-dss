@@ -23,7 +23,7 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 | M3        | Thin frontend on shadcn, run locally                                                     | done                |
 | M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16)  |
 | M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | in review (#17–#20) |
-| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | —                   |
+| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | in review (#21–#24) |
 | M6        | Thesis experiment harness                                                                | —                   |
 | M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                   |
 | M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                   |
@@ -156,7 +156,8 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Progress.**
   - Done: the criteria, an analytics section `candidates` with four criteria kept after measuring seven signals against the truth (PR #21).
   - Done: AHP, TOPSIS/SAW, the sensitivity sweep, Dirichlet stability and the portfolio (`domain/content`, PR #22). On the truth, the decision doubles what chance finds, and "searches per hryvnia" does better still (DESIGN §2.9).
-  - Next: the API and the page.
+  - Done: the synchronous evaluation, approval as a report of kind `content`, and the "Закупівля" page (PR #24).
+  - Fixed on the way (PR #23, a bug review of M4b): the shared solver now stops within a 0.5% gap, which also bounds the portfolio's time.
 - **Alternatives.** 60 candidate titles offered by a distributor.
 - **Criteria.**
   - They are computed at import as an analytics section `candidates`, stored like the others and rebuilt by `dss refresh-analytics`.
