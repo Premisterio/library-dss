@@ -103,10 +103,13 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Progress.**
   - Done: the target, rolling cutoffs, 26 features and the leakage property test (`domain/churn`, DESIGN §2.9).
   - Fixed on the way: libsim wrote period ends after a clock change an hour early.
-  - Next: models and metrics, then explanations, the API and the UI.
+  - Done: the models, metrics, the backtest and the choice of a model.
+    - On four demo seeds the chosen model's AUC is 0.033–0.070 below the best achievable, 0.049 on average.
+    - It beats the inactivity rule on the Brier score on every dataset tried.
+  - Next: explanations, then the API and the UI.
 - **Target.** Paying members whose period ends in the next 30 days. The label is whether that period ended in churn.
 - **No leakage.**
-  - Rolling cutoffs: train on k ≥ 2, calibrate on k = 1, test on k = 0.
+  - Rolling cutoffs: test on k = 0 and train on every older cutoff. A backtest repeats this at six origins.
   - One `build_features(frames, cutoff)` for training and scoring, and no snapshot fields.
   - A property test checks that changing events after the cutoff changes no feature.
 - **About 25 features:**
@@ -118,7 +121,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - demographics and e-mail opt-in.
   - Missing values stay missing, with an indicator.
 - **Models.**
-  - Baseline rule "inactive 14+ days", logistic regression, HistGradientBoosting (+ Platt).
+  - Baseline rule "inactive 14+ days", logistic regression, HistGradientBoosting.
   - Metrics: ROC-AUC, PR-AUC, Brier (+ skill), ECE with a calibration plot, lift@10%.
   - The model is chosen by Brier/ECE, because the optimizer uses probabilities.
 - **Explanations.** Coefficients and permutation importance; for each member, the top three reasons in plain words.
@@ -238,4 +241,5 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Real catalogue.** The simulator uses a real catalogue (Open Library + goodbooks-10k calibration) instead of the earlier `book_database.json`.
 - **Format names.** Dataset formats are named by structure (`tabular`, `nested`) instead of version numbers.
 - **Documentation.** Docs are in English, and design and rules live in DESIGN.md rather than in code comments.
+- **No calibration cutoff for churn models.** The plan was to calibrate on cutoff k = 1 with Platt scaling. On seven libsim datasets, that made both models worse, so the models are fitted by log-loss on every older cutoff and their calibration is measured instead (DESIGN §2.9).
 - **Deployment moved to the end.** It moved from M3 to M8, so the work is finished and agreed locally first.

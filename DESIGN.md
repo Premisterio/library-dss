@@ -216,7 +216,7 @@ There are two file formats, detected by content:
   - Cutoff k is as_of − 30·(k + 1) days, back to the first paid period.
     - The risk window of k = 0 ends at as_of.
     - Windows never overlap, so every renewal is labelled at exactly one cutoff.
-  - Roles (`role`): k = 0 tests, k = 1 calibrates, k ≥ 2 train. So everything a model learns from was known before the cutoff it is checked on.
+  - A model tested at cutoff k is trained on every older cutoff, so everything it learns from was known before the cutoff it is checked on.
   - Scoring uses the cutoff at as_of, whose periods are still running.
   - `examples` returns the labelled rows of every cutoff with their `k`.
 - **No leakage.**
@@ -240,9 +240,46 @@ There are two file formats, detected by content:
   | Profile                             | age, education, language, e-mail opt-in                                                                                                                                                                                                                                             |
 
 - **Missing values.** Counts without events are 0. A value that is undefined stays null, never 0. Examples: the days since the last session of a member who never read, completion and rating without returned loans, an unknown profile field. Models handle nulls themselves.
+- **Models** (`models.py`).
+  - The baseline is the rule "inactive for 14+ days": it predicts the churn rates of inactive and active members in the training rows.
+  - The learned models work on a numeric matrix of the features:
+    - numbers stay as they are, with NaN when missing;
+    - flags become 0/1;
+    - each category code gets a 0/1 column, with the codes taken from the enums.
+  - Logistic regression puts counts, minutes, days and prices on a log scale, imputes missing values with the median plus an indicator, standardizes, and applies the default L2 penalty.
+  - Gradient boosting (`HistGradientBoostingClassifier`) reads NaN directly. Its trees are small (4 leaves, at least 100 rows per leaf) and it learns slowly (rate 0.03, 200 trees), because a year of history holds a few thousand renewals and few churns.
+  - Both models are fitted by log-loss and give probabilities directly. There is no separate calibration step: Platt scaling on the newest cutoff was tried and made results worse (see "Quality on libsim"). Calibration is measured instead.
+- **Metrics** (`metrics.py`), on the members of the test cutoff:
+  - ROC-AUC and PR-AUC (average precision);
+  - the Brier score and its skill against always predicting the training churn rate;
+  - ECE over 10 equal-count bins by predicted risk, and the bins themselves for a calibration plot;
+  - lift: the churn rate in the riskiest 10% over the overall rate.
+  - A metric that is undefined for the data, such as AUC with one class, is null.
+- **Backtest and choice** (`training.py`).
+  - Every model is trained and tested at origins k = 0…5. Origins without both churn and renewal in their training or test rows are skipped, but origin 0 must be usable (`NotEnoughHistoryError`).
+  - The chosen model is the learned one with the lowest mean Brier score over the origins, with mean ECE breaking ties. The choice uses probabilities rather than ranking, because the action plan works with probabilities.
+  - The chosen model is then refitted on every cutoff and scores the risk group at as_of.
+- **Quality on libsim.** The chosen model scores the members at risk at as_of, and the result is compared with the ground truth (5k members, 24 months; the best achievable AUC comes from the true probabilities):
+
+  | Data                  | Best achievable AUC | AUC gap of the chosen model | Brier: chosen / inactivity rule |
+  | --------------------- | ------------------- | --------------------------- | ------------------------------- |
+  | demo, seeds 1–4       | 0.70–0.79           | 0.033–0.070, mean 0.049     | 0.0640 / 0.0656 (means)         |
+  | weak-signal, seed 1   | 0.67                | 0.083                       | 0.0847 / 0.0859                 |
+  | misspecified, seed 1  | 0.84                | 0.095 (a hidden driver)     | 0.0591 / 0.0635                 |
+  | high-scarcity, seed 1 | 0.81                | 0.067                       | 0.0713 / 0.0744                 |
+  - The chosen model beats the rule on the Brier score everywhere. Its mean predicted risk is within 0.01 of the true mean.
+  - Part of the AUC gap cannot be closed: the true probability uses satisfaction and inactivity on the renewal day, up to 30 days after the cutoff.
+  - Platt scaling on the newest cutoff, as first planned, made both models worse over these seven datasets:
+    - the mean AUC gap grew from 0.059 to 0.060 for logistic regression and from 0.063 to 0.066 for boosting;
+    - the mean predicted risk of logistic regression drifted up by 0.008 instead of 0.004.
+    - The scaling rests on one cutoff, about 65 churns, and that cutoff is then lost to training.
+  - Training and the backtest take about 2 s.
+
 - **Tests.**
   - Exact values are checked on `churn_document`, which plants an event at every boundary: at the cutoff, resolved after it, starting after it.
   - On the simulated dataset, the risk group at as_of is checked against libsim's ground truth: the members it renews in the next 30 days.
+  - Metrics are checked against values worked out by hand.
+  - A slow test trains on the demo (seed 1) and checks the done criteria against the ground truth: AUC within 0.05 of the best achievable, and a better Brier score than the rule.
   - On the 5k-member demo, the examples of all 24 cutoffs take under 1 s.
 
 ### 2.10 Reports and exports
@@ -291,6 +328,7 @@ There are two file formats, detected by content:
   - `mini_document`: a hand-made tabular file with hand-computed analytics.
   - `churn_document`: a hand-made tabular file with hand-computed churn features and labels.
   - `tabular_dataset` and `tabular_truth`: `tabular_document` parsed once per run, and libsim's ground truth for it. They are shared, so tests must not modify them.
+- **Slow tests** (`@pytest.mark.slow`) train churn models on the 5k-member demo simulation, which takes about 20 s. CI runs them too.
 - **Contract and structure:** `test_openapi.py`, `test_architecture.py` and `test_migrations.py`.
 - **Contract fuzzing** (`test_contract.py`, Schemathesis): every operation gets valid and invalid requests (15 examples each in CI). No response may be a 500, and every response must match its documented status, content type, schema and headers. The only exception: registration may reject schema-valid e-mails on reserved domains.
 - **Snapshots** (`test_snapshots.py`, syrupy): the dataset, analytics, report and enum responses on `mini_document`, with ids and timestamps masked. After an intended change, run `pytest --snapshot-update` and review the diff of `tests/__snapshots__`.

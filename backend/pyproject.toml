@@ -17,6 +17,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "reportlab>=5.0.1",
     "scalar-fastapi>=1.9",
+    "scikit-learn>=1.9.1",
     "sqlalchemy>=2.1",
     "typer>=0.27",
     "uvicorn>=0.54",
@@ -54,7 +55,10 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
-markers = ["db: needs PostgreSQL reachable via DATABASE_URL"]
+markers = [
+    "db: needs PostgreSQL reachable via DATABASE_URL",
+    "slow: trains models on the demo simulation (5k members, 24 months)",
+]
 filterwarnings = ["error"]
 
 [tool.coverage.run]
