@@ -339,9 +339,10 @@ There are two file formats, detected by content:
 - **The plan** (`plan.py`). For each member at risk and each action, the plan knows:
   - the probability of churn without an action (the churn model's) and with it;
   - the expected spend: an e-mail's cost, or the share of the renewal's list price a discount gives away if the member renews;
-  - the gain: (p_none − p_action) · monthly list price · horizon in months − spend.
+  - the gain: (p_none − p_action) · monthly list price · horizon in months − spend. The monthly list price is the renewal's list price over the plan's months (12 for annual), or, when the renewal's price is unknown, what the member pays undone by their discount.
   - **Effects used.**
-    - An effect, measured as a difference of churn rates, becomes a shift of the churn logit at the control group's churn rate. A member's probability with the action is σ(logit p_none + shift), so the same action lowers a high-risk member's probability more than a low-risk member's.
+    - An effect, measured as a difference of churn rates, becomes a shift of the churn logit at the control group's churn rate: the arm's for an overall effect, the segment's own for a segment effect, the members' mean risk for an assumed one. A member's probability with the action is σ(logit p_none + shift), so the same action lowers a high-risk member's probability more than a low-risk member's.
+    - An action prevents at most 90% of the churn at its base rate. A larger estimate or assumption (a treated arm without churns, an assumed effect above the risk) would make it remove churn for everyone, so it is capped, and a note (`retention.effect_capped`) names the action.
     - **The default.** By default each action's overall campaign effect is used for everyone.
       - With `by_segment`, each segment's shrunk effect is used instead. Cautious mode takes the upper 95% bound, and the analyst can give assumed effects (with any discount size) instead of the campaign's.
       - With the campaign's effects, the campaign's discount is offered, because there is no data on other sizes.
@@ -350,38 +351,39 @@ There are two file formats, detected by content:
 
     | Plan                              | Budget 1,000 | 3,000  | 10,000 |
     | --------------------------------- | ------------ | ------ | ------ |
-    | Overall effects (the default)     | 3,410        | 6,605  | 10,272 |
-    | Segment effects (`by_segment`)    | 2,872        | 5,766  | 9,385  |
-    | Cautious bound, 95%               | 1,458        | 2,586  | 2,891  |
+    | Overall effects (the default)     | 3,410        | 6,601  | 10,272 |
+    | Segment effects (`by_segment`)    | 2,696        | 5,528  | 9,087  |
+    | Cautious bound, 95%               | 2,080        | 4,039  | 4,402  |
     | Discounts to the riskiest members | 2,235        | 5,275  | 11,225 |
     | Oracle (the true effects)         | 10,766       | 15,600 | 19,872 |
-    - The table shows the mean true gain in UAH. The overall effects are also the steadiest across seeds: their worst case is 2,488, 5,616 and 6,822 UAH.
+    - The table shows the mean true gain in UAH. The overall effects are also the steadiest across seeds: their worst case is 2,488, 5,616 and 6,822 UAH. In cautious mode, a seed whose bounds are all unfavourable plans nothing.
     - The segment estimates rest on 20–140 members per arm. Their noise makes the plan act on chance differences, such as e-mailing dormant members, whom e-mails actually push away.
     - Even the overall effects are noisy (about ±2.4 percentage points for e-mail against a true effect of −0.4). The plan's expected value is therefore optimistic, and a note on the plan says so.
 
-  - **The choice** is a multiple-choice knapsack solved as a MILP with `scipy.optimize.milp` (HiGHS), optimal within its default 0.01% gap. It maximizes the total gain, under these constraints:
+  - **The choice** is a multiple-choice knapsack solved as a MILP with `scipy.optimize.milp` (HiGHS), within 0.5% of the best possible gain. It maximizes the total gain, under these constraints:
     - at most one action per member;
     - the expected spend within the budget;
     - optional limits per action;
     - e-mail only with consent;
     - no discount for a member whose running period is already discounted.
-  - **Baseline.** A greedy plan (best gain per hryvnia first) is reported for comparison.
-  - **Budget curve.** The budget → value curve uses the LP relaxation, which is fast and differs from the integer optimum by at most a few fractional options.
+  - **Gap.** Proving 0.01% took minutes on some ordinary 2k-member plans. Stopping at 0.5% takes about a second and, unlike a time limit, gives the same plan every time, so approval freezes the plan the preview showed. A 20 s time limit stays as a safety net.
+  - **Baseline.** A greedy plan (best gain per hryvnia first) is reported for comparison. If it gains more than the solver's plan, which the gap allows, it is the plan.
+  - **Budget curve.** The budget → value curve uses the LP relaxation, which is fast and differs from the integer optimum by at most a few fractional options. It runs to the spend beyond which more money gains nothing: the best plan without a budget, within the per-action limits.
   - **Tests.**
-    - The MILP equals brute force on 200 random small problems.
+    - The MILP equals brute force on 200 random small problems, within its gap.
     - Gains are checked by hand.
-    - A plan for 2,000 members takes about 0.6 s.
+    - A plan for 2,000 members takes about 0.6 s, and the plans that took minutes to prove take about a second.
 - **Preview and approval** (`services/retention.py`, `api/v1/retention.py`).
   - `POST /churn-runs/{id}/plan` takes the analyst's choices:
     - the budget and the horizon;
     - the e-mail cost and limits per action;
     - cautious mode, or assumed effects with their own discount.
   - It answers a `retention_plan` section in the shape of the analytics, so clients draw it with their usual renderer:
-    - KPIs: members at risk, e-mails and discounts in the plan, spend, value, the greedy plan's value, members expected to stay;
+    - KPIs: members at risk, e-mails and discounts in the plan, spend, value, the greedy plan's value, members expected to stay, the discount offered;
     - charts: the budget curve, actions by segment, the campaign's effects (each action's overall effect as segment `all`, then each segment's), the members in the plan;
     - notes.
   - The plan uses the run's stored scores and effects, so it parses no dataset. With the campaign's effects it offers the campaign's discount, because there is no data on other sizes.
-  - `POST /churn-runs/{id}/plan/approve` freezes the plan as a decision: a report of kind `retention`, with the parameters it was made with. Only the active run can be used.
+  - `POST /churn-runs/{id}/plan/approve` freezes the plan as a decision: a report of kind `retention`, with the parameters it was made with, including the discount actually offered (`discount_pct`). Only the active run can be used.
   - **The decision log.** `GET /reports?kind=retention` lists the decisions, and every report export (PDF, XLSX, CSV, JSON) works for them.
 
 **Content acquisition**: which of a distributor's titles to license, within a budget.

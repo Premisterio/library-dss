@@ -17,6 +17,10 @@ from app.domain.retention.effects import ACTIONS, SEGMENTS, Action, Effect, Segm
 EffectTable = dict[tuple[Action, Segment], float]  # shifts of the churn logit
 CURVE_STEPS = 8
 P_CLIP = 1e-6  # keeps logits finite
+# An action prevents at most this share of the churn at its base rate. A larger estimated or
+# assumed effect (a treated arm without churns, a typo) would make it remove churn for everyone.
+MAX_PREVENTED = 0.9
+PLAN_MONTHS = {"annual": 12}  # a list price is per period; the other paid plans are monthly
 
 
 @dataclass(frozen=True)
@@ -43,15 +47,19 @@ class Plan:
 
 def members(scored: pl.DataFrame) -> pl.DataFrame:
     """The plan's members from scored ones: `user_id`, `probability`, `period_price` and the
-    churn features (as the churn scores keep them)."""
+    churn features (as the churn scores keep them). A kept member is worth the list price per
+    month: the renewal's price over the plan's months or, without it, what they pay undone by
+    their discount (unknown when the period is free)."""
     discount = pl.col("discount").fill_null(0.0)
+    months = pl.col("plan").replace_strict(PLAN_MONTHS, default=1, return_dtype=pl.Float64)
+    paid = pl.when(discount < 1).then(pl.col("monthly_price") / (1 - discount))
     return scored.select(
         "user_id",
         "probability",
         segment=segment_of(),
         email_opt_in="email_opt_in",
         discounted=discount > 0,
-        monthly_value=pl.col("monthly_price") / (1 - discount.clip(0.0, 0.99)),
+        monthly_value=pl.coalesce(pl.col("period_price") / months, paid),
         period_price="period_price",
     )
 
@@ -61,26 +69,33 @@ def _logit(p: float) -> float:
     return math.log(p / (1 - p))
 
 
+def _prevented_too_much(base: float, difference: float) -> bool:
+    return base + difference < base * (1 - MAX_PREVENTED)
+
+
 def shift(base: float, difference: float) -> float:
-    """The change of the churn logit that moves the churn rate `base` by `difference`."""
-    return _logit(base + difference) - _logit(base)
+    """The change of the churn logit that moves the churn rate `base` by `difference`, with at
+    most `MAX_PREVENTED` of the churn prevented."""
+    return _logit(max(base + difference, base * (1 - MAX_PREVENTED))) - _logit(base)
 
 
-def effect_table(effects: list[Effect], scenario: Scenario, base_rate: float) -> EffectTable:
-    """The shift of the churn logit each action makes per segment.
+def _differences(
+    effects: list[Effect], scenario: Scenario, base_rate: float
+) -> dict[tuple[Action, Segment], tuple[float, float]]:
+    """The base rate and the difference of churn rates each action makes per segment.
 
-    An effect is measured as a difference of churn rates; it becomes a logit shift at the
-    control group's churn rate, so the same action moves a high-risk member more than a
-    low-risk one. The analyst's assumed effects apply to every segment and shift at
-    `base_rate`. Otherwise each action's overall campaign effect (or its cautious bound)
-    applies to every segment, or with `by_segment` each segment's shrunk effect; missing
-    estimates count as no effect.
+    The analyst's assumed effects apply to every segment at `base_rate`. Otherwise each
+    action's overall campaign effect (or its cautious bound) applies to every segment at the
+    control group's churn rate, or with `by_segment` each segment's shrunk effect at the
+    segment's own control rate. Missing estimates count as no effect.
     """
     if scenario.assumed is not None:
         assumed = scenario.assumed
-        return {(a, s): shift(base_rate, assumed.get(a, 0.0)) for a in ACTIONS for s in SEGMENTS}
+        return {(a, s): (base_rate, assumed.get(a, 0.0)) for a in ACTIONS for s in SEGMENTS}
     overall = {e.action: e for e in effects if e.segment is None}
-    table: EffectTable = {(a, s): 0.0 for a in ACTIONS for s in SEGMENTS}
+    table: dict[tuple[Action, Segment], tuple[float, float]] = {
+        (a, s): (base_rate, 0.0) for a in ACTIONS for s in SEGMENTS
+    }
     for effect in effects:
         if effect.segment is None:
             continue
@@ -88,10 +103,26 @@ def effect_table(effects: list[Effect], scenario: Scenario, base_rate: float) ->
         value = used.cautious if scenario.cautious else used.shrunk
         if value is None:
             continue
-        whole = overall.get(effect.action)
-        base = whole.control_churned / whole.control if whole and whole.control else base_rate
-        table[effect.action, effect.segment] = shift(base, value)
+        control = next((e for e in (used, overall.get(effect.action)) if e and e.control), None)
+        base = control.control_churned / control.control if control else base_rate
+        table[effect.action, effect.segment] = (base, value)
     return table
+
+
+def effect_table(effects: list[Effect], scenario: Scenario, base_rate: float) -> EffectTable:
+    """The shift of the churn logit each action makes per segment. An effect is measured as a
+    difference of churn rates; it becomes a logit shift at its base rate, so the same action
+    moves a high-risk member more than a low-risk one."""
+    return {
+        key: shift(base, difference)
+        for key, (base, difference) in _differences(effects, scenario, base_rate).items()
+    }
+
+
+def capped(effects: list[Effect], scenario: Scenario, base_rate: float) -> list[Action]:
+    """The actions whose effect is larger than `MAX_PREVENTED` allows in some segment."""
+    differences = _differences(effects, scenario, base_rate)
+    return [a for a in ACTIONS if any(_prevented_too_much(*differences[a, s]) for s in SEGMENTS)]
 
 
 def options(members: pl.DataFrame, effects: EffectTable, scenario: Scenario) -> pl.DataFrame:
@@ -173,11 +204,15 @@ def greedy(choices: pl.DataFrame, scenario: Scenario, budget: float) -> np.ndarr
 
 
 def plan(members: pl.DataFrame, effects: EffectTable, scenario: Scenario) -> Plan:
+    """The solver's plan, or the greedy one in the rare case the solver stopped (within its
+    gap) below it."""
     choices = options(members, effects, scenario)
     best = choices.filter(pl.Series(solve(choices, scenario, scenario.budget), dtype=pl.Boolean))
     baseline = choices.filter(
         pl.Series(greedy(choices, scenario, scenario.budget), dtype=pl.Boolean)
     )
+    if baseline.select(pl.col("gain").sum()).item() > best.select(pl.col("gain").sum()).item():
+        best = baseline
     return Plan(
         chosen=best.sort("gain", descending=True),
         value=best.select(pl.col("gain").sum()).item(),
@@ -190,14 +225,17 @@ def plan(members: pl.DataFrame, effects: EffectTable, scenario: Scenario) -> Pla
 def curve(
     members: pl.DataFrame, effects: EffectTable, scenario: Scenario
 ) -> list[tuple[float, float]]:
-    """The value at budgets from 0 to the spend of every worthwhile action. It is the LP
-    relaxation's: a hair above the integer optimum (only a few options end up fractional), and
-    fast enough for every point."""
+    """The value at budgets from 0 to the spend beyond which more money gains nothing (the
+    best plan without a budget, within the per-action limits). It is the LP relaxation's: a
+    hair above the integer optimum (only a few options end up fractional), and fast enough
+    for every point."""
     choices = options(members, effects, scenario)
     if choices.is_empty():
         return [(0.0, 0.0)]
-    full = choices.sort("gain", descending=True).unique("user_id", keep="first")["spend"].sum()
     gain, groups = choices["gain"].to_numpy(), choices["user_id"].to_numpy()
+    spend = choices["spend"].to_numpy()
+    unlimited = _limits(choices, scenario, float(spend.sum()))
+    full = float(choose(gain, unlimited, groups, integral=False)[0] @ spend)
     return [
         (
             float(budget),

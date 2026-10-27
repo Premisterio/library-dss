@@ -1,6 +1,8 @@
 """A retention plan as an analytics-shaped section: KPIs, tidy charts and notes (DESIGN.md §2.9),
 so every client and every report export can show it."""
 
+from collections.abc import Sequence
+
 import polars as pl
 
 from app.domain.analytics.common import records
@@ -25,6 +27,11 @@ NOISY = Note(
     "Ефекти оцінено на учасниках минулої кампанії, і їхні 95-відсоткові інтервали широкі "
     "(див. «Ефекти дій»). Справжній виграш може бути помітно меншим за очікуваний.",
 )
+CAPPED = Note(
+    "retention.effect_capped",
+    "Ефект щонайменше однієї дії більший, ніж дозволяє модель: план вважає, що дія запобігає "
+    "не більш як 90 % відтоку там, де її застосовано.",
+)
 NO_CAMPAIGN = Note(
     "retention.no_campaign",
     "У датасеті немає даних кампанії, тому ефекти дій невідомі; задайте їх як припущення.",
@@ -37,8 +44,11 @@ def plan_section(
     members: pl.DataFrame,
     effects: list[Effect],
     scenario: Scenario,
+    capped: Sequence[str],
 ) -> Section:
-    chosen = plan.chosen.join(members.select("user_id", "segment"), on="user_id")
+    chosen = plan.chosen.join(
+        members.select("user_id", "segment"), on="user_id", maintain_order="left"
+    )
     counts = dict(chosen.group_by("action").len().iter_rows())
     mix = chosen.group_by("segment", "action").agg(members=pl.len()).sort("segment", "action")
     notes = []
@@ -50,6 +60,8 @@ def plan_section(
         notes.append(NOISY)
     if scenario.cautious and scenario.assumed is None:
         notes.append(CAUTIOUS)
+    if capped:
+        notes.append(Note(CAPPED.code, CAPPED.message_uk, {"actions": list(capped)}))
     return Section(
         "retention_plan",
         kpis=[
@@ -60,6 +72,7 @@ def plan_section(
             Kpi("plan_value", plan.value, "UAH"),
             Kpi("greedy_value", plan.greedy_value, "UAH"),
             Kpi("expected_saved", plan.saved, "count"),
+            Kpi("offered_discount", scenario.discount_pct, "ratio"),
         ],
         charts=[
             Chart(
