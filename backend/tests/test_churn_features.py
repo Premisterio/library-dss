@@ -3,7 +3,8 @@
 The expected values below are derived by hand from `churn_document` (as of 2026-06-30 in Kyiv,
 UTC+3 all summer). Its cutoff k = 0 is the end of 2026-05-31, 2026-05-31T21:00Z: the last 7
 days start 05-24T21:00Z, 14 days 05-17T21:00Z, 30 days 05-01T21:00Z, the 30 days before those
-04-01T21:00Z, 90 days 03-02T21:00Z; the risk window ends 2026-06-30T21:00Z.
+04-01T21:00Z, 90 days 03-02T22:00Z (still winter time); the risk window ends
+2026-06-30T21:00Z.
 """
 
 import itertools

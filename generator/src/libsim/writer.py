@@ -29,17 +29,20 @@ CAMPAIGN_ID = "camp-retention-1"
 
 
 def _clock(start: date, tz_name: str) -> Callable[[int], str]:
-    """Local seconds since `start` 00:00 → ISO UTC string (offset at local noon of that day)."""
+    """Local seconds since `start` 00:00 → ISO UTC string, with the offset of that local hour
+    (clocks change on the hour; an hour skipped in spring keeps the offset before the change)."""
     tz = ZoneInfo(tz_name)
     base = datetime(start.year, start.month, start.day)
 
     @cache
-    def offset(day: int) -> int:
-        delta = datetime.combine(start + timedelta(days=day), time(12), tzinfo=tz).utcoffset()
+    def offset(day: int, hour: int) -> int:
+        local = datetime.combine(start + timedelta(days=day), time(hour), tzinfo=tz)
+        delta = local.utcoffset()
         return int(delta.total_seconds()) if delta is not None else 0
 
     def iso(t: int) -> str:
-        utc = base + timedelta(seconds=int(t) - offset(max(int(t) // 86400, 0)))
+        day, second = divmod(max(int(t), 0), 86400)
+        utc = base + timedelta(seconds=int(t) - offset(day, second // 3600))
         return utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return iso

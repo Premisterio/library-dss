@@ -105,11 +105,19 @@ def get_for(session: Session, run_id: int, analyst: Analyst) -> ChurnRun:
 
 
 def list_for(
-    session: Session, analyst: Analyst, *, dataset_id: int | None, limit: int, offset: int
+    session: Session,
+    analyst: Analyst,
+    *,
+    dataset_id: int | None,
+    active: bool | None = None,
+    limit: int,
+    offset: int,
 ) -> tuple[list[ChurnRun], int]:
     query = select(ChurnRun).where(ChurnRun.owner_id == analyst.id)
     if dataset_id is not None:
         query = query.where(ChurnRun.dataset_id == dataset_id)
+    if active is not None:
+        query = query.where(ChurnRun.active == active)
     total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
     items = session.scalars(
         query.order_by(ChurnRun.created_at.desc(), ChurnRun.id.desc()).limit(limit).offset(offset)
@@ -125,6 +133,8 @@ def ensure_trained(run: ChurnRun) -> None:
 def activate(session: Session, run: ChurnRun) -> ChurnRun:
     """Make this run the one decisions use for its dataset."""
     ensure_trained(run)
+    # One activation per dataset at a time: concurrent ones would lock the runs in turn.
+    session.execute(select(Dataset.id).where(Dataset.id == run.dataset_id).with_for_update())
     session.execute(
         update(ChurnRun)
         .where(ChurnRun.dataset_id == run.dataset_id, ChurnRun.id != run.id)
