@@ -23,6 +23,7 @@ POLICIES = (
     "dss_cautious",
     "oracle",
 )
+BASELINES = ("random", "inactive", "risk")  # what a library might do without the DSS
 
 
 @dataclass(frozen=True)

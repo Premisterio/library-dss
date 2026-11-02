@@ -1,6 +1,6 @@
 """The experiment harness: true gains by hand, the baselines' order and budget, the oracles
-against brute force, the content policies, the tables' number style, and a small grid end to
-end, serial and in parallel (DESIGN.md §6)."""
+against brute force, the content policies, the tables' number style and Wilcoxon test, the
+figures, and a small grid end to end, serial and in parallel (DESIGN.md §6)."""
 
 import itertools
 import json
@@ -17,7 +17,7 @@ from typer.testing import CliRunner
 from app.domain.content import ahp
 from app.domain.optimize import MIP_GAP
 from app.ingest import IngestError
-from experiments import content, grid, tables
+from experiments import content, figures, grid, retention, tables
 from experiments.__main__ import app
 from experiments.config import Config, ContentConfig, RetentionConfig, load
 from experiments.retention import (
@@ -337,6 +337,44 @@ def test_a_failing_library_is_named_in_an_error_a_worker_can_send_back(
     assert problem in str(sent)
 
 
+def test_the_wilcoxon_table_compares_the_dss_with_the_best_baseline() -> None:
+    def row(seed: int, share: float, policy: str, value: float) -> dict[str, Any]:
+        return {
+            "preset": "demo",
+            "seed": seed,
+            "budget_share": share,
+            "policy": policy,
+            "value": value,
+        }
+
+    frame = pl.DataFrame(
+        [
+            line
+            for seed in range(1, 7)
+            for line in (
+                row(seed, 0.1, "dss", 100.0 + seed),
+                row(seed, 0.1, "random", 10.0),
+                row(seed, 0.1, "inactive", 50.0),
+                row(seed, 0.1, "risk", 40.0),
+                row(seed, 0.4, "dss", 70.0),
+                row(seed, 0.4, "random", 10.0),
+                row(seed, 0.4, "inactive", 70.0),
+                row(seed, 0.4, "risk", 0.0),
+            )
+        ]
+    )
+    header, rows = tables.wilcoxon_table(
+        frame, "value", tables.RETENTION_LABELS, retention.BASELINES, "грн"
+    )
+    assert header[-1] == "p, тест Вілкоксона (n = 6)"
+    # differences 51…56: mean 53.5, half-width 2.571·1.871/√6 = 1.96; all six positive, so the
+    # exact two-sided p = 2 / 2⁶
+    assert rows == [
+        ["Базовий", "10 %", "Знижки неактивним 14+ днів", "54 ± 2", "0,031"],
+        ["", "40 %", "Знижки неактивним 14+ днів", "0 ± 0", "—"],
+    ]
+
+
 def test_the_committed_grid_loads() -> None:
     config = load()
     assert config.seeds == 20
@@ -379,17 +417,25 @@ def test_a_small_grid_judges_every_content_policy_within_its_budget(results: Pat
     assert (oracle["demand"] >= oracle["best"] * (1 - MIP_GAP)).all()
 
 
-def test_tables_go_to_a_workbook_and_the_terminal(results: Path) -> None:
-    outcome = CliRunner().invoke(app, ["tables", "--out", str(results)])
+def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -> None:
+    outcome = CliRunner().invoke(app, ["report", "--out", str(results)])
     assert outcome.exit_code == 0, outcome.output
     assert "Оракул" in outcome.output
+    for name in figures.FIGURES:
+        png = (results / figures.FOLDER / name).read_bytes()
+        assert png.startswith(b"\x89PNG\r\n\x1a\n")
+        assert str(results / figures.FOLDER / name) in outcome.output
+    first = {path: path.read_bytes() for path in figures.write(results)}
+    assert first == {path: path.read_bytes() for path in figures.write(results)}
     workbook = openpyxl.load_workbook(results / tables.WORKBOOK)
     assert workbook.sheetnames == [
         "Утримання, виграш, грн",
         "Утримання, частка оракула, %",
         "Утримання, точність дій, %",
+        "Утримання, тест Вілкоксона",
         "Закупівля, обслужений попит",
         "Закупівля, частка оракула, %",
+        "Закупівля, тест Вілкоксона",
         "Модель і ефекти",
     ]
     sheet = workbook["Утримання, частка оракула, %"]

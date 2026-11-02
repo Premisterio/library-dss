@@ -687,7 +687,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - `uv run python -m experiments run` runs the grid of `backend/experiments/config.toml` and writes the results and tables to `backend/experiments/results/` (gitignored).
     - `--seeds N` and `--preset P` run part of the grid.
     - `--workers` sets how many libraries are simulated at once: 2 by default. Each takes about 0.7 GB of memory, and 4 drove an 8 GB machine that also ran the dev stack into swap.
-  - `python -m experiments tables` rebuilds the tables from the last results without simulating again.
+  - `python -m experiments report` rebuilds the tables and figures from the last results without simulating again.
 - **Grid.** 20 seeds × 4 presets (`demo`, `weak-signal`, `misspecified`, `high-scarcity`) × budgets of 5, 10, 20 and 40%. Each library has 5,000 members and 24 months, like the demo.
   - It is simulated 180 days past as_of, the window of the titles' true demand. Retention judges each member's next renewal, which falls in the first 30 days.
   - A longer horizon changes neither the dataset nor that renewal; this was checked on a simulation run with both horizons.
@@ -724,8 +724,19 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
 - **Model and effects.**
   - The churn model's ROC-AUC and Brier score on the members at risk, against libsim's outcome without an action, next to the best achievable: the true probabilities.
   - Each action's 95% campaign interval is checked against its true average effect on the participants it compares: e-mail among the members who agreed to e-mails, the discount among everyone.
+- **Statistics.**
+  - Every table cell is the mean over seeds ± the half-width of its 95% t-interval.
+  - At each preset and budget, the DSS (`dss`) is compared with the best baseline, the one with the highest mean. The table gives their mean paired difference over the seeds and the two-sided p-value of the Wilcoxon signed-rank test.
+- **Figures** (`figures/`, PNG at 200 dpi, 6.3 inches wide: the text width of an A4 page). Each shows the share of the oracle for three policies as the budget grows, one panel per preset, with the 95% interval as a band.
+  - Retention: the DSS, the DSS with assumptions, and the inactivity rule, the best baseline on most presets.
+  - Content: the DSS (TOPSIS, equal weights), searches per hryvnia, and random titles.
+  - They follow the data-viz method:
+    - the reference palette's first three categorical colours, which stay apart for colour-blind readers across small multiples, each with its own marker for print;
+    - thin lines and a hairline grid;
+    - a value at each line's end where the values do not collide.
+  - Every figure's numbers are also in `tables.xlsx`.
 - **Results.**
   - `retention.csv` and `content.csv` (one row per library, budget and policy) and `models.csv` (one row per library) hold the raw numbers. `config.json` is the grid they come from.
-  - `tables.xlsx` holds the thesis tables, labelled in Ukrainian and formatted for pasting into the text: the mean over seeds ± the half-width of its 95% t-interval.
+  - `tables.xlsx` holds the thesis tables, labelled in Ukrainian and formatted for pasting into the text, and `figures/` the figures.
   - Rows are written in the grid's order, whichever worker finishes first, so a parallel run writes the same files as a serial one.
-- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; both oracles against brute force; the content portfolio's cap per genre; the number style; and a small grid end to end, serial and in parallel, where no content policy beats the oracle or exceeds its budget.
+- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; both oracles against brute force; the content portfolio's cap per genre; the number style; the Wilcoxon table by hand; and a small grid end to end, serial and in parallel, where no content policy beats the oracle or exceeds its budget.

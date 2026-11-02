@@ -25,6 +25,7 @@ POLICIES = (
     "dss_searches",
     "oracle",
 )
+BASELINES = ("random", "cheapest", "most_searched", "searches_per_uah", "top_genre")
 KEYS = tuple(m.key for m in CRITERIA)  # the zero-result searches come first
 RANDOM_ORDERS = 100  # the random policy is judged by its mean over this many orders
 # `dss_searches`: the searches judged 3 times as important as each other criterion, which gives

@@ -10,6 +10,9 @@ import polars as pl
 import xlsxwriter
 from scipy import stats
 
+from experiments import content as content_policies
+from experiments import retention as retention_policies
+
 WORKBOOK = "tables.xlsx"
 CREATED = datetime(2026, 9, 30)  # fixed, so the same results give the same file
 PRESET_LABELS = {
@@ -50,15 +53,23 @@ def number(value: float, digits: int = 0) -> str:
     return f"{rounded:,.{digits}f}".replace(",", " ").replace(".", ",").replace("-", "−")
 
 
+def interval(values: np.ndarray) -> tuple[float, float | None]:
+    """The mean and the half-width of its 95% t-interval (None for one value)."""
+    mean = float(values.mean())
+    if values.size == 1:
+        return mean, None
+    half = stats.t.ppf(0.975, values.size - 1) * values.std(ddof=1) / math.sqrt(values.size)
+    return mean, float(half)
+
+
 def summary(values: np.ndarray, digits: int = 0) -> str:
     """The mean ± the half-width of its 95% t-interval; the mean alone for one value."""
     if values.size == 0:
         return "—"
-    mean = float(values.mean())
-    if values.size == 1:
-        return number(mean, digits)
-    half = stats.t.ppf(0.975, values.size - 1) * values.std(ddof=1) / math.sqrt(values.size)
-    return f"{number(mean, digits)} ± {number(float(half), digits)}"
+    mean, half = interval(values)
+    return (
+        number(mean, digits) if half is None else f"{number(mean, digits)} ± {number(half, digits)}"
+    )
 
 
 def by_budget(
@@ -92,6 +103,51 @@ def by_budget(
     return header, rows
 
 
+def p_value(value: float | None) -> str:
+    if value is None or math.isnan(value):
+        return "—"
+    return "< 0,001" if value < 0.001 else number(value, 3)
+
+
+def wilcoxon_table(
+    frame: pl.DataFrame,
+    column: str,
+    labels: dict[str, str],
+    baselines: tuple[str, ...],
+    unit: str,
+) -> Table:
+    """The DSS against the best baseline (by its mean) at each preset and budget: their paired
+    difference over seeds and the two-sided p-value of the Wilcoxon signed-rank test."""
+    header = [
+        "Сценарій",
+        "Бюджет",
+        "Найкраща базова політика",
+        f"СППР мінус базова, {unit}",
+        f"p, тест Вілкоксона (n = {frame['seed'].n_unique()})",
+    ]
+    rows = []
+    for preset in frame["preset"].unique(maintain_order=True).to_list():
+        label = PRESET_LABELS.get(preset, preset)
+        for share in sorted(frame["budget_share"].unique().to_list()):
+            wide = (
+                frame.filter((pl.col("preset") == preset) & (pl.col("budget_share") == share))
+                .pivot(on="policy", index="seed", values=column)
+                .sort("seed")
+            )
+            means = {b: wide.select(pl.col(b).mean()).item() for b in baselines}
+            best = max(means, key=means.__getitem__)
+            difference = (wide["dss"] - wide[best]).drop_nulls().to_numpy()
+            p = None
+            if difference.size > 1 and difference.any():
+                result = stats.wilcoxon(difference)
+                p = float(result.pvalue)  # pyright: ignore[reportAttributeAccessIssue]  (SciPy's stub)
+            rows.append(
+                [label, f"{number(100 * share)} %", labels[best], summary(difference), p_value(p)]
+            )
+            label = ""
+    return header, rows
+
+
 def share_of_oracle(frame: pl.DataFrame, column: str) -> pl.DataFrame:
     """`share`: each row's `column` over the oracle's for the same library and budget."""
     oracle = frame.filter(pl.col("policy") == "oracle").select(
@@ -111,6 +167,9 @@ def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
         "Утримання, точність дій, %": by_budget(
             retention, "precision", RETENTION_LABELS, scale=100
         ),
+        "Утримання, тест Вілкоксона": wilcoxon_table(
+            retention, "value", RETENTION_LABELS, retention_policies.BASELINES, "грн"
+        ),
     }
 
 
@@ -120,6 +179,9 @@ def content_tables(content: pl.DataFrame) -> dict[str, Table]:
     return {
         "Закупівля, обслужений попит": by_budget(content, "demand", CONTENT_LABELS),
         "Закупівля, частка оракула, %": by_budget(shared, "share", CONTENT_LABELS, scale=100),
+        "Закупівля, тест Вілкоксона": wilcoxon_table(
+            content, "demand", CONTENT_LABELS, content_policies.BASELINES, "запитів"
+        ),
     }
 
 
