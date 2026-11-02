@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Link, Outlet } from "react-router"
 
-import { useDataset } from "@/api/datasets"
+import { useDatasets } from "@/api/datasets"
 import { paths, useDatasetId } from "@/app/paths"
 import { useRouteTitle } from "@/app/route-title"
 import { GlassToolbar, ToolbarProvider } from "@/components/glass/toolbar"
@@ -54,12 +54,12 @@ function Brand() {
 }
 
 /**
- * The pages of the dataset in the URL. Churn and acquisition appear only when the ready dataset
- * supports them; while it loads, or is not ready, every page is listed.
+ * The pages of the dataset in the URL. Churn and acquisition are hidden when a ready dataset lacks
+ * the capability; until the dataset list shows it ready, every page is listed.
  */
 function DatasetPages({ datasetId }: { datasetId: number }) {
-  const dataset = useDataset(datasetId)
-  const known = dataset.data?.status === "ready" ? dataset.data : undefined
+  const listed = useDatasets().data?.find((d) => d.id === datasetId)
+  const known = listed?.status === "ready" ? listed : undefined
   return (
     <>
       <NavItem to={paths.dataset(datasetId)} icon={LayoutDashboardIcon} end>
