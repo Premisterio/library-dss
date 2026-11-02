@@ -49,7 +49,12 @@ function StepItem({ step }: { step: Step }) {
             <Link to={action.to}>{action.label}</Link>
           </Button>
         ) : (
-          <Button asChild variant="link" size="sm" className="mt-auto h-auto px-0">
+          <Button
+            asChild
+            variant="link"
+            size="sm"
+            className="mt-auto h-auto px-0 text-foreground underline underline-offset-4"
+          >
             <Link to={action.to}>{action.label}</Link>
           </Button>
         ))}

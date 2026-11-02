@@ -19,7 +19,8 @@ export function UploadPanel() {
   const { upload, datasetId, jobId, job, jobError, running } = useDatasetImport((finished) => {
     if (finished.status === "succeeded") toast.success("Датасет імпортовано")
     else if (finished.error) {
-      toast.error(`Імпорт не вдався: ${messageFor(finished.error.code, finished.error.detail)}`)
+      const { code, detail } = finished.error
+      toast.error("Імпорт не вдався", { description: messageFor(code, detail) })
     }
   })
 

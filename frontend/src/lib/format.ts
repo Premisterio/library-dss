@@ -77,8 +77,8 @@ export function formatHour(hour: number | string): string {
   return `${String(hour).padStart(2, "0")}:00`
 }
 
-/** The local date of an instant in the dataset's time zone: "05.10.26". */
-export function formatLocalDay(iso: string, timeZone: string): string {
+/** The local date of an instant, in `timeZone` (the dataset's) or else the viewer's: "05.10.26". */
+export function formatLocalDay(iso: string, timeZone?: string): string {
   return new Intl.DateTimeFormat(LOCALE, { timeZone, dateStyle: "short" }).format(new Date(iso))
 }
 

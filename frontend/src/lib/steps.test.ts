@@ -29,7 +29,7 @@ function run(id: number, overrides: Partial<ChurnRun> = {}): ChurnRun {
     active: false,
     chosen_model: "logistic",
     summary: null,
-    created_at: "2026-10-27T10:00:00Z",
+    created_at: "2026-10-27T12:00:00Z",
     finished_at: null,
     ...overrides,
   }
@@ -46,7 +46,7 @@ function report(id: number, overrides: Partial<Report> = {}): Report {
     sections: ["retention_plan"],
     as_of: "2026-09-30",
     timezone: "Europe/Kyiv",
-    created_at: "2026-10-30T09:00:00Z",
+    created_at: "2026-10-30T12:00:00Z",
     ...overrides,
   }
 }
@@ -126,6 +126,11 @@ describe("decisionSteps", () => {
     expect(accented(steps)).toEqual([])
   })
 
+  it("puts a training before a newer failed one", () => {
+    const runs = [run(9, { status: "failed" }), run(8, { status: "running" })]
+    expect(stepOf(decisionSteps(dataset(), runs, [], label), "model").state).toBe("running")
+  })
+
   it("offers to train again when the newest training failed", () => {
     const runs = [run(8, { status: "failed", chosen_model: null }), run(7)]
     expect(stepOf(decisionSteps(dataset(), runs, [], label), "model")).toMatchObject({
@@ -142,6 +147,14 @@ describe("decisionSteps", () => {
       detail: "Логістична регресія · 27.10.26 — не активована",
       action: { label: "Активувати", to: "/d/1/churn?run=7" },
       accent: true,
+    })
+  })
+
+  it("lets only the newest failed training count", () => {
+    const runs = [run(9), run(8, { status: "failed" })]
+    expect(stepOf(decisionSteps(dataset(), runs, [], label), "model")).toMatchObject({
+      state: "next",
+      action: { label: "Активувати", to: "/d/1/churn?run=9" },
     })
   })
 
@@ -168,6 +181,14 @@ describe("decisionSteps", () => {
       action: { label: "До звітів", to: "/d/1/reports" },
     })
     expect(accented(steps)).toEqual(["content"])
+  })
+
+  it("finds the active model's plan behind a newer one for another model", () => {
+    const reports = [report(4, { params: { run_id: 5 } }), report(3)]
+    expect(stepOf(decisionSteps(dataset(), [ACTIVE], reports, label), "plan")).toMatchObject({
+      state: "done",
+      detail: "Затверджено 30.10.26: «Рішення 3»",
+    })
   })
 
   it("names a plan made for another model", () => {
@@ -198,7 +219,7 @@ describe("decisionSteps", () => {
     const portfolio = { kind: "content", params: { budget: 20_000 } } as const
     const reports = [
       report(5, { ...portfolio, title: "Закупівля Б" }),
-      report(4, { ...portfolio, title: "Закупівля А", created_at: "2026-10-29T09:00:00Z" }),
+      report(4, { ...portfolio, title: "Закупівля А", created_at: "2026-10-29T12:00:00Z" }),
     ]
     expect(stepOf(decisionSteps(dataset(), [ACTIVE], reports, label), "content")).toMatchObject({
       state: "done",

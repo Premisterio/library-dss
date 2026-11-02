@@ -2,7 +2,7 @@
 import type { ChurnRun, Dataset, Report } from "@/api/types"
 import { paths } from "@/app/paths"
 import { isTraining } from "@/lib/churn"
-import { formatDay, formatValue } from "@/lib/format"
+import { formatDay, formatLocalDay, formatValue } from "@/lib/format"
 import type { LabelFn } from "@/lib/labels"
 import { supportsContent, supportsRetention } from "@/lib/status"
 
@@ -30,11 +30,12 @@ export function retentionRunId(report: Report): number | undefined {
 
 /** "Градієнтний бустинг · 27.10.26": the run's chosen model and the day it was trained. */
 function runText(run: ChurnRun, label: LabelFn): string {
-  return `${label("churn_model", run.chosen_model)} · ${formatDay(run.created_at)}`
+  return `${label("churn_model", run.chosen_model)} · ${formatLocalDay(run.created_at)}`
 }
 
-function approvedText(report: Report): string {
-  return `Затверджено ${formatDay(report.created_at)}: «${report.title}»`
+/** "Затверджено 30.10.26: «План утримання, бюджет 5 000 грн»": a decision and its day. */
+export function approvedText(report: Report): string {
+  return `Затверджено ${formatLocalDay(report.created_at)}: «${report.title}»`
 }
 
 function dataStep(dataset: StepsDataset): Step {

@@ -537,7 +537,7 @@ There are two file formats, detected by content:
   - Labels come from `meta/enums`. Errors are shown by their Problem `code` (`lib/messages.ts`); an unknown code falls back by status, so a raw code never reaches the user.
 - **Layers** (`frontend/src`). Data and logic stay out of the markup, so a redesign replaces only `components/` and `pages/`.
   - `api/`: everything that talks to the server. That is the client and session, the query keys, and one hook module per resource (`datasets`, `analytics`, `reports`, `churn`, `jobs`, `auth`, `enums`) holding its queries and mutations. Nothing else calls `api` or `fetch`.
-  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections, and churn (which run to show and which training job to follow, feature values and reasons as text, metric text). Each module has its tests next to it.
+  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections, churn (which run to show and which training job to follow, feature values and reasons as text, metric text) and steps (where each step to a decision stands). Each module has its tests next to it.
   - `app/`: the router, paths (`paths.*`, `parseId`), route titles and the query client.
   - `components/common/`: content-layer building blocks with no data of their own (`QueryView`, `PanelCard`, `StatTile`, `StatusPill`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`, `JobProgress`, `ProblemList`, `Pager`).
   - `components/glass/`: the functional layer (`Glass`, `GlassToolbar` with `ToolbarSlot`, `SegmentedNav`).
@@ -549,7 +549,7 @@ There are two file formats, detected by content:
   - `/login`;
   - `/datasets`: upload with live import progress, list, delete;
   - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
-    - the index: the steps to the decisions (data → churn model → retention plan → content portfolio), then the overview section. `lib/steps.ts` derives each step's state from the dataset, its churn runs and its reports: done, next, running, failed, waiting or unavailable, with a one-line detail and a link. A retention plan counts only for the active model. The first step that is next or failed carries the view's one accented action;
+    - the index: the steps to the decisions (data → churn model → retention plan → content portfolio), then the overview section. `lib/steps.ts` derives each step's state from the dataset, its churn runs and its reports: done, next, running, failed, waiting or unavailable, with a one-line detail and a link. A retention plan counts only for the active model. The card reads the newest 100 runs and reports, the same pages the model and reports views show. The first step that is next or failed carries the view's one accented action;
     - `analytics/:section`: one section at a time, switched by a segmented control in the toolbar;
     - `reports`: create, list and download reports. Decisions (approved plans) are listed with them, marked "Рішення";
     - `churn` ("Модель"), `churn/risk` ("Група ризику") and `churn/plan` ("План"), switched by a segmented control in the toolbar:
@@ -636,7 +636,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
 - **Choosing the accent.** The candidates were measured in OKLab against the chart colours and the status colours:
   - Indigo sat 8.8 from the chart blue, so action and data would read as one colour (`color › Best practices`). Teal sat 16–18 from the blue and the status green.
   - Plum is 22 from the blue, 40 from the green and 19 from the red.
-- **Where the accent goes** (`color › Liquid Glass color`, `toolbars › Actions`). One prominent button per view: upload, create report, sign in, the way out of an empty or error page. It also marks selection controls (checkbox, progress), the focus ring and the current sidebar item's icon. Nothing else is tinted.
+- **Where the accent goes** (`color › Liquid Glass color`, `toolbars › Actions`). One prominent button per view: upload, create report, sign in, the overview's next step, the way out of an empty or error page. It also marks selection controls (checkbox, progress), the focus ring and the current sidebar item's icon. Nothing else is tinted.
 - **Status** (`color › Inclusive color`). A status is an icon in the status colour plus a label in text colour (`StatusPill`), never colour alone.
 - **Typography** (`typography`).
   - Fonts: the system stack, which is SF Pro on Apple devices and Segoe UI on Windows; both have Cyrillic. No web font.

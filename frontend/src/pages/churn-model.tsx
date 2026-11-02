@@ -25,7 +25,8 @@ function SelectedRun({ run }: { run: ChurnRun }) {
   const job = useTrainingJob(run, (finished) => {
     if (finished.status === "succeeded") toast.success("Модель навчено")
     else if (finished.error) {
-      toast.error(`Навчання не вдалося: ${messageFor(finished.error.code, finished.error.detail)}`)
+      const { code, detail } = finished.error
+      toast.error("Навчання не вдалося", { description: messageFor(code, detail) })
     }
   })
   const detail = useChurnRun(run.id, run.status === "succeeded")
