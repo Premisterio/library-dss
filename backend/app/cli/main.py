@@ -163,7 +163,11 @@ def train_churn(
             typer.echo(f"error: {exc.code}: {exc.detail}", err=True)
             raise typer.Exit(1) from exc
         run_id, job_id = run.id, run.job_id
-    run_job(factory, job_id)
+    try:
+        run_job(factory, job_id)
+    except TimeoutError as exc:
+        typer.echo("error: the training did not finish in time; it may still be running", err=True)
+        raise typer.Exit(1) from exc
     with factory() as session:
         run = session.get_one(ChurnRun, run_id)
         if run.job.status != "succeeded" or run.result is None:
@@ -180,9 +184,13 @@ def train_churn(
         for model in run.result["models"]:
             typer.echo(
                 f"  {model['model']:16} Brier {model['brier']:.4f}  ECE {model['ece']:.4f}  "
-                f"ROC-AUC {model['roc_auc'] or float('nan'):.3f}  ({model['origins']} origins)"
+                f"ROC-AUC {_number(model['roc_auc'])}  ({model['origins']} origins)"
             )
         typer.echo(f"scored {summary['scored']} members at risk" + (", active" if activate else ""))
+
+
+def _number(value: float | None) -> str:
+    return "—" if value is None else f"{value:.3f}"
 
 
 @app.command()

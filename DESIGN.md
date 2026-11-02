@@ -183,7 +183,7 @@ There are two file formats, detected by content:
   - Computed once, at the end of the import job and in its transaction, from the frames already in memory. That takes ~0.3 s for 5k members.
   - Stored per section in `dataset_analytics` as JSONB; the API serves the stored JSON.
   - After the analytics code changes, `dss refresh-analytics` recomputes from the stored uploads. Without stored analytics the API answers `409 analytics.missing`.
-- **Sections:** `overview`, `usage`, `content`, `segments`, `search`, `subscriptions`, `cohorts`. Each one is a module with a `build(frames, ctx)` function, registered in `SECTIONS`.
+- **Sections:** `overview`, `usage`, `content`, `segments`, `search`, `subscriptions`, `cohorts`, `candidates`. Each one is a module with a `build(frames, ctx)` function, registered in `SECTIONS`.
 - **Shape of a section** (`model.py`): KPIs, tidy charts and notes.
   - A KPI is `{key, value, unit, window_days}`.
   - A tidy chart is `{dimensions, measures, attributes, rows}`: one row per combination of dimension values. It fits any chart library or a plain table.
@@ -194,6 +194,7 @@ There are two file formats, detected by content:
 - **Time.**
   - Every value is "as of the end of `as_of`" in the dataset's time zone (`Context`).
   - Windows are the last 30 days, the last 90 days (`RECENT_DAYS`) or the whole history. `window_days` says which.
+  - A window of N days holds whole local days: it starts at the local midnight N − 1 days before as_of, even across a clock change.
   - Weekly charts show complete weeks only: a week cut short by `as_of` would look like a sudden drop.
   - A current count such as paying subscribers or MRR is the state at the end of `as_of`.
 - **Missing data.** A value a dataset cannot provide is `null` with a note, never `0`. Examples: renewal outcomes, licences or result counts in nested files. Presence is detected from the data, not from the format.
@@ -213,7 +214,7 @@ There are two file formats, detected by content:
     - Trials are not paid periods.
     - A member with overlapping paid periods counts once, with the period that started last.
   - The label is whether that period ended in churn (`churned` vs `renewed`). A period without a decided outcome has no label.
-  - **Churn without an action.** A renewal that received a campaign action gets no label: an assignment with `delivered`, matched by `target_period_end`. The label therefore means churn without any action, the baseline against which the action plan (M4b) compares actions. Assignment was random, so the remaining renewals are still a fair sample.
+  - **Churn without an action.** A renewal that received a campaign action gets no label: an assignment with `delivered`, matched by `target_period_end`. The label therefore means churn without any action, the baseline against which the action plan (M4b) compares actions. Assignment was random, and which renewals count as treated depends only on the arm and on e-mail consent, which was given before the campaign. The remaining labels therefore still estimate churn without an action, given the features.
 - **Rolling cutoffs** (`history_cutoffs`).
   - Cutoff k is as_of − 30·(k + 1) days, back to the first paid period.
     - The risk window of k = 0 ends at as_of.
@@ -229,6 +230,7 @@ There are two file formats, detected by content:
     - the outcome of the running period is never read.
   - Assumptions:
     - Profile fields (age, education, language, e-mail opt-in) are fixed, because the format stores one value per member.
+    - Periods last 30 days or longer. A shorter period could start after one cutoff and end before the next, and then get no label. libsim's periods are 30 or 365 days.
     - A rating is known when the loan is returned.
   - A property test (Hypothesis) rewrites the history after random cutoffs of a simulated dataset: it drops, moves and invents later rows and redraws everything that resolves later. No feature may change.
 - **Features.** There are 26, in five groups. Their keys, groups, kinds and units are in `FEATURES`. Their Ukrainian labels are in enums `churn_feature`, and the group labels in `churn_feature_group`.
@@ -256,6 +258,7 @@ There are two file formats, detected by content:
   - the Brier score and its skill against always predicting the training churn rate;
   - ECE over 10 equal-count bins by predicted risk, and the bins themselves for a calibration plot;
   - lift: the churn rate in the riskiest 10% over the overall rate.
+  - Members with the same prediction count as one group: they share a calibration bin, and a group cut by the 10% counts by the share of it that fits. The rule predicts only two values, so its lift and ECE would otherwise depend on the order of the rows.
   - A metric that is undefined for the data, such as AUC with one class, is null.
 - **Backtest and choice** (`training.py`).
   - Every model is trained and tested at origins k = 0…5. Origins without both churn and renewal in their training or test rows are skipped, but origin 0 must be usable (`NotEnoughHistoryError`).
@@ -296,7 +299,8 @@ There are two file formats, detected by content:
 - **Runs** (`services/churn.py`, model `ChurnRun`).
   - `POST /datasets/{id}/churn-runs` checks that the dataset is ready and has retention data (`churn.not_supported` otherwise). It creates a run and queues a `train_churn` job, and answers `202 {run, job}` with `Location` pointing at the job.
   - The run's status and error are its job's, so nothing is kept twice.
-  - The job parses the stored upload and builds the examples. It then backtests, chooses and explains a model, and scores the risk group at as_of. Its stages are `parse`, `features`, `backtest`, `scoring`.
+  - The job parses the stored upload and builds the examples. It then backtests, chooses and explains a model, and scores the risk group at as_of. Its stages are `parse`, `features`, `backtest`, `scoring`, `effects`.
+  - In its last stage it also estimates the effects of retention actions from the dataset's campaign (see "Retention decisions"). It keeps them in the result together with the campaign's discount, so a run holds everything a retention plan needs.
   - Too little history fails the job with `churn.not_enough_history`; the dataset stays ready.
   - The run keeps the chosen model's key and a JSON result:
     - the summary (examples, cutoffs, churn rate, members scored and the expected churners, the sum of their probabilities);
@@ -304,7 +308,7 @@ There are two file formats, detected by content:
     - importance, coefficients and typical values.
   - The fitted model itself is not stored. Scores are computed once, the dataset never changes, and training again takes seconds.
   - A run that is still queued or running cannot be deleted (`churn.busy`).
-- **Activation.** `POST /churn-runs/{id}/activate` makes a trained run the one decisions use for its dataset, and deactivates the others. The analyst chooses it after reviewing the quality, so training never activates a run by itself. A partial unique index allows one active run per dataset.
+- **Activation.** `POST /churn-runs/{id}/activate` makes a trained run the one decisions use for its dataset, and deactivates the others. The analyst chooses it after reviewing the quality, so training never activates a run by itself. A partial unique index allows one active run per dataset, and activation locks the dataset's row first, so two activations at once cannot deadlock. `GET /churn-runs?active=true` finds the active run.
 - **Scores** (`ChurnScore`).
   - One row per member at risk: rank, probability, plan, period end, every feature value and the reasons.
   - `GET /churn-runs/{id}/scores` lists them, the riskiest first.
@@ -319,9 +323,140 @@ There are two file formats, detected by content:
   - `test_churn_api.py` trains through the API and the job runner on an 800-member, 10-month simulation. It covers scores, activation, ownership, deleting, and failures that leave the dataset ready. The CLI test runs `seed-demo` and then `train-churn`.
   - On the 5k-member demo, the examples of all 24 cutoffs take under 1 s.
 
+**Retention decisions** (`domain/retention`): what to do about the members at risk, within a budget.
+
+- **Effects of actions** (`effects.py`). They come from the past randomized retention campaign: arms control, e-mail and a discount, assigned at a renewal.
+  - An effect is a difference of churn rates at the targeted renewal: with the action minus without (negative means fewer churns). It has a 95% Newcombe hybrid score interval (method 10, from Wilson intervals).
+  - E-mail is compared among members who agreed to e-mails only, because nobody else can get one. The discount is compared among everyone.
+  - **Segments.** Three segments are fixed in advance from the churn features on the day before the assignment:
+    - dormant: no reading for 30 days, or never;
+    - declining: fewer sessions in the last 30 days than in the 30 before;
+    - steady: the rest.
+    - The idea is that a reminder may help a member who drifts away and annoy one who has left in spirit.
+  - **Shrinkage.** Each segment's difference is pulled toward the effect on everyone (empirical Bayes). The pull is stronger the noisier the segment is and the less the segments differ (DerSimonian–Laird between-segment variance). A segment without data takes the overall effect.
+  - **Cautious bound.** The upper 95% bound of the shrunk value (its least favourable value) is used in cautious mode.
+  - Checked on libsim: the intervals contain the true average effects. On demo seed 1, every overall and segment interval does; another seed misses one, as a 95% interval should now and then.
+- **The plan** (`plan.py`). For each member at risk and each action, the plan knows:
+  - the probability of churn without an action (the churn model's) and with it;
+  - the expected spend: an e-mail's cost, or the share of the renewal's list price a discount gives away if the member renews;
+  - the gain: (p_none − p_action) · monthly list price · horizon in months − spend. The monthly list price is the renewal's list price over the plan's months (12 for annual), or, when the renewal's price is unknown, what the member pays undone by their discount.
+  - **Effects used.**
+    - An effect, measured as a difference of churn rates, becomes a shift of the churn logit at the control group's churn rate: the arm's for an overall effect, the segment's own for a segment effect, the members' mean risk for an assumed one. A member's probability with the action is σ(logit p_none + shift), so the same action lowers a high-risk member's probability more than a low-risk member's.
+    - An action prevents at most 90% of the churn at its base rate. A larger estimate or assumption (a treated arm without churns, an assumed effect above the risk) would make it remove churn for everyone, so it is capped, and a note (`retention.effect_capped`) names the action.
+    - **The default.** By default each action's overall campaign effect is used for everyone.
+      - With `by_segment`, each segment's shrunk effect is used instead. Cautious mode takes the upper 95% bound, and the analyst can give assumed effects (with any discount size) instead of the campaign's.
+      - With the campaign's effects, the campaign's discount is offered, because there is no data on other sizes.
+    - Effects that raise churn are never chosen, because their gain is negative.
+  - **Why the overall effect.** The true expected gain of plans was compared on libsim: the true churn probabilities under each action, four demo seeds, 5k members.
+
+    | Plan                              | Budget 1,000 | 3,000  | 10,000 |
+    | --------------------------------- | ------------ | ------ | ------ |
+    | Overall effects (the default)     | 3,410        | 6,601  | 10,272 |
+    | Segment effects (`by_segment`)    | 2,696        | 5,528  | 9,087  |
+    | Cautious bound, 95%               | 2,080        | 4,039  | 4,402  |
+    | Discounts to the riskiest members | 2,235        | 5,275  | 11,225 |
+    | Oracle (the true effects)         | 10,766       | 15,600 | 19,872 |
+    - The table shows the mean true gain in UAH. The overall effects are also the steadiest across seeds: their worst case is 2,488, 5,616 and 6,822 UAH. In cautious mode, a seed whose bounds are all unfavourable plans nothing.
+    - The segment estimates rest on 20–140 members per arm. Their noise makes the plan act on chance differences, such as e-mailing dormant members, whom e-mails actually push away.
+    - Even the overall effects are noisy (about ±2.4 percentage points for e-mail against a true effect of −0.4). The plan's expected value is therefore optimistic, and a note on the plan says so.
+
+  - **The choice** is a multiple-choice knapsack solved as a MILP with `scipy.optimize.milp` (HiGHS), within 0.5% of the best possible gain. It maximizes the total gain, under these constraints:
+    - at most one action per member;
+    - the expected spend within the budget;
+    - optional limits per action;
+    - e-mail only with consent;
+    - no discount for a member whose running period is already discounted.
+  - **Gap.** Proving 0.01% took minutes on some ordinary 2k-member plans. Stopping at 0.5% takes about a second and, unlike a time limit, gives the same plan every time, so approval freezes the plan the preview showed. A 20 s time limit stays as a safety net.
+  - **Baseline.** A greedy plan (best gain per hryvnia first) is reported for comparison. If it gains more than the solver's plan, which the gap allows, it is the plan.
+  - **Budget curve.** The budget → value curve uses the LP relaxation, which is fast and differs from the integer optimum by at most a few fractional options. It runs to the spend beyond which more money gains nothing: the best plan without a budget, within the per-action limits.
+  - **Tests.**
+    - The MILP equals brute force on 200 random small problems, within its gap.
+    - Gains are checked by hand.
+    - A plan for 2,000 members takes about 0.6 s, and the plans that took minutes to prove take about a second.
+- **Preview and approval** (`services/retention.py`, `api/v1/retention.py`).
+  - `POST /churn-runs/{id}/plan` takes the analyst's choices:
+    - the budget and the horizon;
+    - the e-mail cost and limits per action;
+    - cautious mode, or assumed effects with their own discount.
+  - It answers a `retention_plan` section in the shape of the analytics, so clients draw it with their usual renderer:
+    - KPIs: members at risk, e-mails and discounts in the plan, spend, value, the greedy plan's value, members expected to stay, the discount offered;
+    - charts: the budget curve, actions by segment, the campaign's effects (each action's overall effect as segment `all`, then each segment's), the members in the plan;
+    - notes.
+  - The plan uses the run's stored scores and effects, so it parses no dataset. With the campaign's effects it offers the campaign's discount, because there is no data on other sizes.
+  - `POST /churn-runs/{id}/plan/approve` freezes the plan as a decision: a report of kind `retention`, with the parameters it was made with, including the discount actually offered (`discount_pct`). Only the active run can be used.
+  - **The decision log.** `GET /reports?kind=retention` lists the decisions, and every report export (PDF, XLSX, CSV, JSON) works for them.
+
+**Content acquisition**: which of a distributor's titles to license, within a budget.
+
+- **Candidates** (analytics section `candidates`, `domain/analytics/candidates.py`). Each title in `candidate_titles` gets four criteria over the last 90 days, all of them "more is better":
+  - `demand_searches`: zero-result searches whose query is the title or one of its authors (trimmed, any case, the way the search section groups queries);
+  - `author_loans`: loans of the library's books by the same authors;
+  - `genre_loans`: loans in the title's genre;
+  - `genre_holds_per_copy`: holds placed in the genre per licensed copy.
+  - The licence cost is shown too. It is the portfolio's budget, not a criterion, so cost counts once.
+  - The section is computed at import with the others, so a decision reads stored JSON and parses no dataset. A dataset without an offer gets the note `candidates.none`.
+- **Why these four.** Each signal was measured against libsim's true demand: Spearman ρ with the requests for each title in the 180 days after as_of, on the demo with seeds 1–3 (60 titles each).
+
+  | Signal                                                        | Seed 1 | Seed 2 | Seed 3 | Kept                          |
+  | ------------------------------------------------------------- | -----: | -----: | -----: | ----------------------------- |
+  | Zero-result searches for the title or an author               |   0.70 |   0.72 |   0.64 | yes                           |
+  | Loans in the genre                                            |   0.43 |   0.60 |   0.53 | yes                           |
+  | Holds per copy in the genre                                   |   0.44 |   0.45 |   0.57 | yes                           |
+  | Loans of the author's books                                   |   0.22 |   0.50 |   0.42 | yes                           |
+  | Growth of the genre's loans (last 90 days over the 90 before) |  −0.01 |   0.16 |  −0.21 | no                            |
+  | Average rating of the author's books (24–29 titles have one)  |  −0.26 |   0.44 |  −0.20 | no                            |
+  | Average rating in the genre                                   |  −0.40 |  −0.33 |  −0.40 | no: popular genres rate lower |
+  | Pages, age of the title, English (largest absolute ρ)         |   0.14 |   0.03 |   0.23 | no                            |
+  - Four criteria leave six pairwise comparisons for AHP, instead of 21 for seven.
+  - `test_candidate_criteria_track_true_demand` checks every criterion's direction on the 30-day ground truth of seed 1.
+  - The searches alone are a strong signal, so the experiment compares the decision with a "searches per hryvnia" baseline.
+
+- **Weights** (`domain/content/ahp.py`). The analyst compares the criteria in pairs on Saaty's scale (1/9..9); a pair without a judgement counts as equal.
+  - The weights are the principal eigenvector. CI = (λmax − n) / (n − 1), and CR = CI / RI with Saaty's random index.
+  - CR above 0.10 blocks approval. The three judgements furthest from the weights are named: those where the error a_ij · w_j / w_i is furthest from 1, each with the value w_i / w_j that would agree with the weights.
+- **Rankings** (`ranking.py`).
+  - TOPSIS (Hwang & Yoon): vector-normalized, weighted columns; the closeness is the distance to the worst over the sum of the distances to the best and the worst.
+  - SAW for comparison: x / max for a benefit, min / x for a cost.
+  - Kendall's τ-b between them shows how much the method matters.
+- **Sensitivity.**
+  - A sweep sets one criterion's weight from 0 to 1 in 101 steps, keeping the others' proportions, and records the TOPSIS leader at each step. This shows where the leader changes.
+  - Stability: 2000 weight vectors from a Dirichlet distribution centred on the analyst's weights (concentration 20, so a weight of 0.25 varies by about ±0.09). It reports the share of draws in which each title stays in the top k.
+- **Portfolio** (`portfolio.py`). The titles with the most total TOPSIS score whose licences fit the budget, with an optional cap per genre: a 0/1 knapsack on the solver shared with the retention plan. Titles with no score are never licensed.
+- **Validation** (`test_content.py`).
+  - Textbook examples: Saaty's 3 × 3 matrix (weights 0.637 / 0.258 / 0.105, CR 0.033) and Hwang & Yoon's fighter aircraft (closeness 0.643 / 0.268 / 0.614 / 0.312). SAW on the aircraft is worked out by hand.
+  - Properties: consistent judgements give back their weights with CR 0; a dominated title never scores above its dominator; column units and the order of titles or criteria change nothing.
+  - The portfolio equals brute force on 150 small problems.
+- **On the truth.** These are the requests in the 180 days after as_of for titles licensed with a budget of a quarter of the offer (the demo, 60 titles; MCDA portfolios capped at 5 per genre):
+
+  | Portfolio                                    | Seed 1 | Seed 2 | Seed 3 |
+  | -------------------------------------------- | -----: | -----: | -----: |
+  | Random (mean of 500)                         |    112 |     86 |     91 |
+  | TOPSIS, equal weights                        |    229 |    163 |    134 |
+  | SAW, equal weights                           |    202 |    161 |    145 |
+  | TOPSIS, half the weight on searches          |    253 |    155 |    173 |
+  | Searches per hryvnia (greedy)                |    261 |    174 |    193 |
+  | The true demand itself (knapsack, the bound) |    280 |    213 |    210 |
+  - The decision doubles what chance finds. Zero-result searches alone do better still: in libsim a missing title's demand shows up directly as searches, and the genre-level criteria add noise. More weight on the searches closes most of the gap.
+  - The thesis reports this as it is. The experiment (M6) varies the presets and the budget.
+
+- **Evaluation and approval** (`domain/content/decision.py`, `services/content.py`, `api/v1/content.py`).
+  - `POST /datasets/{id}/content/evaluate` takes the judgements (pairs of criteria on 1/9..9; a pair left out counts as equal, and a later judgement of a pair wins), the budget and an optional cap per genre.
+  - It answers a `content_portfolio` section in the shape of the analytics:
+    - KPIs: CR, the titles in the portfolio, its cost, the searches for its titles, and Kendall's τ between TOPSIS and SAW;
+    - charts: the criteria weights, each with the range of its weight over which the leader stays first; the ranking (TOPSIS and SAW scores and places, stability, searches, licence cost and the decision); and, when CR is above 0.10, the three judgements furthest from the weights;
+    - notes: inconsistent judgements (`content.inconsistent`); equal weights when nothing was compared (`content.equal_weights`).
+  - Stability counts how often a title stays among as many first titles as the portfolio holds.
+  - The evaluation reads the stored `candidates` section, so it parses no dataset. On the demo the page shows it 0.4–0.5 s after opening.
+  - `POST /datasets/{id}/content/approve` freezes it as a report of kind `content`, with the judgements, budget and cap. Judgements with CR above 0.10 cannot be approved (409 `content.inconsistent`). A dataset without an offer answers 409 `content.no_candidates`.
+
 ### 2.10 Reports and exports
 
-- **What a report is.** A report is a titled copy of some or all analytics sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
+- **What a report is.** A report is a titled copy of sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
+- **Kinds** (`kind`, enums `report_kind`):
+  - `analytics`: some or all analytics sections;
+  - `retention`: an approved plan of actions;
+  - `content`: an approved portfolio of titles.
+  - A decision also keeps the `params` it was made with.
 - **API.**
   - `POST /reports` takes `{dataset_id, title, sections?}`; sections keep the canonical order whatever order is asked.
   - `GET /reports` and `GET /reports/{id}` return the frozen sections in the same shape as the analytics API.
@@ -380,7 +515,7 @@ There are two file formats, detected by content:
 - **Determinism.**
   - Randomness comes from `SeedSequence` streams; ids are deterministic; keys are sorted; gzip `mtime` is 0.
   - The same parameters give byte-identical files.
-  - Local times are converted to UTC with the offset of their own day, including the period ends after as_of.
+  - Local times are converted to UTC with the offset of their own local hour, so midnights are exact on the days the clocks change, including the period ends after as_of. An hour skipped in spring keeps the offset from before the change.
 - **Output.**
   - The dataset is a tabular file; `libsim/schema.py` is the source of the format.
   - `libsim schema` writes the JSON Schema.
@@ -415,12 +550,20 @@ There are two file formats, detected by content:
   - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
     - the index: overview;
     - `analytics/:section`: one section at a time, switched by a segmented control in the toolbar;
-    - `reports`: create, list and download reports;
-    - `churn` ("Модель") and `churn/risk` ("Група ризику"), switched by a segmented control in the toolbar:
+    - `reports`: create, list and download reports. Decisions (approved plans) are listed with them, marked "Рішення";
+    - `churn` ("Модель"), `churn/risk` ("Група ризику") and `churn/plan` ("План"), switched by a segmented control in the toolbar:
       - The model view lists the runs and follows a training job live.
       - It shows the chosen run's quality against the rule, calibration, importance and backtest, and activates it. `?run=` picks another run.
       - The risk view pages through the active run's members at risk with their reasons, and a sheet shows one member's features against the typical values.
+      - The plan view takes the plan's conditions in a form and previews the best plan for the active run. It shows the KPIs, the budget curve as a line, the actions by segment, the campaign's effects as dots with interval lines on one axis through zero, and the members in the plan. Approval names the decision and saves it among the reports.
       - A dataset without retention data says so instead.
+    - `content` ("Закупівля"), one page instead of a wizard:
+      - each pair of criteria on a 1–9 scale toward either side, with the live CR and, when it is too high, the judgements to revise;
+      - the weights, each over the band of weights at which the leader stays first;
+      - the budget and the cap per genre, the KPIs and the ranking with the decision for each title;
+      - approval, disabled while the judgements are inconsistent or the result on screen is not yet that of the current inputs.
+      - Every change is evaluated again after 300 ms of quiet, and the last result stays on screen meanwhile.
+      - A dataset without an offer says so instead.
   - The dataset pages, which bring the chart library, are loaded lazily.
   - Every route has an error boundary. Errors below the shell stay inside it, so the navigation keeps working.
   - Each route names its page title in `handle`, and the shell toolbar shows it.

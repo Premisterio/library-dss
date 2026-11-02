@@ -1,5 +1,6 @@
 import {
   BarChart3Icon,
+  BookPlusIcon,
   DatabaseIcon,
   FileTextIcon,
   LayoutDashboardIcon,
@@ -67,6 +68,9 @@ function DatasetNav({ datasetId }: { datasetId: number | undefined }) {
             </NavItem>
             <NavItem to={paths.churnModel(datasetId)} icon={UserMinusIcon}>
               Відтік
+            </NavItem>
+            <NavItem to={paths.content(datasetId)} icon={BookPlusIcon}>
+              Закупівля
             </NavItem>
             <NavItem to={paths.reports(datasetId)} icon={FileTextIcon}>
               Звіти

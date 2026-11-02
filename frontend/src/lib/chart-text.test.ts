@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { Chart, Dimension } from "@/api/types"
 import { cellText, dimensionText, rowNames } from "@/lib/chart-text"
+import { formatValue } from "@/lib/format"
 import type { LabelFn } from "@/lib/labels"
 
 const label: LabelFn = (group, code) => `${group}:${String(code)}`
@@ -17,6 +18,8 @@ describe("dimensionText", () => {
     expect(dimensionText(month, "2026-09-01", label)).toMatch(/2026/)
     expect(dimensionText(genre, "poetry", label)).toBe("genre:poetry")
     expect(dimensionText(hour, 7, label)).toBe("07:00")
+    const budget: Dimension = { key: "budget", kind: "number", enum: null, order: null }
+    expect(dimensionText(budget, 1500, label)).toBe(formatValue(1500, "UAH"))
     expect(dimensionText(title, null, label)).toBe("—")
   })
 })

@@ -63,6 +63,17 @@ def test_models_and_metrics_have_labels() -> None:
     assert set(ENUMS["churn_metric"]) == metrics
 
 
+def test_ties_do_not_depend_on_row_order() -> None:
+    """Regression: a rule predicts few distinct values, and lift and the calibration bins cut
+    through ties by row order. Tied members now count as one group."""
+    predicted = np.array([0.3] * 4 + [0.1] * 6)
+    first = evaluate(np.array([1, 1, 0, 0, 0, 0, 0, 0, 0, 1], dtype=bool), predicted, 0.3)
+    second = evaluate(np.array([0, 0, 1, 1, 1, 0, 0, 0, 0, 0], dtype=bool), predicted, 0.3)
+    assert first.lift == second.lift == pytest.approx((2 / 4) / 0.3)  # the top 1 of 10: a quarter
+    assert first.ece == second.ece
+    assert [b.members for b in first.calibration] == [6, 4]
+
+
 def test_metrics_of_one_class() -> None:
     metrics = evaluate(np.zeros(4, dtype=bool), np.array([0.1, 0.2, 0.3, 0.4]), base_rate=0.0)
     assert (metrics.roc_auc, metrics.pr_auc, metrics.lift, metrics.brier_skill) == (None,) * 4

@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app.cli.jobs import run_job
 from app.core.config import Settings
+from app.domain.enums import JobKind
 from app.ingest import reader
 from app.models import Analyst, Dataset, Job, Report
 from app.services import auth, datasets, jobs, reports
@@ -51,7 +52,9 @@ def _import(session_factory: jobs.SessionFactory, dataset_id: int) -> str:
     """Run the dataset's pending import here, or wait for the worker that took it."""
     with session_factory() as session:
         job = session.scalars(
-            select(Job).where(Job.dataset_id == dataset_id).order_by(Job.created_at.desc())
+            select(Job)
+            .where(Job.dataset_id == dataset_id, Job.kind == JobKind.IMPORT_DATASET)
+            .order_by(Job.created_at.desc())
         ).first()
     if job is not None and job.status not in jobs.TERMINAL:
         run_job(session_factory, job.id)

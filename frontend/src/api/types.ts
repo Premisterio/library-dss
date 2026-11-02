@@ -17,7 +17,9 @@ export type Job = Schemas["JobOut"]
 
 export type Section = Schemas["SectionOut"]
 export type SectionKey = Section["key"]
-export type Sections = Partial<Record<SectionKey, Section>>
+/** The analytics sections a dataset has (the others belong to decisions). */
+export type AnalyticsKey = NonNullable<Schemas["ReportIn"]["sections"]>[number]
+export type Sections = Partial<Record<AnalyticsKey, Section>>
 export type Kpi = Schemas["KpiOut"]
 export type Note = Schemas["NoteOut"]
 export type Chart = Schemas["ChartOut"]
@@ -28,6 +30,8 @@ export type Row = Chart["rows"][number]
 export type Cell = Row[string]
 
 export type Report = Schemas["ReportOut"]
+/** A section frozen in a report: analytics, or the plan of a decision. */
+export type ReportSection = Schemas["ReportSectionOut"]
 type ExportQuery = NonNullable<
   paths["/api/v1/reports/{report_id}/export"]["get"]["parameters"]["query"]
 >
@@ -47,3 +51,7 @@ export type Reason = Schemas["ReasonOut"]
 export type FeatureValue = Schemas["FeatureValueOut"]
 /** How to show a feature's values: its kind, unit and the enums group of its codes. */
 export type Described = Pick<Reason, "kind" | "unit" | "enum">
+
+export type PlanIn = Schemas["PlanIn"]
+export type ContentIn = Schemas["ContentIn"]
+export type CriterionKey = Schemas["JudgementIn"]["criterion"]

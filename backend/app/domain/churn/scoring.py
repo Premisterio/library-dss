@@ -19,6 +19,7 @@ class Score:
     probability: float
     plan: str
     period_end: datetime
+    period_price: float  # list price of the renewal
     features: dict[str, Value]
     reasons: list[Reason]
 
@@ -32,7 +33,10 @@ def score(training: Training, frames: Frames, as_of: date, timezone: str) -> lis
     explained = reasons(training.model, features, training.typical)
     ordered = (
         features.with_columns(probability=pl.Series(training.model.predict(features)))
-        .join(at_risk(frames, cutoff).select("user_id", "period_end"), on="user_id")
+        .join(
+            at_risk(frames, cutoff).select("user_id", "period_end", period_price="list_price"),
+            on="user_id",
+        )
         .sort(["probability", "user_id"], descending=[True, False])
     )
     return [
@@ -42,6 +46,7 @@ def score(training: Training, frames: Frames, as_of: date, timezone: str) -> lis
             probability=row["probability"],
             plan=row["plan"],
             period_end=row["period_end"],
+            period_price=row["period_price"],
             features={feature.key: row[feature.key] for feature in FEATURES},
             reasons=explained[row["user_id"]],
         )

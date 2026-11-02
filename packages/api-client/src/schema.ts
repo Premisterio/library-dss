@@ -138,6 +138,40 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/churn-runs/{run_id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview the best plan of actions under a budget */
+        post: operations["preview_retention_plan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/churn-runs/{run_id}/plan/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a plan: freeze it as a decision (a report of kind `retention`) */
+        post: operations["approve_retention_plan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/churn-runs/{run_id}/scores": {
         parameters: {
             query?: never;
@@ -259,6 +293,40 @@ export type paths = {
          * @description Queues a job that backtests the models, chooses one, explains it and scores the members at risk at the dataset's as_of. The `Location` header points to the job.
          */
         post: operations["create_churn_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/content/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve the portfolio: freeze it as a decision (a report of kind `content`) */
+        post: operations["approve_content"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/datasets/{dataset_id}/content/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rank the titles on offer and pick the portfolio */
+        post: operations["evaluate_content"];
         delete?: never;
         options?: never;
         head?: never;
@@ -432,6 +500,36 @@ export type components = {
             dataset_id: number;
             /** Sections */
             sections: components["schemas"]["SectionOut"][];
+        };
+        /** ApproveIn */
+        ApproveIn: {
+            plan: components["schemas"]["PlanIn"];
+            /** Title */
+            title: string;
+        };
+        /**
+         * AssumedEffects
+         * @description The analyst's own effects, used instead of the campaign's.
+         */
+        AssumedEffects: {
+            /**
+             * Discount
+             * @description Change a discount makes (0..1).
+             * @default 0
+             */
+            discount: number;
+            /**
+             * Discount Pct
+             * @description Share of the renewal price off.
+             * @default 0.2
+             */
+            discount_pct: number;
+            /**
+             * Email
+             * @description Change of the churn rate an e-mail makes (0..1).
+             * @default 0
+             */
+            email: number;
         };
         /** Body_upload_dataset */
         Body_upload_dataset: {
@@ -729,6 +827,30 @@ export type components = {
              */
             value: number;
         };
+        /** ContentApproveIn */
+        ContentApproveIn: {
+            decision: components["schemas"]["ContentIn"];
+            /** Title */
+            title: string;
+        };
+        /** ContentIn */
+        ContentIn: {
+            /**
+             * Budget
+             * @description UAH for the licences.
+             */
+            budget: number;
+            /**
+             * Judgements
+             * @description Pairwise judgements; a pair left out counts as equally important, and a later judgement of the same pair wins.
+             */
+            judgements?: components["schemas"]["JudgementIn"][];
+            /**
+             * Max Per Genre
+             * @description At most this many titles of one genre.
+             */
+            max_per_genre?: number | null;
+        };
         /** DatasetOut */
         DatasetOut: {
             /**
@@ -965,6 +1087,27 @@ export type components = {
              */
             status: "queued" | "running" | "succeeded" | "failed";
         };
+        /**
+         * JudgementIn
+         * @description How many times more important `criterion` is than `compared_with` (Saaty's scale).
+         */
+        JudgementIn: {
+            /**
+             * Compared With
+             * @enum {string}
+             */
+            compared_with: "demand_searches" | "author_loans" | "genre_loans" | "genre_holds_per_copy";
+            /**
+             * Criterion
+             * @enum {string}
+             */
+            criterion: "demand_searches" | "author_loans" | "genre_loans" | "genre_holds_per_copy";
+            /**
+             * Value
+             * @description 1/9..9; 1: equal.
+             */
+            value: number;
+        };
         /** KpiOut */
         KpiOut: {
             /**
@@ -1086,6 +1229,44 @@ export type components = {
                 [key: string]: unknown;
             };
         };
+        /** PlanIn */
+        PlanIn: {
+            /** @description Effects to use instead of the campaign's (then any discount size goes); with the campaign's, the campaign's discount is offered. */
+            assumed?: components["schemas"]["AssumedEffects"] | null;
+            /**
+             * Budget
+             * @description UAH: the expected spend on e-mails and discounts.
+             */
+            budget: number;
+            /**
+             * By Segment
+             * @description Use each segment's own (shrunk) campaign effect instead of the action's overall one. On a small campaign the segment estimates are noisy and tend to cost more than they gain.
+             * @default false
+             */
+            by_segment: boolean;
+            /**
+             * Cautious
+             * @description Use the least favourable 95% bound of each campaign effect.
+             * @default false
+             */
+            cautious: boolean;
+            /**
+             * Email Cost
+             * @description UAH per e-mail.
+             * @default 2
+             */
+            email_cost: number;
+            /**
+             * Horizon Months
+             * @description Months of a kept member's price counted as gained.
+             * @default 12
+             */
+            horizon_months: number;
+            /** Max Discounts */
+            max_discounts?: number | null;
+            /** Max Emails */
+            max_emails?: number | null;
+        };
         /**
          * Problem
          * @description Error response (RFC 9457 Problem Details) with a stable machine-readable code.
@@ -1196,7 +1377,7 @@ export type components = {
              * Content
              * @description The sections as they were when created.
              */
-            content: components["schemas"]["SectionOut"][];
+            content: components["schemas"]["ReportSectionOut"][];
             /**
              * Created At
              * Format: date-time
@@ -1208,8 +1389,21 @@ export type components = {
             dataset_name: string;
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @description `analytics`, or an approved decision: `retention` (a plan of actions) or `content` (a portfolio of titles). Label in enums `report_kind`.
+             * @enum {string}
+             */
+            kind: "analytics" | "retention" | "content";
+            /**
+             * Params
+             * @description What a decision was made with.
+             */
+            params: {
+                [key: string]: unknown;
+            } | null;
             /** Sections */
-            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[];
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan" | "content_portfolio")[];
             /** Timezone */
             timezone: string;
             /** Title */
@@ -1223,7 +1417,7 @@ export type components = {
              * Sections
              * @description Sections to include; all when omitted.
              */
-            sections?: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[] | null;
+            sections?: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates")[] | null;
             /** Title */
             title: string;
         };
@@ -1245,8 +1439,21 @@ export type components = {
             dataset_name: string;
             /** Id */
             id: number;
+            /**
+             * Kind
+             * @description `analytics`, or an approved decision: `retention` (a plan of actions) or `content` (a portfolio of titles). Label in enums `report_kind`.
+             * @enum {string}
+             */
+            kind: "analytics" | "retention" | "content";
+            /**
+             * Params
+             * @description What a decision was made with.
+             */
+            params: {
+                [key: string]: unknown;
+            } | null;
             /** Sections */
-            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[];
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan" | "content_portfolio")[];
             /** Timezone */
             timezone: string;
             /** Title */
@@ -1266,6 +1473,30 @@ export type components = {
              */
             total: number;
         };
+        /**
+         * ReportSectionOut
+         * @description A section of a report: an analytics section, or the section of a decision.
+         */
+        ReportSectionOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Charts */
+            charts: components["schemas"]["ChartOut"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan" | "content_portfolio";
+            /** Kpis */
+            kpis: components["schemas"]["KpiOut"][];
+            /** Notes */
+            notes: components["schemas"]["NoteOut"][];
+            /** Timezone */
+            timezone: string;
+        };
         /** SectionOut */
         SectionOut: {
             /**
@@ -1279,7 +1510,7 @@ export type components = {
              * Key
              * @enum {string}
              */
-            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts";
+            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates";
             /** Kpis */
             kpis: components["schemas"]["KpiOut"][];
             /** Notes */
@@ -1536,6 +1767,8 @@ export interface operations {
     list_churn_runs: {
         parameters: {
             query?: {
+                /** @description Only the active run(s). */
+                active?: boolean | null;
                 dataset_id?: number | null;
                 limit?: number;
                 offset?: number;
@@ -1674,6 +1907,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChurnRunOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_retention_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSectionOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_retention_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
                 };
             };
             /** @description Request validation failed */
@@ -1989,7 +2310,7 @@ export interface operations {
             header?: never;
             path: {
                 dataset_id: number;
-                section: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts";
+                section: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates";
             };
             cookie?: never;
         };
@@ -2042,6 +2363,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChurnRunAccepted"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentApproveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Error (RFC 9457 Problem Details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    evaluate_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSectionOut"];
                 };
             };
             /** @description Request validation failed */
@@ -2262,6 +2671,7 @@ export interface operations {
         parameters: {
             query?: {
                 dataset_id?: number | null;
+                kind?: ("analytics" | "retention" | "content") | null;
                 limit?: number;
                 offset?: number;
             };

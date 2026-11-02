@@ -2345,6 +2345,27 @@
       "kpis": [],
       "notes": [],
       "timezone": "Europe/Kyiv"
+    },
+    {
+      "as_of": "2026-03-31",
+      "charts": [],
+      "key": "candidates",
+      "kpis": [
+        {
+          "key": "candidates",
+          "unit": "count",
+          "value": 0,
+          "window_days": null
+        }
+      ],
+      "notes": [
+        {
+          "code": "candidates.none",
+          "message_uk": "У датасеті немає пропозицій дистриб'ютора, тому кандидатів на закупівлю немає.",
+          "params": {}
+        }
+      ],
+      "timezone": "Europe/Kyiv"
     }
   ]
 }

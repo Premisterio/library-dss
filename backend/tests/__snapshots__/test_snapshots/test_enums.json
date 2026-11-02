@@ -58,6 +58,18 @@
       {
         "code": "cohorts",
         "label": "Когорти"
+      },
+      {
+        "code": "candidates",
+        "label": "Кандидати"
+      },
+      {
+        "code": "retention_plan",
+        "label": "План утримання"
+      },
+      {
+        "code": "content_portfolio",
+        "label": "Портфель закупівлі"
       }
     ],
     "campaign_arm": [
@@ -156,6 +168,38 @@
       {
         "code": "activity_retention",
         "label": "Утримання когорт"
+      },
+      {
+        "code": "budget_curve",
+        "label": "Чистий виграш залежно від бюджету"
+      },
+      {
+        "code": "actions_by_segment",
+        "label": "Дії за сегментами"
+      },
+      {
+        "code": "action_effects",
+        "label": "Ефекти дій за даними кампанії"
+      },
+      {
+        "code": "planned_members",
+        "label": "Читачі в плані"
+      },
+      {
+        "code": "candidate_criteria",
+        "label": "Кандидати та ознаки попиту"
+      },
+      {
+        "code": "criterion_weights",
+        "label": "Ваги критеріїв"
+      },
+      {
+        "code": "title_ranking",
+        "label": "Рейтинг кандидатів"
+      },
+      {
+        "code": "inconsistent_judgements",
+        "label": "Найменш узгоджені судження"
       }
     ],
     "churn_feature": [
@@ -326,6 +370,34 @@
         "label": "Градієнтний бустинг"
       }
     ],
+    "content_choice": [
+      {
+        "code": "licensed",
+        "label": "Ліцензувати"
+      },
+      {
+        "code": "skipped",
+        "label": "Не брати"
+      }
+    ],
+    "content_criterion": [
+      {
+        "code": "demand_searches",
+        "label": "Пошуки без результату"
+      },
+      {
+        "code": "author_loans",
+        "label": "Позичення книг автора"
+      },
+      {
+        "code": "genre_loans",
+        "label": "Позичення в жанрі"
+      },
+      {
+        "code": "genre_holds_per_copy",
+        "label": "Бронювань на копію в жанрі"
+      }
+    ],
     "dataset_format": [
       {
         "code": "tabular",
@@ -478,6 +550,42 @@
       {
         "code": "month_offset",
         "label": "Місяців після реєстрації"
+      },
+      {
+        "code": "budget",
+        "label": "Бюджет"
+      },
+      {
+        "code": "action",
+        "label": "Дія"
+      },
+      {
+        "code": "segment",
+        "label": "Сегмент"
+      },
+      {
+        "code": "user_id",
+        "label": "Читач"
+      },
+      {
+        "code": "candidate_id",
+        "label": "Кандидат"
+      },
+      {
+        "code": "language",
+        "label": "Мова"
+      },
+      {
+        "code": "criterion",
+        "label": "Критерій"
+      },
+      {
+        "code": "compared_with",
+        "label": "Порівняно з"
+      },
+      {
+        "code": "choice",
+        "label": "Рішення"
       }
     ],
     "education": [
@@ -646,6 +754,10 @@
         "label": "Оцінка ризику читачів"
       },
       {
+        "code": "effects",
+        "label": "Оцінка ефектів дій"
+      },
+      {
         "code": "done",
         "label": "Готово"
       }
@@ -808,6 +920,174 @@
       {
         "code": "retention",
         "label": "Утримання"
+      },
+      {
+        "code": "members_at_risk",
+        "label": "Читачі в групі ризику"
+      },
+      {
+        "code": "planned_emails",
+        "label": "Листів у плані"
+      },
+      {
+        "code": "planned_discounts",
+        "label": "Знижок у плані"
+      },
+      {
+        "code": "plan_spend",
+        "label": "Очікувані витрати"
+      },
+      {
+        "code": "plan_value",
+        "label": "Очікуваний чистий виграш"
+      },
+      {
+        "code": "greedy_value",
+        "label": "Виграш жадібного плану"
+      },
+      {
+        "code": "expected_saved",
+        "label": "Очікувано утриманих читачів"
+      },
+      {
+        "code": "offered_discount",
+        "label": "Знижка в плані"
+      },
+      {
+        "code": "effect_shrunk",
+        "label": "Ефект сегмента (уточнений)"
+      },
+      {
+        "code": "effect",
+        "label": "Ефект у сегменті"
+      },
+      {
+        "code": "effect_low",
+        "label": "Нижня межа 95%"
+      },
+      {
+        "code": "effect_high",
+        "label": "Верхня межа 95%"
+      },
+      {
+        "code": "effect_cautious",
+        "label": "Ефект (обережний)"
+      },
+      {
+        "code": "treated",
+        "label": "З дією"
+      },
+      {
+        "code": "control",
+        "label": "Контрольна група"
+      },
+      {
+        "code": "p_none",
+        "label": "Ризик без дії"
+      },
+      {
+        "code": "p_action",
+        "label": "Ризик із дією"
+      },
+      {
+        "code": "gain",
+        "label": "Чистий виграш"
+      },
+      {
+        "code": "spend",
+        "label": "Витрати"
+      },
+      {
+        "code": "candidates",
+        "label": "Кандидатів"
+      },
+      {
+        "code": "candidates_searched",
+        "label": "Кандидатів, яких шукали"
+      },
+      {
+        "code": "candidates_cost",
+        "label": "Вартість усіх пропозицій"
+      },
+      {
+        "code": "demand_searches",
+        "label": "Пошуки без результату (назва чи автор)"
+      },
+      {
+        "code": "author_loans",
+        "label": "Позичення книг автора"
+      },
+      {
+        "code": "genre_loans",
+        "label": "Позичення в жанрі"
+      },
+      {
+        "code": "genre_holds_per_copy",
+        "label": "Бронювань на копію в жанрі"
+      },
+      {
+        "code": "license_cost",
+        "label": "Ліцензія"
+      },
+      {
+        "code": "consistency_ratio",
+        "label": "Узгодженість суджень (CR)"
+      },
+      {
+        "code": "portfolio_titles",
+        "label": "Назв у портфелі"
+      },
+      {
+        "code": "portfolio_spend",
+        "label": "Вартість портфеля"
+      },
+      {
+        "code": "portfolio_searches",
+        "label": "Пошуки назв із портфеля"
+      },
+      {
+        "code": "ranking_agreement",
+        "label": "Згода TOPSIS і SAW (τ Кендалла)"
+      },
+      {
+        "code": "weight",
+        "label": "Вага"
+      },
+      {
+        "code": "stable_from",
+        "label": "Лідер не зміниться від"
+      },
+      {
+        "code": "stable_to",
+        "label": "Лідер не зміниться до"
+      },
+      {
+        "code": "rank_topsis",
+        "label": "Місце (TOPSIS)"
+      },
+      {
+        "code": "topsis",
+        "label": "Близькість до ідеалу (TOPSIS)"
+      },
+      {
+        "code": "rank_saw",
+        "label": "Місце (SAW)"
+      },
+      {
+        "code": "saw",
+        "label": "Зважена сума (SAW)"
+      },
+      {
+        "code": "stability",
+        "label": "Стійкість у портфелі"
+      },
+      {
+        "code": "judgement_given",
+        "label": "Судження"
+      },
+      {
+        "code": "judgement_consistent",
+        "label": "Узгоджене значення"
       }
     ],
     "period_outcome": [
@@ -870,6 +1150,48 @@
       {
         "code": "never",
         "label": "Жодної активності"
+      }
+    ],
+    "report_kind": [
+      {
+        "code": "analytics",
+        "label": "Аналітика"
+      },
+      {
+        "code": "retention",
+        "label": "План утримання"
+      },
+      {
+        "code": "content",
+        "label": "Закупівля контенту"
+      }
+    ],
+    "retention_action": [
+      {
+        "code": "email",
+        "label": "E-mail"
+      },
+      {
+        "code": "discount",
+        "label": "Знижка"
+      }
+    ],
+    "retention_segment": [
+      {
+        "code": "all",
+        "label": "Усі сегменти"
+      },
+      {
+        "code": "dormant",
+        "label": "Сплячі (не читали 30+ днів)"
+      },
+      {
+        "code": "declining",
+        "label": "Згасають (читають менше)"
+      },
+      {
+        "code": "steady",
+        "label": "Стабільні"
       }
     ],
     "unit": [
