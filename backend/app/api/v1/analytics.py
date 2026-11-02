@@ -17,8 +17,19 @@ from app.services import analytics, datasets
 
 router = APIRouter(prefix="/datasets/{dataset_id}/analytics", tags=["analytics"])
 
-SectionKey = Literal[
+AnalyticsKey = Literal[
     "overview", "usage", "content", "segments", "search", "subscriptions", "cohorts"
+]
+# Every section the API serves: the analytics, and the sections of decisions.
+SectionKey = Literal[
+    "overview",
+    "usage",
+    "content",
+    "segments",
+    "search",
+    "subscriptions",
+    "cohorts",
+    "retention_plan",
 ]
 WINDOW = Field(
     description="The value covers the last N days up to as_of; null: the whole history, "
@@ -68,6 +79,17 @@ class NoteOut(BaseModel):
 
 
 class SectionOut(BaseModel):
+    key: AnalyticsKey
+    as_of: date
+    timezone: str
+    kpis: list[KpiOut]
+    charts: list[ChartOut]
+    notes: list[NoteOut]
+
+
+class ReportSectionOut(BaseModel):
+    """A section of a report: an analytics section, or the section of a decision."""
+
     key: SectionKey
     as_of: date
     timezone: str
@@ -98,7 +120,7 @@ def get_analytics(dataset_id: int, analyst: CurrentAnalyst, session: SessionDep)
 
 @router.get("/{section}", summary="One analytics section")
 def get_analytics_section(
-    dataset_id: int, section: SectionKey, analyst: CurrentAnalyst, session: SessionDep
+    dataset_id: int, section: AnalyticsKey, analyst: CurrentAnalyst, session: SessionDep
 ) -> SectionOut:
     dataset = datasets.get_for(session, dataset_id, analyst)
     payload = analytics.section_for(session, dataset, section)

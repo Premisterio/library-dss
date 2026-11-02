@@ -1,10 +1,8 @@
 """Churn runs through the API: train (a job), quality and explanations, activation, scores."""
 
 from collections.abc import Callable
-from functools import cache
 from typing import Any
 
-import orjson
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -18,47 +16,12 @@ from app.services import auth, churn, jobs
 Headers = dict[str, str]
 
 
-def upload(client: TestClient, headers: Headers, document: dict[str, Any]) -> dict[str, Any]:
-    response = client.post(
-        "/api/v1/datasets",
-        headers=headers,
-        files={"file": ("library.json", orjson.dumps(document), "application/json")},
-    )
-    assert response.status_code == 202, response.text
-    return response.json()["dataset"]
-
-
-def imported(
-    client: TestClient, headers: Headers, run_jobs: Callable[[], int], document: dict[str, Any]
-) -> dict[str, Any]:
-    dataset = upload(client, headers, document)
-    assert run_jobs() == 1
-    return client.get(f"/api/v1/datasets/{dataset['id']}", headers=headers).json()
-
-
-@cache
-def _trainable() -> dict[str, Any]:
-    from libsim import engine, writer
-    from libsim.params import preset
-
-    return writer.build_dataset(engine.simulate(preset("demo", users=800, months=10, seed=1)))
-
-
 @pytest.fixture
 def dataset(
-    client: TestClient, auth_headers: Headers, run_jobs: Callable[[], int]
+    import_document: Callable[[dict[str, Any]], dict[str, Any]],
+    trainable_document: dict[str, Any],
 ) -> dict[str, Any]:
-    """A libsim dataset with enough renewals to train on (800 members, 10 months)."""
-    return imported(client, auth_headers, run_jobs, _trainable())
-
-
-def train(
-    client: TestClient, headers: Headers, run_jobs: Callable[[], int], dataset_id: int
-) -> dict[str, Any]:
-    response = client.post(f"/api/v1/datasets/{dataset_id}/churn-runs", headers=headers)
-    assert response.status_code == 202, response.text
-    assert run_jobs() == 1
-    return client.get(f"/api/v1/churn-runs/{response.json()['run']['id']}", headers=headers).json()
+    return import_document(trainable_document)
 
 
 def test_a_run_is_trained_explained_and_scored(
@@ -118,11 +81,11 @@ def test_a_run_is_trained_explained_and_scored(
 def test_activation_keeps_one_run_per_dataset(
     client: TestClient,
     auth_headers: Headers,
-    run_jobs: Callable[[], int],
+    train_run: Callable[[int], dict[str, Any]],
     dataset: dict[str, Any],
 ) -> None:
-    first = train(client, auth_headers, run_jobs, dataset["id"])
-    second = train(client, auth_headers, run_jobs, dataset["id"])
+    first = train_run(dataset["id"])
+    second = train_run(dataset["id"])
     for run in (first, second):
         response = client.post(f"/api/v1/churn-runs/{run['id']}/activate", headers=auth_headers)
         assert response.status_code == 200, response.text
@@ -140,15 +103,17 @@ def test_activation_keeps_one_run_per_dataset(
 def test_a_run_needs_retention_data(
     client: TestClient,
     auth_headers: Headers,
-    run_jobs: Callable[[], int],
+    import_document: Callable[[dict[str, Any]], dict[str, Any]],
+    upload_document: Callable[[dict[str, Any]], dict[str, Any]],
     mini_document: dict[str, Any],
+    trainable_document: dict[str, Any],
 ) -> None:
-    mini = imported(client, auth_headers, run_jobs, mini_document)  # no retention campaign
+    mini = import_document(mini_document)  # no retention campaign
     response = client.post(f"/api/v1/datasets/{mini['id']}/churn-runs", headers=auth_headers)
     assert response.status_code == 409
     assert response.json()["code"] == "churn.not_supported"
 
-    pending = upload(client, auth_headers, _trainable())
+    pending = upload_document(trainable_document)
     response = client.post(f"/api/v1/datasets/{pending['id']}/churn-runs", headers=auth_headers)
     assert response.status_code == 409
     assert response.json()["code"] == "dataset.not_ready"
@@ -157,11 +122,12 @@ def test_a_run_needs_retention_data(
 def test_too_little_history_fails_the_run_not_the_dataset(
     client: TestClient,
     auth_headers: Headers,
-    run_jobs: Callable[[], int],
+    import_document: Callable[[dict[str, Any]], dict[str, Any]],
+    train_run: Callable[[int], dict[str, Any]],
     tabular_document: dict[str, Any],
 ) -> None:
-    small = imported(client, auth_headers, run_jobs, tabular_document)  # one churn in 8 months
-    run = train(client, auth_headers, run_jobs, small["id"])
+    small = import_document(tabular_document)  # one churn in 8 months
+    run = train_run(small["id"])
     assert run["status"] == "failed"
     assert run["error"]["code"] == "churn.not_enough_history"
     assert run["chosen_model"] is None

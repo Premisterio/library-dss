@@ -4,7 +4,7 @@ import { toast } from "sonner"
 
 import { useLabel } from "@/api/enums"
 import { useCreateReport } from "@/api/reports"
-import type { Dataset, SectionKey } from "@/api/types"
+import type { Dataset, AnalyticsKey } from "@/api/types"
 import { PanelCard } from "@/components/common/panel-card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -18,9 +18,9 @@ import { ALL_SECTIONS } from "@/lib/sections"
 export function CreateReportForm({ dataset }: { dataset: Dataset }) {
   const label = useLabel()
   const create = useCreateReport(dataset.id)
-  const [chosen, setChosen] = useState<readonly SectionKey[]>(ALL_SECTIONS)
+  const [chosen, setChosen] = useState<readonly AnalyticsKey[]>(ALL_SECTIONS)
 
-  function toggle(key: SectionKey, checked: boolean) {
+  function toggle(key: AnalyticsKey, checked: boolean) {
     // Keep the canonical section order whatever the click order.
     setChosen((current) =>
       checked

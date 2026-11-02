@@ -1,4 +1,8 @@
-"""Churn use cases: queue a training run, train it (worker), list, activate, delete, scores."""
+"""Churn use cases: queue a training run, train it (worker), list, activate, delete, scores.
+
+Training also estimates the effects of retention actions from the dataset's past campaign, so a
+run holds everything a retention plan needs.
+"""
 
 from dataclasses import asdict
 from typing import Any
@@ -12,6 +16,7 @@ from app.domain.churn import examples
 from app.domain.churn.scoring import score
 from app.domain.churn.training import NotEnoughHistoryError, summarize, train
 from app.domain.enums import JobKind, JobStage
+from app.domain.retention.effects import estimate, participants
 from app.ingest import reader
 from app.models import Analyst, ChurnRun, ChurnScore, Dataset, DatasetFile, Job
 from app.services import jobs
@@ -51,8 +56,11 @@ def run_training(session: Session, job: Job, progress: jobs.Progress) -> dict[st
         training = train(rows)
     except NotEnoughHistoryError as exc:
         raise ApiError(422, "churn.not_enough_history", str(exc)) from exc
-    progress(0.85, JobStage.SCORING)
+    progress(0.8, JobStage.SCORING)
     scores = score(training, parsed.frames, parsed.as_of, parsed.timezone)
+    progress(0.9, JobStage.EFFECTS)
+    effects = estimate(participants(parsed.frames, parsed.timezone))
+    discounts = parsed.frames["campaign_assignments"].filter(pl.col("arm") == "discount")
     run.chosen_model = training.chosen
     run.result = {
         "summary": {
@@ -67,6 +75,9 @@ def run_training(session: Session, job: Job, progress: jobs.Progress) -> dict[st
         "importance": [asdict(item) for item in training.importance],
         "coefficients": [asdict(item) for item in training.coefficients],
         "typical": training.typical,
+        "effects": [asdict(effect) for effect in effects],
+        # the campaign's discount, whose effect was measured; null without a campaign
+        "campaign_discount": discounts.select(pl.col("discount_pct").median()).item(),
     }
     session.add_all(
         ChurnScore(
@@ -76,6 +87,7 @@ def run_training(session: Session, job: Job, progress: jobs.Progress) -> dict[st
             probability=s.probability,
             plan=s.plan,
             period_end=s.period_end,
+            period_price=s.period_price,
             features=s.features,
             reasons=[asdict(reason) for reason in s.reasons],
         )
@@ -105,14 +117,14 @@ def list_for(
     return list(items), total
 
 
-def _trained(run: ChurnRun) -> None:
+def ensure_trained(run: ChurnRun) -> None:
     if run.job.status != "succeeded":
         raise ApiError(409, "churn.not_trained", f"The run is {run.job.status}, not trained")
 
 
 def activate(session: Session, run: ChurnRun) -> ChurnRun:
     """Make this run the one decisions use for its dataset."""
-    _trained(run)
+    ensure_trained(run)
     session.execute(
         update(ChurnRun)
         .where(ChurnRun.dataset_id == run.dataset_id, ChurnRun.id != run.id)
@@ -134,7 +146,7 @@ def scores_for(
     session: Session, run: ChurnRun, *, limit: int, offset: int
 ) -> tuple[list[ChurnScore], int]:
     """The members at risk, the riskiest first."""
-    _trained(run)
+    ensure_trained(run)
     query = select(ChurnScore).where(ChurnScore.run_id == run.id)
     total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
     items = session.scalars(query.order_by(ChurnScore.rank).limit(limit).offset(offset))
@@ -142,7 +154,7 @@ def scores_for(
 
 
 def score_for(session: Session, run: ChurnRun, user_id: str) -> ChurnScore:
-    _trained(run)
+    ensure_trained(run)
     found = session.get(ChurnScore, (run.id, user_id))
     if found is None:
         raise ApiError(404, "churn.member_not_scored", "The member is not at risk in this run")

@@ -56,6 +56,57 @@
         "title": "AnalyticsOut",
         "type": "object"
       },
+      "ApproveIn": {
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/PlanIn"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\\x00]*$",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "plan"
+        ],
+        "title": "ApproveIn",
+        "type": "object"
+      },
+      "AssumedEffects": {
+        "description": "The analyst's own effects, used instead of the campaign's.",
+        "properties": {
+          "discount": {
+            "default": 0.0,
+            "description": "Change a discount makes (0..1).",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Discount",
+            "type": "number"
+          },
+          "discount_pct": {
+            "default": 0.2,
+            "description": "Share of the renewal price off.",
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Discount Pct",
+            "type": "number"
+          },
+          "email": {
+            "default": 0.0,
+            "description": "Change of the churn rate an e-mail makes (0..1).",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Email",
+            "type": "number"
+          }
+        },
+        "title": "AssumedEffects",
+        "type": "object"
+      },
       "Body_upload_dataset": {
         "properties": {
           "file": {
@@ -1583,6 +1634,87 @@
         "title": "NoteOut",
         "type": "object"
       },
+      "PlanIn": {
+        "properties": {
+          "assumed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssumedEffects"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Effects to use instead of the campaign's (then any discount size goes); with the campaign's, the campaign's discount is offered."
+          },
+          "budget": {
+            "description": "UAH: the expected spend on e-mails and discounts.",
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Budget",
+            "type": "number"
+          },
+          "by_segment": {
+            "default": false,
+            "description": "Use each segment's own (shrunk) campaign effect instead of the action's overall one. On a small campaign the segment estimates are noisy and tend to cost more than they gain.",
+            "title": "By Segment",
+            "type": "boolean"
+          },
+          "cautious": {
+            "default": false,
+            "description": "Use the least favourable 95% bound of each campaign effect.",
+            "title": "Cautious",
+            "type": "boolean"
+          },
+          "email_cost": {
+            "default": 2.0,
+            "description": "UAH per e-mail.",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Email Cost",
+            "type": "number"
+          },
+          "horizon_months": {
+            "default": 12,
+            "description": "Months of a kept member's price counted as gained.",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Horizon Months",
+            "type": "integer"
+          },
+          "max_discounts": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Discounts"
+          },
+          "max_emails": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Emails"
+          }
+        },
+        "required": [
+          "budget"
+        ],
+        "title": "PlanIn",
+        "type": "object"
+      },
       "Problem": {
         "description": "Error response (RFC 9457 Problem Details) with a stable machine-readable code.",
         "properties": {
@@ -1798,7 +1930,7 @@
           "content": {
             "description": "The sections as they were when created.",
             "items": {
-              "$ref": "#/components/schemas/SectionOut"
+              "$ref": "#/components/schemas/ReportSectionOut"
             },
             "title": "Content",
             "type": "array"
@@ -1820,6 +1952,29 @@
             "title": "Id",
             "type": "integer"
           },
+          "kind": {
+            "description": "`analytics`, or an approved decision: `retention` (a plan of actions) or `content` (a portfolio of titles). Label in enums `report_kind`.",
+            "enum": [
+              "analytics",
+              "retention",
+              "content"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a decision was made with.",
+            "title": "Params"
+          },
           "sections": {
             "items": {
               "enum": [
@@ -1829,7 +1984,8 @@
                 "segments",
                 "search",
                 "subscriptions",
-                "cohorts"
+                "cohorts",
+                "retention_plan"
               ],
               "type": "string"
             },
@@ -1849,8 +2005,10 @@
           "id",
           "dataset_id",
           "dataset_name",
+          "kind",
           "title",
           "sections",
+          "params",
           "as_of",
           "timezone",
           "created_at",
@@ -1929,6 +2087,29 @@
             "title": "Id",
             "type": "integer"
           },
+          "kind": {
+            "description": "`analytics`, or an approved decision: `retention` (a plan of actions) or `content` (a portfolio of titles). Label in enums `report_kind`.",
+            "enum": [
+              "analytics",
+              "retention",
+              "content"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a decision was made with.",
+            "title": "Params"
+          },
           "sections": {
             "items": {
               "enum": [
@@ -1938,7 +2119,8 @@
                 "segments",
                 "search",
                 "subscriptions",
-                "cohorts"
+                "cohorts",
+                "retention_plan"
               ],
               "type": "string"
             },
@@ -1958,8 +2140,10 @@
           "id",
           "dataset_id",
           "dataset_name",
+          "kind",
           "title",
           "sections",
+          "params",
           "as_of",
           "timezone",
           "created_at"
@@ -1997,6 +2181,65 @@
           "offset"
         ],
         "title": "ReportPage",
+        "type": "object"
+      },
+      "ReportSectionOut": {
+        "description": "A section of a report: an analytics section, or the section of a decision.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "charts": {
+            "items": {
+              "$ref": "#/components/schemas/ChartOut"
+            },
+            "title": "Charts",
+            "type": "array"
+          },
+          "key": {
+            "enum": [
+              "overview",
+              "usage",
+              "content",
+              "segments",
+              "search",
+              "subscriptions",
+              "cohorts",
+              "retention_plan"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "kpis": {
+            "items": {
+              "$ref": "#/components/schemas/KpiOut"
+            },
+            "title": "Kpis",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "as_of",
+          "timezone",
+          "kpis",
+          "charts",
+          "notes"
+        ],
+        "title": "ReportSectionOut",
         "type": "object"
       },
       "SectionOut": {
@@ -2643,6 +2886,140 @@
         "summary": "Make a trained run the one decisions use for its dataset",
         "tags": [
           "churn"
+        ]
+      }
+    },
+    "/api/v1/churn-runs/{run_id}/plan": {
+      "post": {
+        "operationId": "preview_retention_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview the best plan of actions under a budget",
+        "tags": [
+          "retention"
+        ]
+      }
+    },
+    "/api/v1/churn-runs/{run_id}/plan/approve": {
+      "post": {
+        "operationId": "approve_retention_plan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 9457 Problem Details)"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve a plan: freeze it as a decision (a report of kind `retention`)",
+        "tags": [
+          "retention"
         ]
       }
     },
@@ -3499,6 +3876,27 @@
                 }
               ],
               "title": "Dataset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "analytics",
+                    "retention",
+                    "content"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
             }
           },
           {

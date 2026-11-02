@@ -296,7 +296,8 @@ There are two file formats, detected by content:
 - **Runs** (`services/churn.py`, model `ChurnRun`).
   - `POST /datasets/{id}/churn-runs` checks that the dataset is ready and has retention data (`churn.not_supported` otherwise). It creates a run and queues a `train_churn` job, and answers `202 {run, job}` with `Location` pointing at the job.
   - The run's status and error are its job's, so nothing is kept twice.
-  - The job parses the stored upload and builds the examples. It then backtests, chooses and explains a model, and scores the risk group at as_of. Its stages are `parse`, `features`, `backtest`, `scoring`.
+  - The job parses the stored upload and builds the examples. It then backtests, chooses and explains a model, and scores the risk group at as_of. Its stages are `parse`, `features`, `backtest`, `scoring`, `effects`.
+  - In its last stage it also estimates the effects of retention actions from the dataset's campaign (see "Retention decisions"). It keeps them in the result together with the campaign's discount, so a run holds everything a retention plan needs.
   - Too little history fails the job with `churn.not_enough_history`; the dataset stays ready.
   - The run keeps the chosen model's key and a JSON result:
     - the summary (examples, cutoffs, churn rate, members scored and the expected churners, the sum of their probabilities);
@@ -333,10 +334,28 @@ There are two file formats, detected by content:
   - **Cautious bound.** The upper 95% bound of the shrunk value (its least favourable value) is used in cautious mode.
   - Checked on libsim: the intervals contain the true average effects. On demo seed 1, every overall and segment interval does; another seed misses one, as a 95% interval should now and then.
 - **The plan** (`plan.py`). For each member at risk and each action, the plan knows:
-  - the probability of churn without an action (the churn model's) and with it (plus the segment's effect, or the analyst's assumed effect for everyone);
+  - the probability of churn without an action (the churn model's) and with it;
   - the expected spend: an e-mail's cost, or the share of the renewal's list price a discount gives away if the member renews;
   - the gain: (p_none − p_action) · monthly list price · horizon in months − spend.
-  - **Effects used.** A discount's campaign effect is scaled by its size against the campaign's discount, which is an assumption. Effects that raise churn are never chosen, because their gain is negative.
+  - **Effects used.**
+    - An effect, measured as a difference of churn rates, becomes a shift of the churn logit at the control group's churn rate. A member's probability with the action is σ(logit p_none + shift), so the same action lowers a high-risk member's probability more than a low-risk member's.
+    - **The default.** By default each action's overall campaign effect is used for everyone.
+      - With `by_segment`, each segment's shrunk effect is used instead. Cautious mode takes the upper 95% bound, and the analyst can give assumed effects (with any discount size) instead of the campaign's.
+      - With the campaign's effects, the campaign's discount is offered, because there is no data on other sizes.
+    - Effects that raise churn are never chosen, because their gain is negative.
+  - **Why the overall effect.** The true expected gain of plans was compared on libsim: the true churn probabilities under each action, four demo seeds, 5k members.
+
+    | Plan                              | Budget 1,000 | 3,000  | 10,000 |
+    | --------------------------------- | ------------ | ------ | ------ |
+    | Overall effects (the default)     | 3,410        | 6,605  | 10,272 |
+    | Segment effects (`by_segment`)    | 2,872        | 5,766  | 9,385  |
+    | Cautious bound, 95%               | 1,458        | 2,586  | 2,891  |
+    | Discounts to the riskiest members | 2,235        | 5,275  | 11,225 |
+    | Oracle (the true effects)         | 10,766       | 15,600 | 19,872 |
+    - The table shows the mean true gain in UAH. The overall effects are also the steadiest across seeds: their worst case is 2,488, 5,616 and 6,822 UAH.
+    - The segment estimates rest on 20–140 members per arm. Their noise makes the plan act on chance differences, such as e-mailing dormant members, whom e-mails actually push away.
+    - Even the overall effects are noisy (about ±2.4 percentage points for e-mail against a true effect of −0.4). The plan's expected value is therefore optimistic, and a note on the plan says so.
+
   - **The choice** is a multiple-choice knapsack solved as a MILP with `scipy.optimize.milp` (HiGHS), optimal within its default 0.01% gap. It maximizes the total gain, under these constraints:
     - at most one action per member;
     - the expected spend within the budget;
@@ -349,10 +368,27 @@ There are two file formats, detected by content:
     - The MILP equals brute force on 200 random small problems.
     - Gains are checked by hand.
     - A plan for 2,000 members takes about 0.6 s.
+- **Preview and approval** (`services/retention.py`, `api/v1/retention.py`).
+  - `POST /churn-runs/{id}/plan` takes the analyst's choices:
+    - the budget and the horizon;
+    - the e-mail cost and limits per action;
+    - cautious mode, or assumed effects with their own discount.
+  - It answers a `retention_plan` section in the shape of the analytics, so clients draw it with their usual renderer:
+    - KPIs: members at risk, e-mails and discounts in the plan, spend, value, the greedy plan's value, members expected to stay;
+    - charts: the budget curve, actions by segment, the campaign's effects, the members in the plan;
+    - notes.
+  - The plan uses the run's stored scores and effects, so it parses no dataset. With the campaign's effects it offers the campaign's discount, because there is no data on other sizes.
+  - `POST /churn-runs/{id}/plan/approve` freezes the plan as a decision: a report of kind `retention`, with the parameters it was made with. Only the active run can be used.
+  - **The decision log.** `GET /reports?kind=retention` lists the decisions, and every report export (PDF, XLSX, CSV, JSON) works for them.
 
 ### 2.10 Reports and exports
 
-- **What a report is.** A report is a titled copy of some or all analytics sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
+- **What a report is.** A report is a titled copy of sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
+- **Kinds** (`kind`, enums `report_kind`):
+  - `analytics`: some or all analytics sections;
+  - `retention`: an approved plan of actions;
+  - `content`: an approved portfolio of titles.
+  - A decision also keeps the `params` it was made with.
 - **API.**
   - `POST /reports` takes `{dataset_id, title, sections?}`; sections keep the canonical order whatever order is asked.
   - `GET /reports` and `GET /reports/{id}` return the frozen sections in the same shape as the analytics API.

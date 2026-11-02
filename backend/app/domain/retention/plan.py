@@ -5,31 +5,31 @@ Members come as a frame: `user_id`, `probability` (of churn without an action), 
 per month) and `period_price` (the list price of the renewal; null when unknown).
 """
 
+import math
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import polars as pl
-from scipy.optimize import Bounds, LinearConstraint, milp
-from scipy.sparse import coo_array
 
-from app.domain.retention.effects import ACTIONS, SEGMENTS, Action, Effect, Segment
+from app.domain.optimize import Limit, choose
+from app.domain.retention.effects import ACTIONS, SEGMENTS, Action, Effect, Segment, segment_of
 
-EffectTable = dict[tuple[Action, Segment], float]
+EffectTable = dict[tuple[Action, Segment], float]  # shifts of the churn logit
 CURVE_STEPS = 8
-MIP_GAP = 1e-4  # HiGHS's default relative gap: optimal within 0.01%
+P_CLIP = 1e-6  # keeps logits finite
 
 
 @dataclass(frozen=True)
 class Scenario:
     budget: float  # UAH: the expected spend on e-mails and discounts
+    discount_pct: float  # off the renewal price: the campaign's, unless effects are assumed
     horizon_months: int = 12  # how many months of a kept member's price count as gained
-    discount_pct: float = 0.2  # off the price of the next period
     email_cost: float = 2.0  # UAH per e-mail
     max_emails: int | None = None
     max_discounts: int | None = None
     cautious: bool = False  # take the least favourable bound of each effect
-    assumed: dict[Action, float] | None = None  # the analyst's effects, used instead
+    by_segment: bool = False  # each segment's shrunk effect instead of the action's overall one
+    assumed: dict[Action, float] | None = None  # the analyst's effects, as differences of rates
 
 
 @dataclass(frozen=True)
@@ -41,25 +41,56 @@ class Plan:
     greedy_value: float  # what filling the budget by gain per hryvnia would gain
 
 
-def effect_table(
-    effects: list[Effect], scenario: Scenario, campaign_discount: float | None
-) -> EffectTable:
-    """The effect of each action per segment the plan uses.
+def members(scored: pl.DataFrame) -> pl.DataFrame:
+    """The plan's members from scored ones: `user_id`, `probability`, `period_price` and the
+    churn features (as the churn scores keep them)."""
+    discount = pl.col("discount").fill_null(0.0)
+    return scored.select(
+        "user_id",
+        "probability",
+        segment=segment_of(),
+        email_opt_in="email_opt_in",
+        discounted=discount > 0,
+        monthly_value=pl.col("monthly_price") / (1 - discount.clip(0.0, 0.99)),
+        period_price="period_price",
+    )
 
-    The analyst's assumed effects apply to every segment. Otherwise the campaign's shrunk
-    segment effects (or their cautious bounds) are used, and a discount's effect is scaled by
-    its size against the campaign's discount. Missing estimates count as no effect.
+
+def _logit(p: float) -> float:
+    p = min(max(p, P_CLIP), 1 - P_CLIP)
+    return math.log(p / (1 - p))
+
+
+def shift(base: float, difference: float) -> float:
+    """The change of the churn logit that moves the churn rate `base` by `difference`."""
+    return _logit(base + difference) - _logit(base)
+
+
+def effect_table(effects: list[Effect], scenario: Scenario, base_rate: float) -> EffectTable:
+    """The shift of the churn logit each action makes per segment.
+
+    An effect is measured as a difference of churn rates; it becomes a logit shift at the
+    control group's churn rate, so the same action moves a high-risk member more than a
+    low-risk one. The analyst's assumed effects apply to every segment and shift at
+    `base_rate`. Otherwise each action's overall campaign effect (or its cautious bound)
+    applies to every segment, or with `by_segment` each segment's shrunk effect; missing
+    estimates count as no effect.
     """
     if scenario.assumed is not None:
-        return {(a, s): scenario.assumed.get(a, 0.0) for a in ACTIONS for s in SEGMENTS}
+        assumed = scenario.assumed
+        return {(a, s): shift(base_rate, assumed.get(a, 0.0)) for a in ACTIONS for s in SEGMENTS}
+    overall = {e.action: e for e in effects if e.segment is None}
     table: EffectTable = {(a, s): 0.0 for a in ACTIONS for s in SEGMENTS}
     for effect in effects:
-        value = effect.cautious if scenario.cautious else effect.shrunk
-        if effect.segment is None or value is None:
+        if effect.segment is None:
             continue
-        if effect.action == "discount":
-            value = value * scenario.discount_pct / campaign_discount if campaign_discount else 0.0
-        table[effect.action, effect.segment] = value
+        used = effect if scenario.by_segment else overall.get(effect.action, effect)
+        value = used.cautious if scenario.cautious else used.shrunk
+        if value is None:
+            continue
+        whole = overall.get(effect.action)
+        base = whole.control_churned / whole.control if whole and whole.control else base_rate
+        table[effect.action, effect.segment] = shift(base, value)
     return table
 
 
@@ -70,12 +101,13 @@ def options(members: pl.DataFrame, effects: EffectTable, scenario: Scenario) -> 
     gain = (p_none − p_action)·monthly_value·horizon − spend, where a discount's spend is the
     price it gives away if the member renews and an e-mail's is its cost.
     """
+    p = pl.col("probability").clip(P_CLIP, 1 - P_CLIP)
     parts = []
     for action in ACTIONS:
         effect = pl.col("segment").replace_strict(
             {segment: effects[action, segment] for segment in SEGMENTS}, return_dtype=pl.Float64
         )
-        p_action = (pl.col("probability") + effect).clip(0.0, 1.0)
+        p_action = 1 / (1 + (-((p / (1 - p)).log() + effect)).exp())
         if action == "email":
             eligible = pl.col("email_opt_in").fill_null(False)
             spend = pl.lit(scenario.email_cost)
@@ -98,68 +130,43 @@ def options(members: pl.DataFrame, effects: EffectTable, scenario: Scenario) -> 
     return pl.concat(parts).filter(pl.col("gain") > 0).sort("user_id", "action")
 
 
-def _limits(scenario: Scenario) -> dict[Action, int | None]:
-    return {"email": scenario.max_emails, "discount": scenario.max_discounts}
-
-
-def _optimize(choices: pl.DataFrame, scenario: Scenario, budget: float, *, integral: bool) -> Any:
-    """A multiple-choice knapsack (HiGHS): at most one action per member, the expected spend
-    within the budget, and the per-action limits. `integral=False` solves the LP relaxation."""
-    n = choices.height
-    every = np.arange(n)
-    member = choices["user_id"].rank("dense").cast(pl.Int64).to_numpy() - 1
-    upper = [1.0] * (int(member.max()) + 1)  # one action per member
-    rows, columns, values = [member, np.full(n, len(upper))], [every, every], [np.ones(n)]
-    values.append(choices["spend"].to_numpy())  # the budget
-    upper.append(budget)
-    actions = choices["action"].to_numpy()
-    for action, limit in _limits(scenario).items():
-        if limit is not None:
-            taken = np.flatnonzero(actions == action)
-            rows.append(np.full(taken.size, len(upper)))
-            columns.append(taken)
-            values.append(np.ones(taken.size))
-            upper.append(float(limit))
-    matrix = coo_array(
-        (np.concatenate(values), (np.concatenate(rows), np.concatenate(columns))),
-        shape=(len(upper), n),
-    )
-    result = milp(
-        c=-choices["gain"].to_numpy(),
-        constraints=LinearConstraint(matrix, -np.inf, np.array(upper)),
-        integrality=np.full(n, 1 if integral else 0),
-        bounds=Bounds(0, 1),
-        options={"mip_rel_gap": MIP_GAP},
-    )
-    if result.x is None:
-        raise RuntimeError(f"the plan could not be solved: {result.message}")
-    return result
+def _limits(choices: pl.DataFrame, scenario: Scenario, budget: float) -> list[Limit]:
+    action = choices["action"].to_numpy()
+    limits = [Limit(choices["spend"].to_numpy(), budget)]
+    for name, cap in (("email", scenario.max_emails), ("discount", scenario.max_discounts)):
+        if cap is not None:
+            limits.append(Limit((action == name).astype(float), float(cap)))
+    return limits
 
 
 def solve(choices: pl.DataFrame, scenario: Scenario, budget: float) -> np.ndarray:
-    """Which options to take (a 0/1 mask), optimal within `MIP_GAP`."""
-    if choices.is_empty():
-        return np.zeros(0, dtype=bool)
-    return _optimize(choices, scenario, budget, integral=True).x > 0.5
+    """Which options to take (a 0/1 mask): at most one per member, the expected spend within
+    the budget and the per-action limits, the most gain (a MILP, `domain.optimize`)."""
+    share, _ = choose(
+        choices["gain"].to_numpy(),
+        _limits(choices, scenario, budget),
+        groups=choices["user_id"].to_numpy(),
+    )
+    return share > 0.5
 
 
 def greedy(choices: pl.DataFrame, scenario: Scenario, budget: float) -> np.ndarray:
     """The baseline: options by gain per hryvnia of spend, while the budget and limits allow."""
     users, actions, spends = (choices[c].to_list() for c in ("user_id", "action", "spend"))
     ratio = (choices["gain"] / choices["spend"].clip(lower_bound=1e-9)).to_numpy()
-    limits = _limits(scenario)
+    caps: dict[str, int | None] = {"email": scenario.max_emails, "discount": scenario.max_discounts}
     counts = dict.fromkeys(ACTIONS, 0)
-    members: set[str] = set()
+    taken_members: set[str] = set()
     taken = np.zeros(choices.height, dtype=bool)
     spent = 0.0
     for i in np.argsort(-ratio, kind="stable").tolist():
-        limit = limits[actions[i]]
-        if users[i] in members or spent + spends[i] > budget:
+        cap = caps[actions[i]]
+        if users[i] in taken_members or spent + spends[i] > budget:
             continue
-        if limit is not None and counts[actions[i]] >= limit:
+        if cap is not None and counts[actions[i]] >= cap:
             continue
         taken[i] = True
-        members.add(users[i])
+        taken_members.add(users[i])
         counts[actions[i]] += 1
         spent += spends[i]
     return taken
@@ -173,10 +180,10 @@ def plan(members: pl.DataFrame, effects: EffectTable, scenario: Scenario) -> Pla
     )
     return Plan(
         chosen=best.sort("gain", descending=True),
-        value=float(best["gain"].sum()),
-        spend=float(best["spend"].sum()),
-        saved=float((best["p_none"] - best["p_action"]).sum()),
-        greedy_value=float(baseline["gain"].sum()),
+        value=best.select(pl.col("gain").sum()).item(),
+        spend=best.select(pl.col("spend").sum()).item(),
+        saved=best.select((pl.col("p_none") - pl.col("p_action")).sum()).item(),
+        greedy_value=baseline.select(pl.col("gain").sum()).item(),
     )
 
 
@@ -190,7 +197,11 @@ def curve(
     if choices.is_empty():
         return [(0.0, 0.0)]
     full = choices.sort("gain", descending=True).unique("user_id", keep="first")["spend"].sum()
+    gain, groups = choices["gain"].to_numpy(), choices["user_id"].to_numpy()
     return [
-        (float(b), float(-_optimize(choices, scenario, float(b), integral=False).fun))
-        for b in np.linspace(0.0, float(full), CURVE_STEPS + 1)
+        (
+            float(budget),
+            choose(gain, _limits(choices, scenario, float(budget)), groups, integral=False)[1],
+        )
+        for budget in np.linspace(0.0, float(full), CURVE_STEPS + 1)
     ]

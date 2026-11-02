@@ -20,6 +20,7 @@ class JobStage(StrEnum):
     FEATURES = "features"
     BACKTEST = "backtest"
     SCORING = "scoring"
+    EFFECTS = "effects"
     DONE = "done"
 
 
@@ -113,6 +114,7 @@ ENUMS: dict[str, dict[str, str]] = {
         "features": "Розрахунок ознак",
         "backtest": "Навчання й перевірка моделей",
         "scoring": "Оцінка ризику читачів",
+        "effects": "Оцінка ефектів дій",
         "done": "Готово",
     },
     "job_kind": {
@@ -145,6 +147,7 @@ ENUMS: dict[str, dict[str, str]] = {
         "search": "Пошук",
         "subscriptions": "Підписки",
         "cohorts": "Когорти",
+        "retention_plan": "План утримання",
     },
     "chart": {
         "activity_weekly": "Активність по тижнях",
@@ -164,6 +167,10 @@ ENUMS: dict[str, dict[str, str]] = {
         "subscribers_monthly": "Платні підписники по місяцях",
         "churn_monthly": "Продовження й відтік по місяцях",
         "activity_retention": "Утримання когорт",
+        "budget_curve": "Чистий виграш залежно від бюджету",
+        "actions_by_segment": "Дії за сегментами",
+        "action_effects": "Ефекти дій за даними кампанії",
+        "planned_members": "Читачі в плані",
     },
     "metric": {
         "members": "Читачі",
@@ -196,6 +203,24 @@ ENUMS: dict[str, dict[str, str]] = {
         "renewals": "Продовження",
         "churned": "Відтоки",
         "retention": "Утримання",
+        "members_at_risk": "Читачі в групі ризику",
+        "planned_emails": "Листів у плані",
+        "planned_discounts": "Знижок у плані",
+        "plan_spend": "Очікувані витрати",
+        "plan_value": "Очікуваний чистий виграш",
+        "greedy_value": "Виграш жадібного плану",
+        "expected_saved": "Очікувано утриманих читачів",
+        "effect_shrunk": "Ефект сегмента (уточнений)",
+        "effect": "Ефект у сегменті",
+        "effect_low": "Нижня межа 95%",
+        "effect_high": "Верхня межа 95%",
+        "effect_cautious": "Ефект (обережний)",
+        "treated": "З дією",
+        "control": "Контрольна група",
+        "p_none": "Ризик без дії",
+        "p_action": "Ризик із дією",
+        "gain": "Чистий виграш",
+        "spend": "Витрати",
     },
     "dimension": {
         "week": "Тиждень",
@@ -213,6 +238,10 @@ ENUMS: dict[str, dict[str, str]] = {
         "query": "Запит",
         "cohort": "Когорта (місяць реєстрації)",
         "month_offset": "Місяців після реєстрації",
+        "budget": "Бюджет",
+        "action": "Дія",
+        "segment": "Сегмент",
+        "user_id": "Читач",
     },
     "unit": {
         "count": "шт.",
@@ -280,6 +309,18 @@ ENUMS: dict[str, dict[str, str]] = {
         "brier_skill": "Виграш оцінки Браєра",
         "ece": "Помилка калібрування (ECE)",
         "lift": "Ліфт у 10 % найризиковіших",
+    },
+    # Retention decisions.
+    "retention_action": {"email": "E-mail", "discount": "Знижка"},
+    "retention_segment": {
+        "dormant": "Сплячі (не читали 30+ днів)",
+        "declining": "Згасають (читають менше)",
+        "steady": "Стабільні",
+    },
+    "report_kind": {
+        "analytics": "Аналітика",
+        "retention": "План утримання",
+        "content": "Закупівля контенту",
     },
     "churn_feature_group": {
         "subscription": "Підписка",

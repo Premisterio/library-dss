@@ -1,13 +1,13 @@
 import { useParams } from "react-router"
 
-import type { SectionKey } from "@/api/types"
+import type { AnalyticsKey } from "@/api/types"
 
 /** Every path of the app; links and redirects build them here. */
 export const paths = {
   login: "/login",
   datasets: "/datasets",
   dataset: (id: number) => `/d/${id}`,
-  analytics: (id: number, section?: SectionKey) =>
+  analytics: (id: number, section?: AnalyticsKey) =>
     section ? `/d/${id}/analytics/${section}` : `/d/${id}/analytics`,
   reports: (id: number) => `/d/${id}/reports`,
   churnModel: (id: number, run?: number) =>

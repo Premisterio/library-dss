@@ -168,6 +168,71 @@ def tabular_document() -> dict[str, Any]:
     return copy.deepcopy(_simulated_tabular())
 
 
+@cache
+def _trainable() -> dict[str, Any]:
+    from libsim import engine, writer
+    from libsim.params import preset
+
+    return writer.build_dataset(engine.simulate(preset("demo", users=800, months=10, seed=1)))
+
+
+@pytest.fixture
+def trainable_document() -> dict[str, Any]:
+    """A libsim dataset with enough renewals to train a churn model (800 members, 10 months)."""
+    return copy.deepcopy(_trainable())
+
+
+@pytest.fixture
+def upload_document(
+    client: TestClient, auth_headers: dict[str, str]
+) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Upload a document as the signed-in analyst (its import stays queued): the dataset."""
+
+    def uploaded(document: dict[str, Any]) -> dict[str, Any]:
+        response = client.post(
+            "/api/v1/datasets",
+            headers=auth_headers,
+            files={"file": ("library.json", orjson.dumps(document), "application/json")},
+        )
+        assert response.status_code == 202, response.text
+        return response.json()["dataset"]
+
+    return uploaded
+
+
+@pytest.fixture
+def import_document(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    run_jobs: Callable[[], int],
+    upload_document: Callable[[dict[str, Any]], dict[str, Any]],
+) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Upload a document as the signed-in analyst and run its import: the dataset."""
+
+    def imported(document: dict[str, Any]) -> dict[str, Any]:
+        dataset = upload_document(document)
+        assert run_jobs() == 1
+        return client.get(f"/api/v1/datasets/{dataset['id']}", headers=auth_headers).json()
+
+    return imported
+
+
+@pytest.fixture
+def train_run(
+    client: TestClient, auth_headers: dict[str, str], run_jobs: Callable[[], int]
+) -> Callable[[int], dict[str, Any]]:
+    """Train a churn model on a dataset through the API and the job runner: the run."""
+
+    def trained(dataset_id: int) -> dict[str, Any]:
+        response = client.post(f"/api/v1/datasets/{dataset_id}/churn-runs", headers=auth_headers)
+        assert response.status_code == 202, response.text
+        assert run_jobs() == 1
+        run_id = response.json()["run"]["id"]
+        return client.get(f"/api/v1/churn-runs/{run_id}", headers=auth_headers).json()
+
+    return trained
+
+
 @pytest.fixture(scope="session")
 def tabular_dataset() -> ParsedDataset:
     """`tabular_document` parsed once and shared, so never modify its frames."""
