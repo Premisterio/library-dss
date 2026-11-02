@@ -97,6 +97,11 @@ body {
   color: var(--status-critical);
 }
 
+/* A tooltip waits while a menu is open, so a trigger's own tooltip never sits under its menu. */
+body:has([data-slot="dropdown-menu-content"]) [data-slot="tooltip-content"] {
+  display: none;
+}
+
 /* Forced colours: the system draws plain surfaces; drop the effects. */
 @media (forced-colors: active) {
   .glass,

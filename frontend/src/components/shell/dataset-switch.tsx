@@ -29,27 +29,33 @@ function NameAndDate({ dataset }: { dataset: Dataset }) {
 
 /**
  * Which dataset the pages show and the date its numbers describe, with a jump to another ready
- * dataset. Collapsed to icons, the sidebar keeps its icon and the menu opens beside it.
+ * dataset. Collapsed to icons, the sidebar keeps its icon, its tooltip names the dataset and the
+ * date, and the menu opens beside it.
  */
 export function DatasetSwitch({ datasetId }: { datasetId: number | undefined }) {
   const datasets = useDatasets()
   const navigate = useNavigate()
-  const { isMobile } = useSidebar()
+  const { isMobile, state } = useSidebar()
   const ready = (datasets.data ?? []).filter((d) => d.status === "ready")
   if (ready.length === 0) return null
   const current = ready.find((d) => d.id === datasetId)
+  const snapshot = current ? `${current.name}, станом на ${formatDay(current.as_of)}` : undefined
   return (
     <SidebarMenuItem>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton
             size="lg"
-            aria-label={
-              current
-                ? `Датасет: ${current.name}, станом на ${formatDay(current.as_of)}`
-                : "Оберіть датасет"
+            aria-label={snapshot ? `Датасет: ${snapshot}` : "Оберіть датасет"}
+            tooltip={snapshot ?? "Оберіть датасет"}
+            // Collapsed, the tooltip names the dataset; a title would add a second tooltip.
+            title={
+              current && state === "expanded" ? `Часовий пояс: ${current.timezone}` : undefined
             }
-            title={current ? `Часовий пояс: ${current.timezone}` : undefined}
+            onFocus={(event) => {
+              // The menu hands focus back as it closes; only keyboard focus opens the tooltip.
+              if (!event.currentTarget.matches(":focus-visible")) event.preventDefault()
+            }}
           >
             {/* In the icon rail the tile loses its fill: a fill there marks the current page. */}
             <span
