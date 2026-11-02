@@ -693,6 +693,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - libsim simulates it in memory, and the dataset is parsed as an import parses it.
   - A churn model is trained and scores the members at risk, and the campaign's effects are estimated, as a churn run does.
   - Nothing is stored in between: a library takes about 20 s, and the same seed gives the same results.
+  - A library that fails stops the run with an error that names it and says why, even from a worker process.
 - **Retention policies.** All of them get the same budget: a share of what a discount for every member at risk would cost if they all renewed (about 50,000 UAH on the demo).
   - `random`, `inactive` and `risk` give the campaign's discount to members in an order, until the expected spend reaches the budget:
     - `random`: a random order;

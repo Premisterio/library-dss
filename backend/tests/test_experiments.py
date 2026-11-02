@@ -4,6 +4,7 @@ parallel (DESIGN.md §6)."""
 
 import itertools
 import json
+import pickle
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ import pytest
 from typer.testing import CliRunner
 
 from app.domain.optimize import MIP_GAP
+from app.ingest import IngestError
 from experiments import grid, tables
 from experiments.__main__ import app
 from experiments.config import Config, RetentionConfig, load
@@ -198,6 +200,24 @@ def test_numbers_in_ukrainian_style() -> None:
     assert tables.summary(np.array([1.0, 2.0, 3.0]), 1) == "2,0 ± 2,5"
     assert tables.summary(np.array([0.25])) == "0"
     assert tables.summary(np.array([])) == "—"
+
+
+def test_a_failing_library_is_named_in_an_error_a_worker_can_send_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: an IngestError raised in a worker process could not be unpickled, which broke
+    the whole pool and hid which library failed (high-scarcity, seed 9)."""
+    problem = "reading_sessions.started_at: 1 values after as_of 2026-09-30"
+
+    def invalid(*_: object, **__: object) -> None:
+        raise IngestError("dataset.invalid", "The dataset has 1 problem(s)", [problem])
+
+    monkeypatch.setattr(grid.engine, "simulate", invalid)
+    with pytest.raises(RuntimeError) as caught:
+        grid.library("high-scarcity", 9, SMALL_GRID)
+    sent = pickle.loads(pickle.dumps(caught.value))  # noqa: S301 - what a worker sends back
+    assert str(sent).startswith("high-scarcity seed 9: IngestError: The dataset has 1 problem(s)")
+    assert problem in str(sent)
 
 
 def test_the_committed_grid_loads() -> None:

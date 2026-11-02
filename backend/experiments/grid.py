@@ -26,6 +26,18 @@ Rows = dict[str, list[dict[str, Any]]]  # results table → its rows
 
 
 def library(preset: str, seed: int, config: Config) -> Rows:
+    """The rows of every results table for one library (`_judge`). A failure comes as a plain
+    RuntimeError naming the library, which a worker process can send back: an exception with
+    its own constructor arguments, such as `IngestError`, cannot be unpickled and would break the
+    whole pool without saying which library failed."""
+    try:
+        return _judge(preset, seed, config)
+    except Exception as exc:
+        detail = f" {vars(exc)}" if vars(exc) else ""
+        raise RuntimeError(f"{preset} seed {seed}: {type(exc).__name__}: {exc}{detail}") from exc
+
+
+def _judge(preset: str, seed: int, config: Config) -> Rows:
     """Simulate one library, import it, train and score a churn model, estimate the campaign's
     effects like a churn run does, then judge every retention policy against the truth."""
     simulated = engine.simulate(
