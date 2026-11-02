@@ -5,6 +5,7 @@ The expected values below are computed by hand from the `mini_document` fixture 
 2026-03-01T22:00Z, and "last 90 days" at 2025-12-31T22:00Z).
 """
 
+import copy
 import math
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -13,7 +14,7 @@ import orjson
 import polars as pl
 import pytest
 
-from app.domain.analytics import SECTIONS, compute_all
+from app.domain.analytics import SECTIONS, candidates, compute_all
 from app.domain.analytics.common import Context
 from app.domain.analytics.model import Section
 from app.domain.enums import ENUMS
@@ -258,7 +259,67 @@ def test_nested_dataset_explains_what_is_missing(nested_document: dict[str, Any]
         "subscriptions.no_outcomes",
         "content.no_licences",
         "search.no_result_counts",
+        "candidates.none",
     }
+
+
+OFFERED = "2026-03-16T10:00:00Z"
+
+
+@pytest.fixture
+def offered(mini_document: dict[str, Any]) -> dict[str, Section]:
+    """`mini_document` with three titles offered by a distributor and two more searches."""
+    document = copy.deepcopy(mini_document)
+    tables = document["tables"]
+    tables["candidate_titles"]["rows"] = [
+        ["c1", "Дюна", "Frank Herbert", "science_fiction", "uk", 700, 1965, 450.0, OFFERED],
+        ["c2", "Енеїда", "Іван Котляревський", "poetry_drama", "uk", 200, 1798, 300.0, OFFERED],
+        ["c3", "Сад Гетсиманський", "Іван Багряний", "classics", "uk", 500, 1950, 380.0, OFFERED],
+    ]
+    tables["searches"]["rows"] += [
+        ["u5", "2026-03-15T10:00:00Z", "іван котляревський", 0],  # an author, any case
+        ["u1", "2025-12-01T10:00:00Z", "Енеїда", 0],  # before the 90 days
+    ]
+    return analyse(document)
+
+
+def test_candidate_criteria(offered: dict[str, Section]) -> None:
+    """Zero-result searches for the title or an author, loans of the author's books, and the
+    genre's loans and holds per copy, all over the last 90 days."""
+    section = offered["candidates"]
+    assert kpis(section) == {"candidates": 3, "candidates_searched": 2, "candidates_cost": 1130}
+    rows = chart(section, "candidate_criteria")
+    assert [row["candidate_id"] for row in rows] == ["c1", "c2", "c3"]  # most searched first
+    criteria = [
+        {key: row[key] for key in ("demand_searches", "author_loans", "genre_loans")}
+        | {"holds_per_copy": row["genre_holds_per_copy"]}
+        for row in rows
+    ]
+    assert criteria == [
+        # "Дюна" twice (03-05, "дюна " 03-20); Dune (b2) lent twice; b2's two holds, one copy
+        {"demand_searches": 2, "author_loans": 2, "genre_loans": 2, "holds_per_copy": 2.0},
+        # the author once; poetry: l1 and l5 (l6 is older than 90 days), 3 copies, no holds
+        {"demand_searches": 1, "author_loans": 0, "genre_loans": 2, "holds_per_copy": 0.0},
+        # "Багряний" found a book; his Тигролови lent once; no classics in the library
+        {"demand_searches": 0, "author_loans": 1, "genre_loans": 0, "holds_per_copy": 0.0},
+    ]
+
+
+@pytest.mark.slow
+def test_candidate_criteria_track_true_demand(
+    demo_simulation: tuple[Any, dict[str, Any], pl.DataFrame],
+) -> None:
+    """Every criterion leans toward the titles libsim's members will actually ask for in the
+    next 30 days, and the searches strongly so (DESIGN.md §2.10 measures it on more seeds)."""
+    from scipy.stats import spearmanr
+
+    parsed, truth, _ = demo_simulation
+    table = candidates.criteria(parsed.frames, Context.at(parsed.as_of, parsed.timezone))
+    demand = {cid: c["demand_future_window"] for cid, c in truth["candidates"].items()}
+    future = [demand[cid] for cid in table["candidate_id"]]
+    rho = {m.key: spearmanr(table[m.key], future).statistic for m in candidates.CRITERIA}
+    assert all(value > 0 for value in rho.values()), rho
+    assert rho["demand_searches"] > 0.4, rho
 
 
 @pytest.fixture(scope="module")

@@ -153,6 +153,9 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 ### M5. Content acquisition (MCDA)
 
+- **Progress.**
+  - Done: the criteria, an analytics section `candidates` with four criteria kept after measuring seven signals against the truth (PR #21).
+  - Next: AHP, TOPSIS/SAW, sensitivity and the portfolio (`domain/content`), then the API and the page.
 - **Alternatives.** 60 candidate titles offered by a distributor.
 - **Criteria.**
   - They are computed at import as an analytics section `candidates`, stored like the others and rebuilt by `dss refresh-analytics`.

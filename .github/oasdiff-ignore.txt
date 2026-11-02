@@ -2,3 +2,11 @@ GET /api/v1/reports added the new `retention_plan` enum value to the `items/item
 POST /api/v1/reports added the new `retention_plan` enum value to the `sections/items/` response property for the response status `201`
 GET /api/v1/reports/{report_id} added the new `retention_plan` enum value to the `content/items/key` response property for the response status `200`
 GET /api/v1/reports/{report_id} added the new `retention_plan` enum value to the `sections/items/` response property for the response status `200`
+POST /api/v1/churn-runs/{run_id}/plan added the new `candidates` enum value to the `key` response property for the response status `200`
+POST /api/v1/churn-runs/{run_id}/plan/approve added the new `candidates` enum value to the `sections/items/` response property for the response status `201`
+GET /api/v1/datasets/{dataset_id}/analytics added the new `candidates` enum value to the `sections/items/key` response property for the response status `200`
+GET /api/v1/datasets/{dataset_id}/analytics/{section} added the new `candidates` enum value to the `key` response property for the response status `200`
+GET /api/v1/reports added the new `candidates` enum value to the `items/items/sections/items/` response property for the response status `200`
+POST /api/v1/reports added the new `candidates` enum value to the `sections/items/` response property for the response status `201`
+GET /api/v1/reports/{report_id} added the new `candidates` enum value to the `content/items/key` response property for the response status `200`
+GET /api/v1/reports/{report_id} added the new `candidates` enum value to the `sections/items/` response property for the response status `200`

@@ -183,7 +183,7 @@ There are two file formats, detected by content:
   - Computed once, at the end of the import job and in its transaction, from the frames already in memory. That takes ~0.3 s for 5k members.
   - Stored per section in `dataset_analytics` as JSONB; the API serves the stored JSON.
   - After the analytics code changes, `dss refresh-analytics` recomputes from the stored uploads. Without stored analytics the API answers `409 analytics.missing`.
-- **Sections:** `overview`, `usage`, `content`, `segments`, `search`, `subscriptions`, `cohorts`. Each one is a module with a `build(frames, ctx)` function, registered in `SECTIONS`.
+- **Sections:** `overview`, `usage`, `content`, `segments`, `search`, `subscriptions`, `cohorts`, `candidates`. Each one is a module with a `build(frames, ctx)` function, registered in `SECTIONS`.
 - **Shape of a section** (`model.py`): KPIs, tidy charts and notes.
   - A KPI is `{key, value, unit, window_days}`.
   - A tidy chart is `{dimensions, measures, attributes, rows}`: one row per combination of dimension values. It fits any chart library or a plain table.
@@ -383,6 +383,31 @@ There are two file formats, detected by content:
   - The plan uses the run's stored scores and effects, so it parses no dataset. With the campaign's effects it offers the campaign's discount, because there is no data on other sizes.
   - `POST /churn-runs/{id}/plan/approve` freezes the plan as a decision: a report of kind `retention`, with the parameters it was made with. Only the active run can be used.
   - **The decision log.** `GET /reports?kind=retention` lists the decisions, and every report export (PDF, XLSX, CSV, JSON) works for them.
+
+**Content acquisition**: which of a distributor's titles to license, within a budget.
+
+- **Candidates** (analytics section `candidates`, `domain/analytics/candidates.py`). Each title in `candidate_titles` gets four criteria over the last 90 days, all of them "more is better":
+  - `demand_searches`: zero-result searches whose query is the title or one of its authors (trimmed, any case, the way the search section groups queries);
+  - `author_loans`: loans of the library's books by the same authors;
+  - `genre_loans`: loans in the title's genre;
+  - `genre_holds_per_copy`: holds placed in the genre per licensed copy.
+  - The licence cost is shown too. It is the portfolio's budget, not a criterion, so cost counts once.
+  - The section is computed at import with the others, so a decision reads stored JSON and parses no dataset. A dataset without an offer gets the note `candidates.none`.
+- **Why these four.** Each signal was measured against libsim's true demand: Spearman ρ with the requests for each title in the 180 days after as_of, on the demo with seeds 1–3 (60 titles each).
+
+  | Signal                                                        | Seed 1 | Seed 2 | Seed 3 | Kept                          |
+  | ------------------------------------------------------------- | -----: | -----: | -----: | ----------------------------- |
+  | Zero-result searches for the title or an author               |   0.70 |   0.72 |   0.64 | yes                           |
+  | Loans in the genre                                            |   0.43 |   0.60 |   0.53 | yes                           |
+  | Holds per copy in the genre                                   |   0.44 |   0.45 |   0.57 | yes                           |
+  | Loans of the author's books                                   |   0.22 |   0.50 |   0.42 | yes                           |
+  | Growth of the genre's loans (last 90 days over the 90 before) |  −0.01 |   0.16 |  −0.21 | no                            |
+  | Average rating of the author's books (24–29 titles have one)  |  −0.26 |   0.44 |  −0.20 | no                            |
+  | Average rating in the genre                                   |  −0.40 |  −0.33 |  −0.40 | no: popular genres rate lower |
+  | Pages, age of the title, English (largest absolute ρ)         |   0.14 |   0.03 |   0.23 | no                            |
+  - Four criteria leave six pairwise comparisons for AHP, instead of 21 for seven.
+  - `test_candidate_criteria_track_true_demand` checks every criterion's direction on the 30-day ground truth of seed 1.
+  - The searches alone are a strong signal, so the experiment compares the decision with a "searches per hryvnia" baseline.
 
 ### 2.10 Reports and exports
 

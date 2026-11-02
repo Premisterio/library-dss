@@ -1324,7 +1324,7 @@ export type components = {
                 [key: string]: unknown;
             } | null;
             /** Sections */
-            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "retention_plan")[];
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan")[];
             /** Timezone */
             timezone: string;
             /** Title */
@@ -1338,7 +1338,7 @@ export type components = {
              * Sections
              * @description Sections to include; all when omitted.
              */
-            sections?: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts")[] | null;
+            sections?: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates")[] | null;
             /** Title */
             title: string;
         };
@@ -1374,7 +1374,7 @@ export type components = {
                 [key: string]: unknown;
             } | null;
             /** Sections */
-            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "retention_plan")[];
+            sections: ("overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan")[];
             /** Timezone */
             timezone: string;
             /** Title */
@@ -1410,7 +1410,7 @@ export type components = {
              * Key
              * @enum {string}
              */
-            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "retention_plan";
+            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates" | "retention_plan";
             /** Kpis */
             kpis: components["schemas"]["KpiOut"][];
             /** Notes */
@@ -1431,7 +1431,7 @@ export type components = {
              * Key
              * @enum {string}
              */
-            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts";
+            key: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates";
             /** Kpis */
             kpis: components["schemas"]["KpiOut"][];
             /** Notes */
@@ -2231,7 +2231,7 @@ export interface operations {
             header?: never;
             path: {
                 dataset_id: number;
-                section: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts";
+                section: "overview" | "usage" | "content" | "segments" | "search" | "subscriptions" | "cohorts" | "candidates";
             };
             cookie?: never;
         };

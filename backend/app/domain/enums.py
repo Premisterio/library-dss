@@ -147,6 +147,7 @@ ENUMS: dict[str, dict[str, str]] = {
         "search": "Пошук",
         "subscriptions": "Підписки",
         "cohorts": "Когорти",
+        "candidates": "Кандидати",
         "retention_plan": "План утримання",
     },
     "chart": {
@@ -171,6 +172,7 @@ ENUMS: dict[str, dict[str, str]] = {
         "actions_by_segment": "Дії за сегментами",
         "action_effects": "Ефекти дій за даними кампанії",
         "planned_members": "Читачі в плані",
+        "candidate_criteria": "Кандидати та ознаки попиту",
     },
     "metric": {
         "members": "Читачі",
@@ -221,6 +223,14 @@ ENUMS: dict[str, dict[str, str]] = {
         "p_action": "Ризик із дією",
         "gain": "Чистий виграш",
         "spend": "Витрати",
+        "candidates": "Кандидатів",
+        "candidates_searched": "Кандидатів, яких шукали",
+        "candidates_cost": "Вартість усіх пропозицій",
+        "demand_searches": "Пошуки без результату (назва чи автор)",
+        "author_loans": "Позичення книг автора",
+        "genre_loans": "Позичення в жанрі",
+        "genre_holds_per_copy": "Бронювань на копію в жанрі",
+        "license_cost": "Ліцензія",
     },
     "dimension": {
         "week": "Тиждень",
@@ -242,6 +252,8 @@ ENUMS: dict[str, dict[str, str]] = {
         "action": "Дія",
         "segment": "Сегмент",
         "user_id": "Читач",
+        "candidate_id": "Кандидат",
+        "language": "Мова",
     },
     "unit": {
         "count": "шт.",
