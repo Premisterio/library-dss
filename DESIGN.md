@@ -686,7 +686,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
 - **Commands.**
   - `uv run python -m experiments run` runs the grid of `backend/experiments/config.toml` and writes the results and tables to `backend/experiments/results/` (gitignored).
     - `--seeds N` and `--preset P` run part of the grid.
-    - `--workers` sets how many libraries are simulated at once: 4 by default, each taking about 0.7 GB of memory.
+    - `--workers` sets how many libraries are simulated at once: 2 by default. Each takes about 0.7 GB of memory, and 4 drove an 8 GB machine that also ran the dev stack into swap.
   - `python -m experiments tables` rebuilds the tables from the last results without simulating again.
 - **Grid.** 20 seeds × 4 presets (`demo`, `weak-signal`, `misspecified`, `high-scarcity`) × budgets of 5, 10, 20 and 40%. Each library has 5,000 members and 24 months, like the demo.
 - **One library.**
