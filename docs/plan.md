@@ -155,7 +155,8 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 - **Progress.**
   - Done: the criteria, an analytics section `candidates` with four criteria kept after measuring seven signals against the truth (PR #21).
-  - Next: AHP, TOPSIS/SAW, sensitivity and the portfolio (`domain/content`), then the API and the page.
+  - Done: AHP, TOPSIS/SAW, the sensitivity sweep, Dirichlet stability and the portfolio (`domain/content`, PR #22). On the truth, the decision doubles what chance finds, and "searches per hryvnia" does better still (DESIGN §2.9).
+  - Next: the API and the page.
 - **Alternatives.** 60 candidate titles offered by a distributor.
 - **Criteria.**
   - They are computed at import as an analytics section `candidates`, stored like the others and rebuilt by `dss refresh-analytics`.
