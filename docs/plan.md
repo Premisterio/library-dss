@@ -15,18 +15,18 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 
 ## Progress
 
-| Milestone | Scope                                                                                    | Status              |
-| --------- | ---------------------------------------------------------------------------------------- | ------------------- |
-| M0        | Repository, tooling, dev compose, CI                                                     | done                |
-| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done                |
-| M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8)    |
-| M3        | Thin frontend on shadcn, run locally                                                     | done                |
-| M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16)  |
-| M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | in review (#17–#20) |
-| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | in review (#21–#24) |
-| M6        | Thesis experiment harness                                                                | —                   |
-| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                   |
-| M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                   |
+| Milestone | Scope                                                                                    | Status             |
+| --------- | ---------------------------------------------------------------------------------------- | ------------------ |
+| M0        | Repository, tooling, dev compose, CI                                                     | done               |
+| M1        | `libsim`: real catalogue, daily simulation with planted effects, ground truth, schema    | done               |
+| M2        | Backend platform: auth, import, jobs, analytics, reports, CLI, contract tests            | done (PRs #4–#8)   |
+| M3        | Thin frontend on shadcn, run locally                                                     | done               |
+| M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16) |
+| M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | done (PRs #17–#20) |
+| M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | done (PRs #21–#24) |
+| M6        | Thesis experiment harness                                                                | —                  |
+| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                  |
+| M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                  |
 
 If time runs short, cut in this order: `libsim continue` → Monte Carlo sensitivity → T-learner → the "more copies" content preset.
 
@@ -123,9 +123,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - libsim wrote period ends after a clock change an hour early.
   - Any job on a dataset used to change the dataset's status.
 
-## Next
-
-### M4b. Action effects, optimal plan, decisions
+### M4b. Action effects, optimal plan, decisions (PRs #17–#20)
 
 - **Progress.**
   - Done: the effects of actions and the optimal plan (`domain/retention`, PR #17).
@@ -151,7 +149,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - the preview takes under 1 s (plan and curve for 2k members: about 0.6 s);
   - approval produces the export (done).
 
-### M5. Content acquisition (MCDA)
+### M5. Content acquisition (MCDA) (PRs #21–#24)
 
 - **Progress.**
   - Done: the criteria, an analytics section `candidates` with four criteria kept after measuring seven signals against the truth (PR #21).
@@ -178,6 +176,8 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - Property tests: a dominated title never beats its dominator; column scale and order do not matter.
   - The cross-check with `pymcdm` is cut.
   - A "searches per hryvnia" baseline joins the experiment, because zero-result searches already track true demand closely.
+
+## Next
 
 ### M6. Experiment harness
 
