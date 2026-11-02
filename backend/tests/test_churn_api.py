@@ -4,13 +4,18 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from alembic.config import Config
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
+from app.core.migrations import ALEMBIC_INI
 from app.domain.churn.features import FEATURES
 from app.domain.enums import JobKind
-from app.models import Analyst
+from app.models import Analyst, ChurnRun
 from app.services import auth, churn, jobs
 
 Headers = dict[str, str]
@@ -94,6 +99,12 @@ def test_activation_keeps_one_run_per_dataset(
         "/api/v1/churn-runs", headers=auth_headers, params={"dataset_id": dataset["id"]}
     ).json()
     assert runs["total"] == 2
+    only_active = client.get(
+        "/api/v1/churn-runs",
+        headers=auth_headers,
+        params={"dataset_id": dataset["id"], "active": True},
+    ).json()
+    assert [run["id"] for run in only_active["items"]] == [second["id"]]
     assert {(r["id"], r["active"]) for r in runs["items"]} == {
         (first["id"], False),
         (second["id"], True),
@@ -186,3 +197,30 @@ def test_a_job_without_its_run_fails(
     with pytest.raises(ApiError) as raised:
         churn.run_training(db_session, job, lambda *_: None)
     assert raised.value.code == "churn.missing"
+
+
+def test_older_runs_get_their_expected_churners(
+    client: TestClient,
+    auth_headers: Headers,
+    db_session: Session,
+    train_run: Callable[[int], dict[str, Any]],
+    dataset: dict[str, Any],
+) -> None:
+    """Regression: runs trained before summaries had `expected_churners` gave 500; migration
+    0007 fills it in the way training does."""
+    run = train_run(dataset["id"])
+    stored = db_session.get_one(ChurnRun, run["id"])
+    result = dict(stored.result or {})
+    result["summary"] = {k: v for k, v in result["summary"].items() if k != "expected_churners"}
+    stored.result = result
+    db_session.commit()
+
+    migration = ScriptDirectory.from_config(Config(str(ALEMBIC_INI))).get_revision("0007")
+    assert migration is not None
+    with Operations.context(MigrationContext.configure(db_session.connection())):
+        migration.module.upgrade()
+    db_session.expire_all()
+    response = client.get(f"/api/v1/churn-runs/{run['id']}", headers=auth_headers)
+    assert response.status_code == 200, response.text
+    expected = run["summary"]["expected_churners"]
+    assert response.json()["summary"]["expected_churners"] == pytest.approx(expected)

@@ -8,7 +8,7 @@ from typing import Any
 
 import polars as pl
 
-from app.utils.dates import end_of_day_utc
+from app.utils.dates import end_of_day_utc, start_of_day_utc
 
 Frames = Mapping[str, pl.DataFrame]  # dataset tables by name
 
@@ -31,7 +31,9 @@ class Context:
         return cls(as_of, timezone, end_of_day_utc(as_of, timezone))
 
     def since(self, days: int) -> datetime:
-        return self.end - timedelta(days=days)
+        """The start of the last `days` local days up to as_of (local midnight, so a window
+        that crosses a clock change still holds whole days)."""
+        return start_of_day_utc(self.as_of - timedelta(days=days - 1), self.timezone)
 
     def within(self, column: str, days: int | None) -> pl.Expr:
         """Rows dated in the last `days` days up to as_of (the whole history when None)."""

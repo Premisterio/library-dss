@@ -216,11 +216,12 @@ def list_churn_runs(
     analyst: CurrentAnalyst,
     session: SessionDep,
     dataset_id: int | None = None,
+    active: Annotated[bool | None, Query(description="Only the active run(s).")] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> ChurnRunPage:
     items, total = churn.list_for(
-        session, analyst, dataset_id=dataset_id, limit=limit, offset=offset
+        session, analyst, dataset_id=dataset_id, active=active, limit=limit, offset=offset
     )
     return ChurnRunPage(
         items=[ChurnRunOut.model_validate(_run(run)) for run in items],

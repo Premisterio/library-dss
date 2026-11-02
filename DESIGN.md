@@ -194,6 +194,7 @@ There are two file formats, detected by content:
 - **Time.**
   - Every value is "as of the end of `as_of`" in the dataset's time zone (`Context`).
   - Windows are the last 30 days, the last 90 days (`RECENT_DAYS`) or the whole history. `window_days` says which.
+  - A window of N days holds whole local days: it starts at the local midnight N − 1 days before as_of, even across a clock change.
   - Weekly charts show complete weeks only: a week cut short by `as_of` would look like a sudden drop.
   - A current count such as paying subscribers or MRR is the state at the end of `as_of`.
 - **Missing data.** A value a dataset cannot provide is `null` with a note, never `0`. Examples: renewal outcomes, licences or result counts in nested files. Presence is detected from the data, not from the format.
@@ -213,7 +214,7 @@ There are two file formats, detected by content:
     - Trials are not paid periods.
     - A member with overlapping paid periods counts once, with the period that started last.
   - The label is whether that period ended in churn (`churned` vs `renewed`). A period without a decided outcome has no label.
-  - **Churn without an action.** A renewal that received a campaign action gets no label: an assignment with `delivered`, matched by `target_period_end`. The label therefore means churn without any action, the baseline against which the action plan (M4b) compares actions. Assignment was random, so the remaining renewals are still a fair sample.
+  - **Churn without an action.** A renewal that received a campaign action gets no label: an assignment with `delivered`, matched by `target_period_end`. The label therefore means churn without any action, the baseline against which the action plan (M4b) compares actions. Assignment was random, and which renewals count as treated depends only on the arm and on e-mail consent, which was given before the campaign. The remaining labels therefore still estimate churn without an action, given the features.
 - **Rolling cutoffs** (`history_cutoffs`).
   - Cutoff k is as_of − 30·(k + 1) days, back to the first paid period.
     - The risk window of k = 0 ends at as_of.
@@ -229,6 +230,7 @@ There are two file formats, detected by content:
     - the outcome of the running period is never read.
   - Assumptions:
     - Profile fields (age, education, language, e-mail opt-in) are fixed, because the format stores one value per member.
+    - Periods last 30 days or longer. A shorter period could start after one cutoff and end before the next, and then get no label. libsim's periods are 30 or 365 days.
     - A rating is known when the loan is returned.
   - A property test (Hypothesis) rewrites the history after random cutoffs of a simulated dataset: it drops, moves and invents later rows and redraws everything that resolves later. No feature may change.
 - **Features.** There are 26, in five groups. Their keys, groups, kinds and units are in `FEATURES`. Their Ukrainian labels are in enums `churn_feature`, and the group labels in `churn_feature_group`.
@@ -256,6 +258,7 @@ There are two file formats, detected by content:
   - the Brier score and its skill against always predicting the training churn rate;
   - ECE over 10 equal-count bins by predicted risk, and the bins themselves for a calibration plot;
   - lift: the churn rate in the riskiest 10% over the overall rate.
+  - Members with the same prediction count as one group: they share a calibration bin, and a group cut by the 10% counts by the share of it that fits. The rule predicts only two values, so its lift and ECE would otherwise depend on the order of the rows.
   - A metric that is undefined for the data, such as AUC with one class, is null.
 - **Backtest and choice** (`training.py`).
   - Every model is trained and tested at origins k = 0…5. Origins without both churn and renewal in their training or test rows are skipped, but origin 0 must be usable (`NotEnoughHistoryError`).
@@ -305,7 +308,7 @@ There are two file formats, detected by content:
     - importance, coefficients and typical values.
   - The fitted model itself is not stored. Scores are computed once, the dataset never changes, and training again takes seconds.
   - A run that is still queued or running cannot be deleted (`churn.busy`).
-- **Activation.** `POST /churn-runs/{id}/activate` makes a trained run the one decisions use for its dataset, and deactivates the others. The analyst chooses it after reviewing the quality, so training never activates a run by itself. A partial unique index allows one active run per dataset.
+- **Activation.** `POST /churn-runs/{id}/activate` makes a trained run the one decisions use for its dataset, and deactivates the others. The analyst chooses it after reviewing the quality, so training never activates a run by itself. A partial unique index allows one active run per dataset, and activation locks the dataset's row first, so two activations at once cannot deadlock. `GET /churn-runs?active=true` finds the active run.
 - **Scores** (`ChurnScore`).
   - One row per member at risk: rank, probability, plan, period end, every feature value and the reasons.
   - `GET /churn-runs/{id}/scores` lists them, the riskiest first.
@@ -447,7 +450,7 @@ There are two file formats, detected by content:
 - **Determinism.**
   - Randomness comes from `SeedSequence` streams; ids are deterministic; keys are sorted; gzip `mtime` is 0.
   - The same parameters give byte-identical files.
-  - Local times are converted to UTC with the offset of their own day, including the period ends after as_of.
+  - Local times are converted to UTC with the offset of their own local hour, so midnights are exact on the days the clocks change, including the period ends after as_of. An hour skipped in spring keeps the offset from before the change.
 - **Output.**
   - The dataset is a tabular file; `libsim/schema.py` is the source of the format.
   - `libsim schema` writes the JSON Schema.

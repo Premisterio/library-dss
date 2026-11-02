@@ -2,7 +2,7 @@ import { UsersRoundIcon } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router"
 
-import { SCORES_PAGE_SIZE, useChurnRuns, useChurnScore, useChurnScores } from "@/api/churn"
+import { SCORES_PAGE_SIZE, useActiveChurnRun, useChurnScore, useChurnScores } from "@/api/churn"
 import type { ChurnRun } from "@/api/types"
 import { paths } from "@/app/paths"
 import { ChurnNav } from "@/components/churn/churn-nav"
@@ -70,16 +70,15 @@ function RiskGroup({ run, timezone }: { run: ChurnRun; timezone: string }) {
 
 export function ChurnRiskPage() {
   const dataset = useCurrentDataset()
-  const runs = useChurnRuns(dataset.id)
+  const active = useActiveChurnRun(dataset.id)
   return (
     <>
       <ChurnNav datasetId={dataset.id} />
       {supportsRetention(dataset) ? (
-        <QueryView query={runs} skeletonClassName="h-40">
-          {(items) => {
-            const active = items.find((run) => run.active)
-            return active ? (
-              <RiskGroup key={active.id} run={active} timezone={dataset.timezone} />
+        <QueryView query={active} skeletonClassName="h-40">
+          {(run) =>
+            run ? (
+              <RiskGroup key={run.id} run={run} timezone={dataset.timezone} />
             ) : (
               <EmptyState
                 icon={UsersRoundIcon}
@@ -91,7 +90,7 @@ export function ChurnRiskPage() {
                 </Button>
               </EmptyState>
             )
-          }}
+          }
         </QueryView>
       ) : (
         <NoRetention />
