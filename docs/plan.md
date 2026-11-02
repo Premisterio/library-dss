@@ -203,7 +203,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 ### M7. Local finish
 
-- A Playwright end-to-end test: sign in → upload → analytics → train → scenario → approve.
+- A Playwright end-to-end test: sign in → upload → analytics → train → scenario → approve. It also checks that no page scrolls sideways beside the open sidebar at 1024 and 1280 px.
 - A backup and restore drill on the local stack.
 - User documentation.
 - A guide for the frontend redesign: flows, error codes, chart formats.
