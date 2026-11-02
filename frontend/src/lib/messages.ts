@@ -34,6 +34,11 @@ const MESSAGES: Record<string, string> = {
   "churn.busy": "Модель зараз навчається, спробуйте пізніше.",
   "churn.member_not_scored": "Цей читач не в групі ризику.",
   "churn.missing": "Модель або датасет видалили до навчання.",
+  "retention.no_effects":
+    "Модель навчено до того, як з'явилась оцінка ефектів дій. Навчіть її ще раз.",
+  "retention.no_campaign": "У датасеті немає кампанії, тож ефекти дій невідомі. Задайте їх вручну.",
+  "retention.nobody_at_risk": "У групі ризику нікого немає.",
+  "retention.not_active": "Затвердити можна лише план активної моделі.",
   "request.invalid": "Некоректний запит.",
   "server.error": SERVER_ERROR,
   "system.database_unavailable": "База даних недоступна.",

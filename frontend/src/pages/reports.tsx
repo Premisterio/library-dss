@@ -14,7 +14,10 @@ export function ReportsPage() {
   return (
     <>
       <CreateReportForm dataset={dataset} />
-      <PanelCard title="Звіти датасету" description="Найновіші зверху.">
+      <PanelCard
+        title="Звіти датасету"
+        description="Найновіші зверху. Затверджені плани теж зберігаються тут, як рішення."
+      >
         <QueryView
           query={reports}
           isEmpty={(items) => items.length === 0}

@@ -7,6 +7,7 @@ import type { Report } from "@/api/types"
 import { ConfirmDialog } from "@/components/common/confirm-dialog"
 import { IconButton } from "@/components/common/icon-button"
 import { ReportDownloads } from "@/components/reports/report-downloads"
+import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -40,7 +41,7 @@ export function ReportTable({ reports }: { reports: Report[] }) {
       <TableHeader>
         <TableRow>
           <TableHead>Назва</TableHead>
-          <TableHead>Секції</TableHead>
+          <TableHead>Зміст</TableHead>
           <TableHead>Створено</TableHead>
           <TableHead className="text-right">Дії</TableHead>
         </TableRow>
@@ -50,7 +51,14 @@ export function ReportTable({ reports }: { reports: Report[] }) {
           <TableRow key={report.id}>
             <TableCell className="font-medium">{report.title}</TableCell>
             <TableCell className="max-w-md whitespace-normal text-muted-foreground">
-              {report.sections.map((key) => label("analytics_section", key)).join(", ")}
+              {report.kind === "analytics" ? (
+                report.sections.map((key) => label("analytics_section", key)).join(", ")
+              ) : (
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">Рішення</Badge>
+                  {label("report_kind", report.kind)}
+                </span>
+              )}
             </TableCell>
             <TableCell className="text-muted-foreground">
               {formatDateTime(report.created_at)}

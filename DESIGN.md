@@ -378,7 +378,7 @@ There are two file formats, detected by content:
     - cautious mode, or assumed effects with their own discount.
   - It answers a `retention_plan` section in the shape of the analytics, so clients draw it with their usual renderer:
     - KPIs: members at risk, e-mails and discounts in the plan, spend, value, the greedy plan's value, members expected to stay;
-    - charts: the budget curve, actions by segment, the campaign's effects, the members in the plan;
+    - charts: the budget curve, actions by segment, the campaign's effects (each action's overall effect as segment `all`, then each segment's), the members in the plan;
     - notes.
   - The plan uses the run's stored scores and effects, so it parses no dataset. With the campaign's effects it offers the campaign's discount, because there is no data on other sizes.
   - `POST /churn-runs/{id}/plan/approve` freezes the plan as a decision: a report of kind `retention`, with the parameters it was made with. Only the active run can be used.
@@ -485,11 +485,12 @@ There are two file formats, detected by content:
   - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
     - the index: overview;
     - `analytics/:section`: one section at a time, switched by a segmented control in the toolbar;
-    - `reports`: create, list and download reports;
-    - `churn` ("Модель") and `churn/risk` ("Група ризику"), switched by a segmented control in the toolbar:
+    - `reports`: create, list and download reports. Decisions (approved plans) are listed with them, marked "Рішення";
+    - `churn` ("Модель"), `churn/risk` ("Група ризику") and `churn/plan` ("План"), switched by a segmented control in the toolbar:
       - The model view lists the runs and follows a training job live.
       - It shows the chosen run's quality against the rule, calibration, importance and backtest, and activates it. `?run=` picks another run.
       - The risk view pages through the active run's members at risk with their reasons, and a sheet shows one member's features against the typical values.
+      - The plan view takes the plan's conditions in a form and previews the best plan for the active run. It shows the KPIs, the budget curve as a line, the actions by segment, the campaign's effects as dots with interval lines on one axis through zero, and the members in the plan. Approval names the decision and saves it among the reports.
       - A dataset without retention data says so instead.
   - The dataset pages, which bring the chart library, are loaded lazily.
   - Every route has an error boundary. Errors below the shell stay inside it, so the navigation keeps working.

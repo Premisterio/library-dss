@@ -67,6 +67,19 @@ describe("chooseView", () => {
     expect(view.type === "heatmap" && view.measure.key).toBe("share")
   })
 
+  it("keeps negative values out of heatmaps: the colour ramp starts at zero", () => {
+    const action: Dimension = { key: "action", kind: "category", enum: null, order: null }
+    const rows = ["email", "discount"].flatMap((a) =>
+      ["mon", "tue"].map((day) => ({ action: a, weekday: day, effect: -0.05 }))
+    )
+    const effects = chart({
+      dimensions: [action, weekday],
+      measures: [{ key: "effect", unit: "ratio", window_days: null }],
+      rows,
+    })
+    expect(chooseView(effects).type).toBe("table")
+  })
+
   it("falls back to a table for empty or long charts", () => {
     expect(chooseView(chart({ dimensions: [category] })).type).toBe("table")
     const rows = Array.from({ length: 40 }, (_, i) => ({ genre: `g${i}`, loans: i }))

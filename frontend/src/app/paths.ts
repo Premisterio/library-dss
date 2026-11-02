@@ -13,6 +13,7 @@ export const paths = {
   churnModel: (id: number, run?: number) =>
     run === undefined ? `/d/${id}/churn` : `/d/${id}/churn?run=${run}`,
   churnRisk: (id: number) => `/d/${id}/churn/risk`,
+  churnPlan: (id: number) => `/d/${id}/churn/plan`,
 }
 
 /** A database id from the URL: digits only, so `abc`, `1e1` or `-1` are not ids. */
