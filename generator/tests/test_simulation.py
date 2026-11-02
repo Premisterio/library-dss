@@ -3,6 +3,7 @@
 import json
 import re
 from collections import defaultdict
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -79,6 +80,18 @@ def test_nothing_happens_after_as_of(dataset: dict[str, Any], result: Result) ->
             for i in stamps:
                 if row[i] is not None and not (name == "subscription_periods" and i == 3):
                     assert _ts(row[i]) < limit, (name, row)
+
+
+def test_a_session_after_midnight_on_as_of_stays_out(
+    result: Result, dataset: dict[str, Any]
+) -> None:
+    """Regression: a session starts at least 5 minutes after its loan, so a loan taken just before
+    midnight on as_of gave a session after as_of, and the importer rejected the dataset
+    (high-scarcity, seed 9)."""
+    late = [0, 0, result.observed_days * 86400 + 120, 30, 10, 0]  # 00:02 the day after as_of
+    events = replace(result.events, reading_sessions=[*result.events.reading_sessions, late])
+    written = writer.build_dataset(replace(result, events=events))
+    assert written["tables"]["reading_sessions"] == dataset["tables"]["reading_sessions"]
 
 
 def test_period_ends_after_as_of_keep_their_local_day(

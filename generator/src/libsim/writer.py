@@ -125,7 +125,9 @@ def build_dataset(result: Result) -> dict[str, Any]:
             ]
         )
     sessions = [
-        [uid[u], bid[bk], iso(t), m, pg, DEVICES[d]] for u, bk, t, m, pg, d in ev.reading_sessions
+        [uid[u], bid[bk], iso(t), m, pg, DEVICES[d]]
+        for u, bk, t, m, pg, d in ev.reading_sessions
+        if t < cut  # 5 minutes after a loan taken just before midnight is already the next day
     ]
     searches = [[uid[u], iso(t), q, r] for u, t, q, r in ev.searches]
     holds = []

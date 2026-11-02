@@ -73,6 +73,10 @@ npm run api:generate
 uv run libsim generate --preset demo --seed 1   # → data/generated/<id>.json.gz + ground truth
 uv run libsim validate data/generated/<id>.json.gz
 uv run libsim schema --out docs/schema/dataset.schema.json   # after changing libsim/schema.py
+
+# thesis experiments (DESIGN.md §6) → backend/experiments/results/
+uv run python -m experiments run                # the whole grid; --seeds 2 --preset demo for a part
+uv run python -m experiments tables             # rebuild the tables from the last results
 ```
 
 ## Conventions

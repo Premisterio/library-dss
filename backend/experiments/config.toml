@@ -1,0 +1,15 @@
+# The thesis experiment grid (DESIGN.md §6): every preset × seed is simulated, decided on and
+# judged against libsim's ground truth. Rebuild everything with `uv run python -m experiments run`.
+
+seeds = 20 # seeds 1, 2, …, 20 of each preset
+presets = ["demo", "weak-signal", "misspecified", "high-scarcity"]
+members = 5000
+months = 24
+
+[retention]
+# Budgets as shares of what a discount for every member at risk would cost if they all renewed.
+budget_shares = [0.05, 0.10, 0.20, 0.40]
+horizon_months = 12
+email_cost = 2.0
+# "DSS with assumptions" plans with the plan form's default effects (differences of churn rates).
+assumed = { email = -0.02, discount = -0.05 }
