@@ -20,7 +20,7 @@ def run(
     out: Annotated[Path, typer.Option(help="Where the results and tables go.")] = RESULTS,
     workers: Annotated[
         int, typer.Option(min=1, help="Libraries simulated at once, about 0.7 GB of memory each.")
-    ] = 4,
+    ] = 2,
     seeds: Annotated[int | None, typer.Option(min=1, help="Only seeds 1…N of each preset.")] = None,
     preset: Annotated[
         list[str] | None, typer.Option(help="Only this preset; repeat for more.")

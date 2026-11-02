@@ -111,14 +111,15 @@ def build_dataset(result: Result) -> dict[str, Any]:
     for k, (user, book, borrowed, returned, completed, rating, via_hold) in enumerate(ev.loans):
         if borrowed >= cut:
             continue
-        closed = returned is not None and returned < cut
+        returned_at = iso(returned) if returned is not None and returned < cut else None
+        closed = returned_at is not None
         loans.append(
             [
                 f"l{k + 1:07d}",
                 uid[user],
                 bid[book],
                 iso(borrowed),
-                iso(returned) if closed else None,
+                returned_at,
                 completed if closed else None,
                 rating if closed else None,
                 via_hold,
@@ -134,15 +135,15 @@ def build_dataset(result: Result) -> dict[str, Any]:
     for k, (user, book, placed, resolved, outcome) in enumerate(ev.holds):
         if placed >= cut:
             continue
-        closed = resolved is not None and resolved < cut
+        resolved_at = iso(resolved) if resolved is not None and resolved < cut else None
         holds.append(
             [
                 f"h{k + 1:06d}",
                 uid[user],
                 bid[book],
                 iso(placed),
-                iso(resolved) if closed else None,
-                outcome if closed else "open",
+                resolved_at,
+                outcome if resolved_at is not None else "open",
             ]
         )
     sim = result.campaign
