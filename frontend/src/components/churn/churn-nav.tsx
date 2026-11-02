@@ -5,7 +5,7 @@ import { ToolbarSlot } from "@/components/glass/toolbar"
 /** The churn views, switched in the toolbar. */
 export function ChurnNav({ datasetId }: { datasetId: number }) {
   return (
-    <ToolbarSlot side="center">
+    <ToolbarSlot>
       <SegmentedNav
         label="Розділи відтоку"
         items={[

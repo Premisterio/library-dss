@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { Link, Outlet } from "react-router"
 
+import { useDataset } from "@/api/datasets"
 import { paths, useDatasetId } from "@/app/paths"
 import { useRouteTitle } from "@/app/route-title"
 import { GlassToolbar, ToolbarProvider } from "@/components/glass/toolbar"
@@ -18,6 +19,7 @@ import { NavItem } from "@/components/shell/nav-item"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -29,6 +31,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { supportsContent, supportsRetention } from "@/lib/status"
 
 function Brand() {
   return (
@@ -50,41 +53,56 @@ function Brand() {
   )
 }
 
+/**
+ * The pages of the dataset in the URL. Churn and acquisition appear only when the ready dataset
+ * supports them; while it loads, or is not ready, every page is listed.
+ */
+function DatasetPages({ datasetId }: { datasetId: number }) {
+  const dataset = useDataset(datasetId)
+  const known = dataset.data?.status === "ready" ? dataset.data : undefined
+  return (
+    <>
+      <NavItem to={paths.dataset(datasetId)} icon={LayoutDashboardIcon} end>
+        Огляд
+      </NavItem>
+      <NavItem to={paths.analytics(datasetId)} icon={BarChart3Icon}>
+        Аналітика
+      </NavItem>
+      {(!known || supportsRetention(known)) && (
+        <NavItem to={paths.churnModel(datasetId)} icon={UserMinusIcon}>
+          Відтік
+        </NavItem>
+      )}
+      {(!known || supportsContent(known)) && (
+        <NavItem to={paths.content(datasetId)} icon={BookPlusIcon}>
+          Закупівля
+        </NavItem>
+      )}
+      <NavItem to={paths.reports(datasetId)} icon={FileTextIcon}>
+        Звіти
+      </NavItem>
+    </>
+  )
+}
+
 function DatasetNav({ datasetId }: { datasetId: number | undefined }) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Датасет</SidebarGroupLabel>
-      <SidebarGroupContent className="flex flex-col gap-2">
-        <div className="px-2 group-data-[collapsible=icon]:hidden">
+      <SidebarGroupContent>
+        <SidebarMenu>
           <DatasetSwitch datasetId={datasetId} />
-        </div>
-        {datasetId !== undefined && (
-          <SidebarMenu>
-            <NavItem to={paths.dataset(datasetId)} icon={LayoutDashboardIcon} end>
-              Огляд
-            </NavItem>
-            <NavItem to={paths.analytics(datasetId)} icon={BarChart3Icon}>
-              Аналітика
-            </NavItem>
-            <NavItem to={paths.churnModel(datasetId)} icon={UserMinusIcon}>
-              Відтік
-            </NavItem>
-            <NavItem to={paths.content(datasetId)} icon={BookPlusIcon}>
-              Закупівля
-            </NavItem>
-            <NavItem to={paths.reports(datasetId)} icon={FileTextIcon}>
-              Звіти
-            </NavItem>
-          </SidebarMenu>
-        )}
+          {datasetId !== undefined && <DatasetPages datasetId={datasetId} />}
+        </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
   )
 }
 
 /**
- * The signed-in layout. The sidebar and the toolbar float on glass above the content, which
- * scrolls beneath the toolbar; pages add their own toolbar controls through `ToolbarSlot`.
+ * The signed-in layout. The sidebar (navigation, the dataset switch, the account menu in its
+ * footer) and the toolbar float on glass above the content, which scrolls beneath the toolbar;
+ * pages add their view switching to the toolbar through `ToolbarSlot`.
  */
 export function AppShell() {
   const datasetId = useDatasetId()
@@ -108,14 +126,13 @@ export function AppShell() {
           </SidebarGroup>
           <DatasetNav datasetId={datasetId} />
         </SidebarContent>
+        <SidebarFooter>
+          <AccountMenu />
+        </SidebarFooter>
       </Sidebar>
       <SidebarInset className="bg-transparent">
         <ToolbarProvider>
-          <GlassToolbar
-            leading={<SidebarTrigger aria-label="Бічна панель" />}
-            title={title}
-            actions={<AccountMenu />}
-          />
+          <GlassToolbar leading={<SidebarTrigger aria-label="Бічна панель" />} title={title} />
           <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
             <Outlet />
           </main>
