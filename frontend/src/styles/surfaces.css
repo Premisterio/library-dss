@@ -55,7 +55,6 @@ body {
 [data-slot="dialog-content"],
 [data-slot="dropdown-menu-content"],
 [data-slot="dropdown-menu-sub-content"],
-[data-slot="select-content"],
 [data-slot="sheet-content"],
 [data-slot="sidebar-inner"] {
   @apply glass-thick;
@@ -64,8 +63,7 @@ body {
 [data-slot="dialog-content"] {
   border-radius: 1.25rem;
 }
-[data-slot="dropdown-menu-content"],
-[data-slot="select-content"] {
+[data-slot="dropdown-menu-content"] {
   border-radius: 0.875rem;
 }
 [data-slot="sidebar-inner"] {

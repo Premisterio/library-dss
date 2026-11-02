@@ -600,7 +600,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
 
 - **Thesis.** A calm analytical instrument: the numbers are the content and the only loud thing. Navigation floats on glass above them. One accent marks the single action that matters on a screen. The sidebar's dataset switch says which dataset and which date the numbers describe: on the switch when the sidebar is expanded, in its tooltip and menu when it is collapsed, and in the sheet on phones.
 - **Two layers** (`materials › Liquid Glass`):
-  - **Functional layer, glass:** the floating sidebar, the floating toolbar, menus, selects, dialogs, sheets, toasts and the sign-in sheet.
+  - **Functional layer, glass:** the floating sidebar, the floating toolbar, menus, dialogs, sheets, toasts and the sign-in sheet.
   - **Content layer, solid:** cards, KPI tiles, tables, charts, forms on a page.
   - Glass on content is a defect, and so is glass stacked on glass. A control inside a glass bar (the segmented control) is a recessed fill, not glass of its own.
 - **Glass recipe** (`styles/surfaces.css`, utilities `glass` and `glass-thick`):
@@ -660,7 +660,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - Sign-out sits at the bottom of the sidebar, where people look for the account. The HIG's caution against the bottom edge (`sidebars › Desktop`) is about critical actions in windows moved partly off screen; these actions are not critical, and a browser always shows the sidebar's bottom edge.
   - The toolbar holds only the sidebar toggle, the page title and a center area that pages fill with view switching through `ToolbarSlot` (`toolbars`: few groups, no layout that overflows by default). Nothing else competes for its width. Below `xl` the center area takes its own row; a switcher still wider than the bar scrolls from its left edge.
   - The content takes the width beside the sidebar and never scrolls sideways: a table wider than its card scrolls inside the card.
-- **Theme layer over shadcn.** `styles/surfaces.css` styles vendor components by their `data-slot` (dialog, menus, select, sheet, sidebar panel, buttons, cards, toasts). The shadcn CLI can then regenerate them without losing the look. A tooltip stays hidden while a menu is open, so a trigger's tooltip never sits under its own menu. `components/ui/sonner.tsx` is the one customised vendor file: it follows the app's appearance and uses the glass fill.
+- **Theme layer over shadcn.** `styles/surfaces.css` styles vendor components by their `data-slot` (dialog, menus, sheet, sidebar panel, buttons, cards, toasts). The shadcn CLI can then regenerate them without losing the look. A tooltip stays hidden while a menu is open, so a trigger's tooltip never sits under its own menu. `components/ui/sonner.tsx` is the one customised vendor file: it follows the app's appearance and uses the glass fill.
 - **Tests and style.**
   - vitest covers the pure logic and the transport (`src/**/*.test.ts`, one file per module).
   - shadcn components (`components/ui`, `hooks/use-mobile.ts`) are generated vendor code: the shadcn CLI may overwrite them, and oxlint skips them.

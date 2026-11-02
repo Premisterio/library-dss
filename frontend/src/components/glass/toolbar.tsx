@@ -36,10 +36,9 @@ export function GlassToolbar({ leading, title }: { leading?: ReactNode; title?: 
         <header className="flex min-h-12 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-[1.75rem] py-1.5 pr-1.5 pl-2">
           {leading}
           <h1 className="shrink-0 truncate text-[15px] font-semibold">{title}</h1>
-          {/* Safe centering: a control wider than the area starts at its left edge and scrolls. */}
           <div
             ref={setCenter}
-            className="order-last flex w-full justify-center-safe overflow-x-auto empty:hidden xl:order-0 xl:w-auto xl:min-w-0 xl:flex-1"
+            className="order-last flex w-full justify-center overflow-x-auto empty:hidden xl:order-0 xl:w-auto xl:min-w-0 xl:flex-1"
           />
         </header>
       </Glass>
