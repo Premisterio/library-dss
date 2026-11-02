@@ -17,5 +17,6 @@ describe("paths", () => {
     expect(paths.analytics(3, "usage")).toBe("/d/3/analytics/usage")
     expect(paths.reports(3)).toBe("/d/3/reports")
     expect(paths.churnPlan(3)).toBe("/d/3/churn/plan")
+    expect(paths.content(3)).toBe("/d/3/content")
   })
 })

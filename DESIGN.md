@@ -439,6 +439,16 @@ There are two file formats, detected by content:
   - The decision doubles what chance finds. Zero-result searches alone do better still: in libsim a missing title's demand shows up directly as searches, and the genre-level criteria add noise. More weight on the searches closes most of the gap.
   - The thesis reports this as it is. The experiment (M6) varies the presets and the budget.
 
+- **Evaluation and approval** (`domain/content/decision.py`, `services/content.py`, `api/v1/content.py`).
+  - `POST /datasets/{id}/content/evaluate` takes the judgements (pairs of criteria on 1/9..9; a pair left out counts as equal, and a later judgement of a pair wins), the budget and an optional cap per genre.
+  - It answers a `content_portfolio` section in the shape of the analytics:
+    - KPIs: CR, the titles in the portfolio, its cost, the searches for its titles, and Kendall's τ between TOPSIS and SAW;
+    - charts: the criteria weights, each with the range of its weight over which the leader stays first; the ranking (TOPSIS and SAW scores and places, stability, searches, licence cost and the decision); and, when CR is above 0.10, the three judgements furthest from the weights;
+    - notes: inconsistent judgements (`content.inconsistent`); equal weights when nothing was compared (`content.equal_weights`).
+  - Stability counts how often a title stays among as many first titles as the portfolio holds.
+  - The evaluation reads the stored `candidates` section, so it parses no dataset. On the demo the page shows it 0.4–0.5 s after opening.
+  - `POST /datasets/{id}/content/approve` freezes it as a report of kind `content`, with the judgements, budget and cap. Judgements with CR above 0.10 cannot be approved (409 `content.inconsistent`). A dataset without an offer answers 409 `content.no_candidates`.
+
 ### 2.10 Reports and exports
 
 - **What a report is.** A report is a titled copy of sections of a dataset, frozen when it is created (`reports.content`). Refreshing or losing the dataset's analytics does not change it. Deleting the dataset deletes its reports.
@@ -547,6 +557,13 @@ There are two file formats, detected by content:
       - The risk view pages through the active run's members at risk with their reasons, and a sheet shows one member's features against the typical values.
       - The plan view takes the plan's conditions in a form and previews the best plan for the active run. It shows the KPIs, the budget curve as a line, the actions by segment, the campaign's effects as dots with interval lines on one axis through zero, and the members in the plan. Approval names the decision and saves it among the reports.
       - A dataset without retention data says so instead.
+    - `content` ("Закупівля"), one page instead of a wizard:
+      - each pair of criteria on a 1–9 scale toward either side, with the live CR and, when it is too high, the judgements to revise;
+      - the weights, each over the band of weights at which the leader stays first;
+      - the budget and the cap per genre, the KPIs and the ranking with the decision for each title;
+      - approval, disabled while the judgements are inconsistent or the result on screen is not yet that of the current inputs.
+      - Every change is evaluated again after 300 ms of quiet, and the last result stays on screen meanwhile.
+      - A dataset without an offer says so instead.
   - The dataset pages, which bring the chart library, are loaded lazily.
   - Every route has an error boundary. Errors below the shell stay inside it, so the navigation keeps working.
   - Each route names its page title in `handle`, and the shell toolbar shows it.

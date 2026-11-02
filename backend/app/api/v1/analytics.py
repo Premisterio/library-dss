@@ -31,6 +31,7 @@ SectionKey = Literal[
     "cohorts",
     "candidates",
     "retention_plan",
+    "content_portfolio",
 ]
 WINDOW = Field(
     description="The value covers the last N days up to as_of; null: the whole history, "

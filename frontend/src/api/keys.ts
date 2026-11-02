@@ -1,4 +1,4 @@
-import type { PlanIn } from "@/api/types"
+import type { ContentIn, PlanIn } from "@/api/types"
 
 /**
  * Every TanStack Query key. Analytics live outside `datasets`, so refreshing the dataset list
@@ -22,4 +22,6 @@ export const keys = {
   churnScore: (runId: number, userId: string) => ["churn", "score", runId, userId] as const,
   retentionPlan: (runId: number, plan: PlanIn | undefined) =>
     ["churn", "plan", runId, plan] as const,
+  contentEvaluation: (datasetId: number, body: ContentIn | undefined) =>
+    ["content", datasetId, body] as const,
 }

@@ -14,6 +14,7 @@ export const paths = {
     run === undefined ? `/d/${id}/churn` : `/d/${id}/churn?run=${run}`,
   churnRisk: (id: number) => `/d/${id}/churn/risk`,
   churnPlan: (id: number) => `/d/${id}/churn/plan`,
+  content: (id: number) => `/d/${id}/content`,
 }
 
 /** A database id from the URL: digits only, so `abc`, `1e1` or `-1` are not ids. */
