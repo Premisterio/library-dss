@@ -64,7 +64,7 @@ tools/api-codegen/      isolated client generator
 
 - **The contract** is OpenAPI 3.1 at `/api/v1/openapi.json`, with docs at `/api/docs`.
   - Inside `/api/v1` changes are additive only. A breaking change needs a new path version.
-  - CI runs `oasdiff breaking` on every pull request against the base branch's `openapi.json`. A deliberate exception, such as rejecting input that used to crash, goes into `.github/oasdiff-ignore.txt` with the reason in the PR.
+  - CI runs `oasdiff breaking` on every pull request against the `openapi.json` of the pull request's base commit, not the base branch's current tip, which during quick stacked merges can already hold the next pull request's additions. A deliberate exception, such as rejecting input that used to crash, goes into `.github/oasdiff-ignore.txt` with the reason in the PR.
   - Text that reaches PostgreSQL uses `api.schemas.Text`, which rejects NUL characters with 422 (PostgreSQL text cannot hold them, so they used to give 500). An uploaded file's name comes from the multipart header, not a field, so NUL is dropped from it instead.
 - **`operation_id` is the handler name** (snake_case, unique; checked by `test_openapi.py`). It becomes the method name in generated clients, so renaming a handler breaks clients.
 - **Responses do not assume any UI library:**
