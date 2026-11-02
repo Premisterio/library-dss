@@ -24,7 +24,7 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 | M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16) |
 | M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | done (PRs #17–#20) |
 | M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | done (PRs #21–#24) |
-| M6        | Thesis experiment harness                                                                | in progress (#30)  |
+| M6        | Thesis experiment harness                                                                | done (PRs #30–#32) |
 | M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                  |
 | M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                  |
 
@@ -177,15 +177,11 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - The cross-check with `pymcdm` is cut.
   - A "searches per hryvnia" baseline joins the experiment, because zero-result searches already track true demand closely.
 
-## Next
-
-### M6. Experiment harness
+### M6. Experiment harness (PRs #30–#32)
 
 - **Progress.**
   - Done: the harness and the retention experiment (`backend/experiments`, PRs #30 and #31, DESIGN §6). On the truth, the DSS reaches 32–45% of the oracle's gain at a 10% budget, while the discount rules reach at most 19%. The plan form's assumed effects beat the campaign's noisy estimates.
-  - Done: the content experiment. The simulation runs 180 days past as_of, the window of the titles' true demand.
-  - Done: the paired Wilcoxon test against the best baseline, and PNG figures (`python -m experiments report`).
-  - Done: the campaign-size experiment: the demo with campaigns of 1, 2, 4 and 8 months.
+  - Done: the content experiment, the paired Wilcoxon test against the best baseline, PNG figures (`python -m experiments report`) and the campaign-size experiment (PR #32). The simulation runs 180 days past as_of, the window of the titles' true demand.
 - **Scope, simplified on 2026-11-02.**
   - 20 seeds × 4 presets × budgets of 5/10/20/40%, in process, with 5k members: half the time of 10k, and the size of the demo.
   - Qini is cut, as in M4b. PEHE and Spearman for effects are cut, because the plan uses one overall effect per action; whether the campaign's intervals contain the true effects is checked instead.
@@ -202,6 +198,8 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
   - Mean ± 95% CI over seeds, and a paired Wilcoxon test against the best baseline.
   - Tables in an XLSX workbook, labelled in Ukrainian, to paste into the thesis (written in Word); figures as PNG.
   - One command rebuilds every table and figure for the thesis from a config and seeds.
+
+## Next
 
 ### M7. Local finish
 
