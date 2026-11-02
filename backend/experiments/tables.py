@@ -1,6 +1,7 @@
 """The thesis tables from a run's results: the mean over seeds ± the half-width of its 95%
 t-interval, labelled in Ukrainian for the thesis text (DESIGN.md §6)."""
 
+import json
 import math
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from scipy import stats
 
 from experiments import content as content_policies
 from experiments import retention as retention_policies
+from experiments.config import CAMPAIGN_MONTHS
 
 WORKBOOK = "tables.xlsx"
 CREATED = datetime(2026, 9, 30)  # fixed, so the same results give the same file
@@ -150,10 +152,9 @@ def wilcoxon_table(
 
 def share_of_oracle(frame: pl.DataFrame, column: str) -> pl.DataFrame:
     """`share`: each row's `column` over the oracle's for the same library and budget."""
-    oracle = frame.filter(pl.col("policy") == "oracle").select(
-        "preset", "seed", "budget_share", oracle=column
-    )
-    return frame.join(oracle, on=["preset", "seed", "budget_share"]).with_columns(
+    library = ["preset", "seed", "campaign_months", "budget_share"]
+    oracle = frame.filter(pl.col("policy") == "oracle").select(*library, oracle=column)
+    return frame.join(oracle, on=library).with_columns(
         share=pl.when(pl.col("oracle") > 0).then(pl.col(column) / pl.col("oracle"))
     )
 
@@ -224,11 +225,66 @@ def model_table(models: pl.DataFrame) -> Table:
     return header, rows
 
 
+def campaign_table(
+    retention: pl.DataFrame, models: pl.DataFrame, preset: str, budget_share: float
+) -> Table:
+    """The campaign-size experiment: the members who took part, the width of each effect's 95%
+    interval, and the DSS's share of the oracle at one budget, next to the DSS with assumptions,
+    which does not use the campaign."""
+    shared = share_of_oracle(retention.filter(pl.col("preset") == preset), "value").filter(
+        pl.col("budget_share") == budget_share
+    )
+    budget = f"бюджет {number(100 * budget_share)} %"
+    header = [
+        "Кампанія, місяців",
+        "Учасників",
+        "Інтервал ефекту e-mail, п. п.",
+        "Інтервал ефекту знижки, п. п.",
+        f"СППР, % від оракула ({budget})",
+        f"СППР із припущеннями, % від оракула ({budget})",
+    ]
+    rows = []
+    mine = models.filter(pl.col("preset") == preset)
+    for months in sorted(mine["campaign_months"].unique().to_list()):
+        these = mine.filter(pl.col("campaign_months") == months)
+        judged = shared.filter(pl.col("campaign_months") == months)
+
+        def width(action: str, frame: pl.DataFrame = these) -> np.ndarray:
+            spread = (frame[f"{action}_high"] - frame[f"{action}_low"]) * 100
+            return spread.drop_nulls().to_numpy()
+
+        def share(policy: str, frame: pl.DataFrame = judged) -> np.ndarray:
+            return frame.filter(pl.col("policy") == policy)["share"].drop_nulls().to_numpy() * 100
+
+        rows.append(
+            [
+                str(months),
+                summary(these["participants"].to_numpy()),
+                summary(width("email"), 1),
+                summary(width("discount"), 1),
+                summary(share("dss")),
+                summary(share("dss_assumed")),
+            ]
+        )
+    return header, rows
+
+
+def campaign_of(out: Path) -> tuple[str, float]:
+    """The campaign-size experiment's preset and budget share, from the run's `config.json`."""
+    campaign = json.loads((out / "config.json").read_text(encoding="utf-8"))["campaign"]
+    return campaign["preset"], campaign["budget_share"]
+
+
 def write(out: Path) -> dict[str, Table]:
-    """Every table from the results in `out`, also written to `out/tables.xlsx`, one sheet each."""
-    tables = retention_tables(pl.read_csv(out / "retention.csv"))
+    """Every table from the results in `out`, also written to `out/tables.xlsx`, one sheet each.
+    All but the campaign-size table use the libraries with libsim's own campaign."""
+    retention = pl.read_csv(out / "retention.csv")
+    models = pl.read_csv(out / "models.csv")
+    usual = pl.col("campaign_months") == CAMPAIGN_MONTHS
+    tables = retention_tables(retention.filter(usual))
     tables |= content_tables(pl.read_csv(out / "content.csv"))
-    tables["Модель і ефекти"] = model_table(pl.read_csv(out / "models.csv"))
+    tables["Модель і ефекти"] = model_table(models.filter(usual))
+    tables["Розмір кампанії"] = campaign_table(retention, models, *campaign_of(out))
     workbook = xlsxwriter.Workbook(str(out / WORKBOOK))
     workbook.set_properties({"created": CREATED})
     bold = workbook.add_format({"bold": True})

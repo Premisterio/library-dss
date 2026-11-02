@@ -19,7 +19,14 @@ from app.domain.optimize import MIP_GAP
 from app.ingest import IngestError
 from experiments import content, figures, grid, retention, tables
 from experiments.__main__ import app
-from experiments.config import Config, ContentConfig, RetentionConfig, load
+from experiments.config import (
+    CAMPAIGN_MONTHS,
+    CampaignConfig,
+    Config,
+    ContentConfig,
+    RetentionConfig,
+    load,
+)
 from experiments.retention import (
     POLICIES,
     RiskGroup,
@@ -59,6 +66,7 @@ SMALL_GRID = Config(
     horizon_days=180,
     retention=RETENTION,
     content=CONTENT,
+    campaign=CampaignConfig(preset="demo", months=(2, CAMPAIGN_MONTHS), budget_share=0.1),
 )
 TITLE_SCHEMA = {
     "candidate_id": pl.String,
@@ -331,7 +339,7 @@ def test_a_failing_library_is_named_in_an_error_a_worker_can_send_back(
 
     monkeypatch.setattr(grid.engine, "simulate", invalid)
     with pytest.raises(RuntimeError) as caught:
-        grid.library("high-scarcity", 9, SMALL_GRID)
+        grid.library("high-scarcity", 9, CAMPAIGN_MONTHS, SMALL_GRID)
     sent = pickle.loads(pickle.dumps(caught.value))  # noqa: S301 - what a worker sends back
     assert str(sent).startswith("high-scarcity seed 9: IngestError: The dataset has 1 problem(s)")
     assert problem in str(sent)
@@ -382,6 +390,11 @@ def test_the_committed_grid_loads() -> None:
     assert config.horizon_days == 180
     assert set(config.retention.assumed) == {"email", "discount"}
     assert config.content.max_per_genre == 5
+    assert CAMPAIGN_MONTHS in config.campaign.months
+
+
+def test_the_campaign_lengths_add_libraries_after_the_grid() -> None:
+    assert SMALL_GRID.cases() == [("demo", 1, 4), ("demo", 2, 4), ("demo", 1, 2), ("demo", 2, 2)]
 
 
 @pytest.fixture(scope="module")
@@ -393,13 +406,15 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def test_a_small_grid_writes_every_policy_and_budget(results: Path) -> None:
     retention = pl.read_csv(results / "retention.csv")
-    assert retention.height == 2 * 2 * len(POLICIES)
+    assert retention.height == 2 * 2 * 2 * len(POLICIES)  # campaigns × seeds × budgets × policies
     assert retention["policy"].unique(maintain_order=True).to_list() == list(POLICIES)
     oracle = retention.filter(pl.col("policy") == "oracle")
     assert (oracle["spend"] <= oracle["budget"] + 1e-6).all()
     assert (oracle["precision"] == 1.0).all()
     models = pl.read_csv(results / "models.csv")
-    assert models["seed"].to_list() == [1, 2]
+    assert models.select("seed", "campaign_months").rows() == [
+        (seed, months) for _, seed, months in SMALL_GRID.cases()
+    ]
     # the risk group is libsim's next renewals, though the truth runs 180 days past as_of
     assert (models["unmatched"] == 0).all()
     assert ((models["roc_auc_best"] > 0.5) & (models["roc_auc_best"] <= 1)).all()
@@ -421,7 +436,7 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
     outcome = CliRunner().invoke(app, ["report", "--out", str(results)])
     assert outcome.exit_code == 0, outcome.output
     assert "Оракул" in outcome.output
-    for name in figures.FIGURES:
+    for name in [*figures.FIGURES, "campaign.png"]:
         png = (results / figures.FOLDER / name).read_bytes()
         assert png.startswith(b"\x89PNG\r\n\x1a\n")
         assert str(results / figures.FOLDER / name) in outcome.output
@@ -437,11 +452,27 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
         "Закупівля, частка оракула, %",
         "Закупівля, тест Вілкоксона",
         "Модель і ефекти",
+        "Розмір кампанії",
     ]
     sheet = workbook["Утримання, частка оракула, %"]
     assert sheet.max_row == 1 + len(POLICIES)
     assert sheet.cell(row=9, column=2).value == "Оракул"
     assert sheet.cell(row=9, column=3).value == "100 ± 0"
+
+
+def test_a_longer_campaign_has_more_participants_and_narrower_intervals(results: Path) -> None:
+    header, rows = tables.campaign_table(
+        pl.read_csv(results / "retention.csv"), pl.read_csv(results / "models.csv"), "demo", 0.1
+    )
+    assert header[0] == "Кампанія, місяців"
+    assert [row[0] for row in rows] == ["2", "4"]
+    models = pl.read_csv(results / "models.csv")
+    by_length = models.group_by("campaign_months").agg(
+        pl.col("participants").mean(), (pl.col("discount_high") - pl.col("discount_low")).mean()
+    )
+    short, usual = by_length.sort("campaign_months").rows()
+    assert short[1] < usual[1]  # more members took part
+    assert short[2] > usual[2]  # and the discount's interval is narrower
 
 
 def test_a_parallel_run_gives_the_same_results(results: Path, tmp_path: Path) -> None:
