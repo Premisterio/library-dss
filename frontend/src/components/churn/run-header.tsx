@@ -1,8 +1,10 @@
 import { CheckIcon } from "lucide-react"
+import { useNavigate } from "react-router"
 import { toast } from "sonner"
 
 import { useActivateChurnRun } from "@/api/churn"
 import type { ChurnRun } from "@/api/types"
+import { paths } from "@/app/paths"
 import { ActivePill } from "@/components/churn/run-status"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -11,6 +13,7 @@ import { formatDateTime } from "@/lib/format"
 /** Which run the report shows, and making it the one decisions use (the view's main action). */
 export function RunHeader({ run }: { run: ChurnRun }) {
   const activate = useActivateChurnRun()
+  const navigate = useNavigate()
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -28,7 +31,15 @@ export function RunHeader({ run }: { run: ChurnRun }) {
           <Button
             disabled={activate.isPending}
             onClick={() =>
-              activate.mutate(run, { onSuccess: () => toast.success("Модель активовано") })
+              activate.mutate(run, {
+                onSuccess: () =>
+                  toast.success("Модель активовано", {
+                    action: {
+                      label: "Скласти план",
+                      onClick: () => void navigate(paths.churnPlan(run.dataset_id)),
+                    },
+                  }),
+              })
             }
           >
             {activate.isPending ? <Spinner /> : <CheckIcon />}

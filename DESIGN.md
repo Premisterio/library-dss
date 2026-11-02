@@ -541,7 +541,7 @@ There are two file formats, detected by content:
   - `app/`: the router, paths (`paths.*`, `parseId`), route titles and the query client.
   - `components/common/`: content-layer building blocks with no data of their own (`QueryView`, `PanelCard`, `StatTile`, `StatusPill`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`, `JobProgress`, `ProblemList`, `Pager`).
   - `components/glass/`: the functional layer (`Glass`, `GlassToolbar` with `ToolbarSlot`, `SegmentedNav`).
-  - `components/<feature>/` (`shell`, `datasets`, `analytics`, `charts`, `reports`, `churn`): feature parts. They get data through props and may use `api/` hooks for their own actions.
+  - `components/<feature>/` (`shell`, `datasets`, `overview`, `analytics`, `charts`, `reports`, `churn`, `retention`, `content`): feature parts. They get data through props and may use `api/` hooks for their own actions.
   - `styles/`: `tokens.css` (every colour, per appearance and accessibility state) and `surfaces.css` (glass utilities, the scroll edge, the theme layer over shadcn).
   - `pages/`: connect the route to hooks and components; no markup of their own beyond composition.
   - Types come from the generated schema through `api/types.ts`; query keys live only in `api/keys.ts`.
@@ -549,7 +549,7 @@ There are two file formats, detected by content:
   - `/login`;
   - `/datasets`: upload with live import progress, list, delete;
   - `/d/:id`: a layout that checks the id, loads the dataset and renders its pages only when it is ready. Its pages read the dataset with `useCurrentDataset()`:
-    - the index: overview;
+    - the index: the steps to the decisions (data → churn model → retention plan → content portfolio), then the overview section. `lib/steps.ts` derives each step's state from the dataset, its churn runs and its reports: done, next, running, failed, waiting or unavailable, with a one-line detail and a link. A retention plan counts only for the active model. The first step that is next or failed carries the view's one accented action;
     - `analytics/:section`: one section at a time, switched by a segmented control in the toolbar;
     - `reports`: create, list and download reports. Decisions (approved plans) are listed with them, marked "Рішення";
     - `churn` ("Модель"), `churn/risk` ("Група ризику") and `churn/plan` ("План"), switched by a segmented control in the toolbar:
@@ -572,6 +572,7 @@ There are two file formats, detected by content:
   - Analytics are keyed apart from datasets, so refreshing the dataset list never refetches the (immutable) analytics.
   - The dataset list and a dataset that is still importing refresh themselves until the import ends. The churn runs of a dataset refresh themselves while one is training, and every churn query is refreshed when a training job finishes.
   - A failed mutation shows a toast from the mutation cache. A form that shows its own error opts out with `meta: { silent: true }`.
+  - A job followed on its page (an import, a training) toasts how it ended, and a failure says why. The activation toast offers to make the plan, and the decision pages say when their decision was already approved, with the way to the reports.
 - **Session** (`api/session.ts`, `api/auth.tsx`):
   - The access token lives in memory only and is renewed shortly before it expires, one request at a time.
   - On start, the app tries a silent sign-in with the refresh cookie.

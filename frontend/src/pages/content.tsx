@@ -4,6 +4,7 @@ import { useNavigate } from "react-router"
 import { toast } from "sonner"
 
 import { useApproveContent, useContentEvaluation } from "@/api/content"
+import { useReports } from "@/api/reports"
 import type { ContentIn, Dataset } from "@/api/types"
 import { paths } from "@/app/paths"
 import { KpiGrid } from "@/components/analytics/kpi-grid"
@@ -14,6 +15,7 @@ import { PanelCard } from "@/components/common/panel-card"
 import { JudgementsPanel } from "@/components/content/judgements-panel"
 import { RankingTable } from "@/components/content/ranking-table"
 import { WeightsPanel } from "@/components/content/weights-panel"
+import { ApprovedDecision } from "@/components/reports/approved-decision"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -61,6 +63,8 @@ function Acquisition({ dataset }: { dataset: Dataset }) {
   const body = useMemo(() => contentBody(steps, budget, cap), [steps, budget, cap])
   const settled = useDebounced(body, 300)
   const evaluation = useContentEvaluation(dataset.id, settled)
+  const reports = useReports(dataset.id)
+  const approved = reports.data?.find((report) => report.kind === "content") // newest first
   const section = evaluation.data
   const chart = (key: string) => section?.charts.find((c) => c.key === key)
   const consistency = section?.kpis.find((kpi) => kpi.key === "consistency_ratio")
@@ -70,6 +74,7 @@ function Acquisition({ dataset }: { dataset: Dataset }) {
   const consistent = (numberOf(consistency?.value) ?? 1) <= MAX_CR
   return (
     <>
+      {approved && <ApprovedDecision report={approved} />}
       <div className="grid gap-4 xl:grid-cols-2">
         <JudgementsPanel
           steps={steps}
