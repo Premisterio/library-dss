@@ -6,10 +6,11 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.domain.enums import ENUMS
-from app.models import ChurnRun
+from app.models import ChurnRun, ChurnScore
 from app.services import auth
 
 Headers = dict[str, str]
@@ -25,6 +26,10 @@ def run(
     trained = train_run(import_document(trainable_document)["id"])
     assert trained["status"] == "succeeded"
     return trained
+
+
+def detail_of(client: TestClient, headers: Headers, report_id: int) -> dict[str, Any]:
+    return client.get(f"/api/v1/reports/{report_id}", headers=headers).json()["content"][0]
 
 
 def kpis(section: dict[str, Any]) -> dict[str, Any]:
@@ -55,6 +60,9 @@ def test_the_preview_is_a_plan_within_the_budget(
     planned = chart(section, "planned_members")
     assert len(planned) == found["planned_emails"] + found["planned_discounts"]
     assert all(row["gain"] > 0 for row in planned)
+    # Regression: a join lost the order, so the table and the PDF's first rows were arbitrary.
+    gains = [row["gain"] for row in planned]
+    assert gains == sorted(gains, reverse=True)
     curve = [row["plan_value"] for row in chart(section, "budget_curve")]
     assert curve == sorted(curve)
     effects = chart(section, "action_effects")
@@ -82,10 +90,18 @@ def test_cautious_and_assumed_effects(
         auth_headers,
         run["id"],
         budget=3000,
-        assumed={"email": -0.05, "discount": -0.1, "discount_pct": 0.3},
+        assumed={"email": -0.01, "discount": -0.02, "discount_pct": 0.3},
     )
     assert [note["code"] for note in assumed["notes"]] == ["retention.assumed_effects"]
     assert kpis(assumed)["planned_emails"] + kpis(assumed)["planned_discounts"] > 0
+    assert kpis(assumed)["offered_discount"] == 0.3
+    # An effect larger than 90% of the churn is capped, and the plan says which.
+    huge = preview(client, auth_headers, run["id"], budget=3000, assumed={"discount": -0.9})
+    assert [note["code"] for note in huge["notes"]] == [
+        "retention.assumed_effects",
+        "retention.effect_capped",
+    ]
+    assert huge["notes"][1]["params"] == {"actions": ["discount"]}
 
 
 def test_every_code_of_the_plan_has_a_label(
@@ -123,6 +139,10 @@ def test_approval_freezes_a_decision(
     )
     assert report["params"]["run_id"] == run["id"]
     assert report["params"]["budget"] == 3000
+    # Regression: the campaign's discount was logged as the unused default of assumed effects.
+    offered = kpis(detail_of(client, auth_headers, report["id"]))["offered_discount"]
+    assert report["params"]["discount_pct"] == offered
+    assert "assumed_discount_pct" not in report["params"]
 
     decisions = client.get(
         "/api/v1/reports", headers=auth_headers, params={"kind": "retention"}
@@ -141,6 +161,17 @@ def test_approval_freezes_a_decision(
             params={"format": fmt},
         )
         assert export.status_code == 200, (fmt, export.text)
+
+
+def test_a_run_without_scores_has_nobody_to_plan_for(
+    client: TestClient, auth_headers: Headers, db_session: Session, run: dict[str, Any]
+) -> None:
+    """Regression: a run without scores answered 500 instead of 409."""
+    db_session.execute(delete(ChurnScore).where(ChurnScore.run_id == run["id"]))
+    db_session.commit()
+    response = client.post(f"/api/v1/churn-runs/{run['id']}/plan", headers=auth_headers, json=PLAN)
+    assert response.status_code == 409
+    assert response.json()["code"] == "retention.nobody_at_risk"
 
 
 def test_runs_without_effects_or_other_owners(
