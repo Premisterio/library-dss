@@ -182,8 +182,9 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 ### M6. Experiment harness
 
 - **Progress.**
-  - Done: the harness and the retention experiment (`backend/experiments`, PR #30, DESIGN §6).
-  - Next: the content experiment; the paired Wilcoxon test and PNG figures; the campaign-size experiment last, if time allows.
+  - Done: the harness and the retention experiment (`backend/experiments`, PRs #30 and #31, DESIGN §6). On the truth, the DSS reaches 32–45% of the oracle's gain at a 10% budget, while the discount rules reach at most 19%. The plan form's assumed effects beat the campaign's noisy estimates.
+  - Done: the content experiment. The simulation runs 180 days past as_of, the window of the titles' true demand.
+  - Next: the paired Wilcoxon test and PNG figures; then the campaign-size experiment.
 - **Scope, simplified on 2026-11-02.**
   - 20 seeds × 4 presets × budgets of 5/10/20/40%, in process, with 5k members: half the time of 10k, and the size of the demo.
   - Qini is cut, as in M4b. PEHE and Spearman for effects are cut, because the plan uses one overall effect per action; whether the campaign's intervals contain the true effects is checked instead.

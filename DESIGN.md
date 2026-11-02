@@ -689,9 +689,11 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
     - `--workers` sets how many libraries are simulated at once: 2 by default. Each takes about 0.7 GB of memory, and 4 drove an 8 GB machine that also ran the dev stack into swap.
   - `python -m experiments tables` rebuilds the tables from the last results without simulating again.
 - **Grid.** 20 seeds × 4 presets (`demo`, `weak-signal`, `misspecified`, `high-scarcity`) × budgets of 5, 10, 20 and 40%. Each library has 5,000 members and 24 months, like the demo.
+  - It is simulated 180 days past as_of, the window of the titles' true demand. Retention judges each member's next renewal, which falls in the first 30 days.
+  - A longer horizon changes neither the dataset nor that renewal; this was checked on a simulation run with both horizons.
 - **One library.**
   - libsim simulates it in memory, and the dataset is parsed as an import parses it.
-  - A churn model is trained and scores the members at risk, and the campaign's effects are estimated, as a churn run does.
+  - A churn model is trained and scores the members at risk, and the campaign's effects are estimated, as a churn run does. The offer's criteria are read as the `candidates` section reads them.
   - Nothing is stored in between: a library takes about 20 s, and the same seed gives the same results.
   - A library that fails stops the run with an error that names it and says why, even from a worker process.
 - **Retention policies.** All of them get the same budget: a share of what a discount for every member at risk would cost if they all renewed (about 50,000 UAH on the demo).
@@ -707,11 +709,23 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - true gain = (p_none − p_action) · monthly list price · 12 − spend, where a discount's spend is its share of the renewal price times the true probability of renewing;
   - **value** is the sum over the members acted on; **share of the oracle** is the value over the oracle's at the same budget; **precision** is the share of actions whose true gain is positive.
   - These are expected values, not one draw of the outcomes, so the comparison carries no extra noise from the outcomes.
+- **Content policies.** All of them license titles within the same budget: a share of the licence cost of the whole offer (60 titles).
+  - The baselines take titles in an order, each one that still fits the budget:
+    - `random`: judged by the mean over 100 random orders;
+    - `cheapest`;
+    - `most_searched`: the most zero-result searches first;
+    - `searches_per_uah`: the most searches per hryvnia of licence first;
+    - `top_genre`: the genre with the most loans first, its most searched titles first.
+  - `dss` is the app's decision with equal weights: TOPSIS scores and the knapsack, at most 5 titles per genre.
+    - `dss_searches` judges the searches 3 times as important as each other criterion, which gives them half the weight.
+    - `saw` ranks with SAW instead of TOPSIS.
+  - `oracle` packs the titles with the most true demand into the budget, without a cap per genre.
+  - **Judged by the truth:** the demand served is the true number of requests for the licensed titles in the 180 days after as_of, and its share of the oracle's.
 - **Model and effects.**
   - The churn model's ROC-AUC and Brier score on the members at risk, against libsim's outcome without an action, next to the best achievable: the true probabilities.
   - Each action's 95% campaign interval is checked against its true average effect on the participants it compares: e-mail among the members who agreed to e-mails, the discount among everyone.
 - **Results.**
-  - `retention.csv` (one row per library, budget and policy) and `models.csv` (one row per library) hold the raw numbers. `config.json` is the grid they come from.
+  - `retention.csv` and `content.csv` (one row per library, budget and policy) and `models.csv` (one row per library) hold the raw numbers. `config.json` is the grid they come from.
   - `tables.xlsx` holds the thesis tables, labelled in Ukrainian and formatted for pasting into the text: the mean over seeds ± the half-width of its 95% t-interval.
   - Rows are written in the grid's order, whichever worker finishes first, so a parallel run writes the same files as a serial one.
-- **Tests** (`test_experiments.py`): true gains by hand, the baselines' order and budget, the oracle against brute force on 40 small problems, the number style, and a small grid end to end, serial and in parallel.
+- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; both oracles against brute force; the content portfolio's cap per genre; the number style; and a small grid end to end, serial and in parallel, where no content policy beats the oracle or exceeds its budget.

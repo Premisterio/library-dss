@@ -17,7 +17,7 @@ from app.domain.churn.scoring import score
 from app.domain.churn.training import train
 from app.domain.retention.effects import estimate, participants
 from app.ingest import reader
-from experiments import retention
+from experiments import content, retention
 from experiments.config import Config
 from libsim import engine, writer
 from libsim.params import preset as make_params
@@ -38,11 +38,17 @@ def library(preset: str, seed: int, config: Config) -> Rows:
 
 
 def _judge(preset: str, seed: int, config: Config) -> Rows:
-    """Simulate one library, import it, train and score a churn model, estimate the campaign's
-    effects like a churn run does, then judge every retention policy against the truth."""
-    simulated = engine.simulate(
-        make_params(preset, seed=seed, users=config.members, months=config.months)
+    """Simulate one library, import it, train and score a churn model and estimate the campaign's
+    effects like a churn run does, read the offer like the `candidates` section does, then judge
+    every retention and content policy against the truth."""
+    params = make_params(
+        preset,
+        seed=seed,
+        users=config.members,
+        months=config.months,
+        horizon_days=config.horizon_days,
     )
+    simulated = engine.simulate(params)
     truth = writer.build_ground_truth(simulated)
     parsed = reader.parse(writer.build_dataset(simulated))
     del simulated  # the simulation's event lists are large; free them before training
@@ -68,6 +74,14 @@ def _judge(preset: str, seed: int, config: Config) -> Rows:
     return {
         "retention": [key | row for row in retention.evaluate_policies(group, config.retention)],
         "models": [model],
+        "content": [
+            key | row
+            for row in content.evaluate_policies(
+                content.offer(parsed.frames, parsed.as_of, parsed.timezone, truth),
+                config.content,
+                seed,
+            )
+        ],
     }
 
 

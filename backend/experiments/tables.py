@@ -10,8 +10,6 @@ import polars as pl
 import xlsxwriter
 from scipy import stats
 
-from experiments.retention import POLICIES
-
 WORKBOOK = "tables.xlsx"
 CREATED = datetime(2026, 9, 30)  # fixed, so the same results give the same file
 PRESET_LABELS = {
@@ -21,7 +19,7 @@ PRESET_LABELS = {
     "misspecified": "Прихований чинник",
     "high-scarcity": "Дефіцит ліцензій",
 }
-POLICY_LABELS = {
+RETENTION_LABELS = {
     "random": "Знижки випадковим",
     "inactive": "Знижки неактивним 14+ днів",
     "risk": "Знижки за ризиком",
@@ -29,6 +27,17 @@ POLICY_LABELS = {
     "dss": "СППР",
     "dss_segments": "СППР, ефекти сегментів",
     "dss_cautious": "СППР, обережна межа",
+    "oracle": "Оракул",
+}
+CONTENT_LABELS = {
+    "random": "Випадкові назви",
+    "cheapest": "Найдешевші",
+    "most_searched": "Найшукаваніші",
+    "searches_per_uah": "Пошуки на гривню",
+    "top_genre": "Найпопулярніший жанр",
+    "saw": "SAW, рівні ваги",
+    "dss": "СППР: TOPSIS, рівні ваги",
+    "dss_searches": "СППР: TOPSIS, пошуки ×3",
     "oracle": "Оракул",
 }
 
@@ -52,14 +61,21 @@ def summary(values: np.ndarray, digits: int = 0) -> str:
     return f"{number(mean, digits)} ± {number(float(half), digits)}"
 
 
-def by_budget(frame: pl.DataFrame, column: str, *, scale: float = 1.0, digits: int = 0) -> Table:
-    """One row per preset and policy, one column per budget."""
+def by_budget(
+    frame: pl.DataFrame,
+    column: str,
+    labels: dict[str, str],
+    *,
+    scale: float = 1.0,
+    digits: int = 0,
+) -> Table:
+    """One row per preset and policy (in the order of `labels`), one column per budget."""
     shares = sorted(frame["budget_share"].unique().to_list())
     header = ["Сценарій", "Політика", *(f"Бюджет {number(100 * s)} %" for s in shares)]
     rows = []
     for preset in frame["preset"].unique(maintain_order=True).to_list():
         label = PRESET_LABELS.get(preset, preset)
-        for policy in POLICIES:
+        for policy, policy_label in labels.items():
             mine = frame.filter((pl.col("preset") == preset) & (pl.col("policy") == policy))
             if mine.is_empty():
                 continue
@@ -71,23 +87,39 @@ def by_budget(frame: pl.DataFrame, column: str, *, scale: float = 1.0, digits: i
                 )
                 for s in shares
             ]
-            rows.append([label, POLICY_LABELS[policy], *cells])
+            rows.append([label, policy_label, *cells])
             label = ""
     return header, rows
 
 
+def share_of_oracle(frame: pl.DataFrame, column: str) -> pl.DataFrame:
+    """`share`: each row's `column` over the oracle's for the same library and budget."""
+    oracle = frame.filter(pl.col("policy") == "oracle").select(
+        "preset", "seed", "budget_share", oracle=column
+    )
+    return frame.join(oracle, on=["preset", "seed", "budget_share"]).with_columns(
+        share=pl.when(pl.col("oracle") > 0).then(pl.col(column) / pl.col("oracle"))
+    )
+
+
 def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
     """The true net gain, its share of the oracle's and the share of actions that pay off."""
-    oracle = retention.filter(pl.col("policy") == "oracle").select(
-        "preset", "seed", "budget_share", oracle="value"
-    )
-    shared = retention.join(oracle, on=["preset", "seed", "budget_share"]).with_columns(
-        share=pl.when(pl.col("oracle") > 0).then(pl.col("value") / pl.col("oracle"))
-    )
+    shared = share_of_oracle(retention, "value")
     return {
-        "Виграш, грн": by_budget(retention, "value"),
-        "Частка оракула, %": by_budget(shared, "share", scale=100),
-        "Точність дій, %": by_budget(retention, "precision", scale=100),
+        "Утримання, виграш, грн": by_budget(retention, "value", RETENTION_LABELS),
+        "Утримання, частка оракула, %": by_budget(shared, "share", RETENTION_LABELS, scale=100),
+        "Утримання, точність дій, %": by_budget(
+            retention, "precision", RETENTION_LABELS, scale=100
+        ),
+    }
+
+
+def content_tables(content: pl.DataFrame) -> dict[str, Table]:
+    """The true demand the licensed titles meet, and its share of the oracle's."""
+    shared = share_of_oracle(content, "demand")
+    return {
+        "Закупівля, обслужений попит": by_budget(content, "demand", CONTENT_LABELS),
+        "Закупівля, частка оракула, %": by_budget(shared, "share", CONTENT_LABELS, scale=100),
     }
 
 
@@ -133,6 +165,7 @@ def model_table(models: pl.DataFrame) -> Table:
 def write(out: Path) -> dict[str, Table]:
     """Every table from the results in `out`, also written to `out/tables.xlsx`, one sheet each."""
     tables = retention_tables(pl.read_csv(out / "retention.csv"))
+    tables |= content_tables(pl.read_csv(out / "content.csv"))
     tables["Модель і ефекти"] = model_table(pl.read_csv(out / "models.csv"))
     workbook = xlsxwriter.Workbook(str(out / WORKBOOK))
     workbook.set_properties({"created": CREATED})
