@@ -20,8 +20,8 @@
     "api:generate": "npm ci --prefix tools/api-codegen --no-audit --no-fund && node tools/api-codegen/generate.mjs"
   },
   "devDependencies": {
-    "oxfmt": "^0.73.0",
-    "oxlint": "^1.88.0",
+    "oxfmt": "^0.74.0",
+    "oxlint": "^1.89.0",
     "oxlint-tsgolint": "^7.0.2004",
     "typescript": "~7.0.2"
   }
