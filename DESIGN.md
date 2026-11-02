@@ -659,6 +659,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
     - the footer: the account menu with the analyst, the appearance and sign-out. It opens beside the sidebar, and above the trigger in the sheet.
   - Sign-out sits at the bottom of the sidebar, where people look for the account. The HIG's caution against the bottom edge (`sidebars › Desktop`) is about critical actions in windows moved partly off screen; these actions are not critical, and a browser always shows the sidebar's bottom edge.
   - The toolbar holds only the sidebar toggle, the page title and a center area that pages fill with view switching through `ToolbarSlot` (`toolbars`: few groups, no layout that overflows by default). Nothing else competes for its width. Below `xl` the center area takes its own row; a switcher still wider than the bar scrolls from its left edge.
+  - The content takes the width beside the sidebar and never scrolls sideways: a table wider than its card scrolls inside the card.
 - **Theme layer over shadcn.** `styles/surfaces.css` styles vendor components by their `data-slot` (dialog, menus, select, sheet, sidebar panel, buttons, cards, toasts). The shadcn CLI can then regenerate them without losing the look. `components/ui/sonner.tsx` is the one customised vendor file: it follows the app's appearance and uses the glass fill.
 - **Tests and style.**
   - vitest covers the pure logic and the transport (`src/**/*.test.ts`, one file per module).

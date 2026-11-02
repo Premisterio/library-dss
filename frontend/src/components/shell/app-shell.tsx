@@ -130,7 +130,8 @@ export function AppShell() {
           <AccountMenu />
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="bg-transparent">
+      {/* min-w-0: the content shrinks beside the sidebar, so a wide table scrolls in its card. */}
+      <SidebarInset className="min-w-0 bg-transparent">
         <ToolbarProvider>
           <GlassToolbar leading={<SidebarTrigger aria-label="Бічна панель" />} title={title} />
           <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
