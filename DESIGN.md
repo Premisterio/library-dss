@@ -27,6 +27,7 @@ backend/app/
   core/        config, database, errors, security
   utils/       small pure helpers for every layer
   cli/         `dss` command line
+backend/experiments/    thesis experiment harness: decisions on libsim judged by its ground truth
 generator/              libsim: library simulator and catalogue builder
 frontend/               thin React client
 packages/api-client/    generated TypeScript client + committed openapi.json
@@ -677,3 +678,39 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - Jobs: Python (ruff, ty, pytest with coverage, generator tests), frontend (format, types, lint, tests, build), API contract drift, Docker prod image, workflow lint (actionlint, zizmor).
   - Actions are pinned by SHA. Dependabot waits 7 days before proposing a version.
   - prek hooks run ruff, oxfmt and oxlint.
+
+## 6. Experiment harness
+
+`backend/experiments` measures the DSS's decisions on simulated libraries against libsim's ground truth, for the thesis. It is a dev tool next to the app: it calls the domain and `app.ingest` directly, never the database or the API, and it is the only code that reads the ground truth.
+
+- **Commands.**
+  - `uv run python -m experiments run` runs the grid of `backend/experiments/config.toml` and writes the results and tables to `backend/experiments/results/` (gitignored).
+    - `--seeds N` and `--preset P` run part of the grid.
+    - `--workers` sets how many libraries are simulated at once: 4 by default, each taking about 0.7 GB of memory.
+  - `python -m experiments tables` rebuilds the tables from the last results without simulating again.
+- **Grid.** 20 seeds × 4 presets (`demo`, `weak-signal`, `misspecified`, `high-scarcity`) × budgets of 5, 10, 20 and 40%. Each library has 5,000 members and 24 months, like the demo.
+- **One library.**
+  - libsim simulates it in memory, and the dataset is parsed as an import parses it.
+  - A churn model is trained and scores the members at risk, and the campaign's effects are estimated, as a churn run does.
+  - Nothing is stored in between: a library takes about 20 s, and the same seed gives the same results.
+- **Retention policies.** All of them get the same budget: a share of what a discount for every member at risk would cost if they all renewed (about 50,000 UAH on the demo).
+  - `random`, `inactive` and `risk` give the campaign's discount to members in an order, until the expected spend reaches the budget:
+    - `random`: a random order;
+    - `inactive`: members without a session for 14 days or more, the longest idle first (the churn baseline's rule);
+    - `risk`: the highest predicted risk first.
+  - `dss` is the plan with its defaults: each action's overall campaign effect. `dss_segments` and `dss_cautious` turn on the plan form's switches: segment effects and the cautious bound.
+  - `dss_assumed` plans with assumed effects instead of the campaign's: the plan form's defaults, −2 percentage points for e-mail and −5 for the discount.
+  - `oracle` runs the plan's solver on the true gains: the best any policy could do with the budget.
+  - Every policy except the oracle counts the spend as the plan does, with the churn model's probability of renewing. Doing nothing gains 0, so every gain is measured against doing nothing.
+- **Judged by the truth.** libsim records each member's true churn probability under every action. A choice is judged by the plan's own formula on those probabilities:
+  - true gain = (p_none − p_action) · monthly list price · 12 − spend, where a discount's spend is its share of the renewal price times the true probability of renewing;
+  - **value** is the sum over the members acted on; **share of the oracle** is the value over the oracle's at the same budget; **precision** is the share of actions whose true gain is positive.
+  - These are expected values, not one draw of the outcomes, so the comparison carries no extra noise from the outcomes.
+- **Model and effects.**
+  - The churn model's ROC-AUC and Brier score on the members at risk, against libsim's outcome without an action, next to the best achievable: the true probabilities.
+  - Each action's 95% campaign interval is checked against its true average effect on the participants it compares: e-mail among the members who agreed to e-mails, the discount among everyone.
+- **Results.**
+  - `retention.csv` (one row per library, budget and policy) and `models.csv` (one row per library) hold the raw numbers. `config.json` is the grid they come from.
+  - `tables.xlsx` holds the thesis tables, labelled in Ukrainian and formatted for pasting into the text: the mean over seeds ± the half-width of its 95% t-interval.
+  - Rows are written in the grid's order, whichever worker finishes first, so a parallel run writes the same files as a serial one.
+- **Tests** (`test_experiments.py`): true gains by hand, the baselines' order and budget, the oracle against brute force on 40 small problems, the number style, and a small grid end to end, serial and in parallel.

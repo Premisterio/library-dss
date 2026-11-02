@@ -24,7 +24,7 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 | M4a       | Churn prediction without leakage, explanations                                           | done (PRs #12–#16) |
 | M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | done (PRs #17–#20) |
 | M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | done (PRs #21–#24) |
-| M6        | Thesis experiment harness                                                                | —                  |
+| M6        | Thesis experiment harness                                                                | in progress (#30)  |
 | M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                  |
 | M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                  |
 
@@ -181,20 +181,24 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 ### M6. Experiment harness
 
-- **Design.** 20 seeds × 4 presets × budgets of 5/10/20/40%, in process, with 10k members.
-- **Retention policies:** no action, random, "inactive" rule, discount by risk, DSS with assumptions, full DSS, oracle.
+- **Progress.**
+  - Done: the harness and the retention experiment (`backend/experiments`, PR #30, DESIGN §6).
+  - Next: the content experiment; the paired Wilcoxon test and PNG figures; the campaign-size experiment last, if time allows.
+- **Scope, simplified on 2026-11-02.**
+  - 20 seeds × 4 presets × budgets of 5/10/20/40%, in process, with 5k members: half the time of 10k, and the size of the demo.
+  - Qini is cut, as in M4b. PEHE and Spearman for effects are cut, because the plan uses one overall effect per action; whether the campaign's intervals contain the true effects is checked instead.
+- **Retention policies:** random, the "inactive" rule and discount by risk (each gives the campaign's discount), the DSS with assumptions, the DSS with its segment and cautious switches, and the oracle. Doing nothing gains 0, the reference for every gain.
 - **Retention metrics:**
   - net incremental gain and % of oracle;
-  - precision at budget and spend;
+  - precision (the share of actions that truly pay off) and spend;
   - AUC/Brier against the best achievable;
-  - PEHE and Spearman for effects;
-  - Qini.
+  - whether the campaign's 95% effect intervals contain the true effects.
 - **Content.**
-  - Policies: TOPSIS + knapsack vs "most searched", "cheapest", "top genre", random and oracle.
+  - Policies: TOPSIS + knapsack vs "most searched", "searches per hryvnia", "cheapest", "top genre", random and oracle.
   - Metric: demand served.
 - **Statistics and output.**
-  - Mean ± 95% CI and a paired Wilcoxon test against the best baseline.
-  - A separate experiment on campaign size.
+  - Mean ± 95% CI over seeds, and a paired Wilcoxon test against the best baseline.
+  - Tables in an XLSX workbook, labelled in Ukrainian, to paste into the thesis (written in Word); figures as PNG.
   - One command rebuilds every table and figure for the thesis from a config and seeds.
 
 ### M7. Local finish

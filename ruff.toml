@@ -28,4 +28,4 @@ ignore = [
 "**/tests/**" = ["S101", "S105", "S106", "S311"]
 
 [lint.isort]
-known-first-party = ["app", "libsim"]
+known-first-party = ["app", "experiments", "libsim"]
