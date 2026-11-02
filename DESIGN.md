@@ -537,7 +537,7 @@ There are two file formats, detected by content:
   - Labels come from `meta/enums`. Errors are shown by their Problem `code` (`lib/messages.ts`); an unknown code falls back by status, so a raw code never reaches the user.
 - **Layers** (`frontend/src`). Data and logic stay out of the markup, so a redesign replaces only `components/` and `pages/`.
   - `api/`: everything that talks to the server. That is the client and session, the query keys, and one hook module per resource (`datasets`, `analytics`, `reports`, `churn`, `jobs`, `auth`, `enums`) holding its queries and mutations. Nothing else calls `api` or `fetch`.
-  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections, and churn (which run to show, feature values and reasons as text, metric text). Each module has its tests next to it.
+  - `lib/`: pure functions with no React and no network: formatting, chart choice and cell text, status, messages, sections, and churn (which run to show and which training job to follow, feature values and reasons as text, metric text). Each module has its tests next to it.
   - `app/`: the router, paths (`paths.*`, `parseId`), route titles and the query client.
   - `components/common/`: content-layer building blocks with no data of their own (`QueryView`, `PanelCard`, `StatTile`, `StatusPill`, `EmptyState`, `ErrorAlert`, `IconButton`, `ConfirmDialog`, `ErrorBoundary`, `JobProgress`, `ProblemList`, `Pager`).
   - `components/glass/`: the functional layer (`Glass`, `GlassToolbar` with `ToolbarSlot`, `SegmentedNav`).
@@ -570,7 +570,7 @@ There are two file formats, detected by content:
   - Each route names its page title in `handle`, and the shell toolbar shows it.
 - **Server state** (TanStack Query):
   - Analytics are keyed apart from datasets, so refreshing the dataset list never refetches the (immutable) analytics.
-  - The dataset list and a dataset that is still importing refresh themselves until the import ends. The churn runs of a dataset refresh themselves while one is training, and every churn query is refreshed when a training job finishes.
+  - The dataset list and a dataset that is still importing refresh themselves until the import ends. The churn runs of a dataset refresh themselves while one is training, and every churn query is refreshed when a training job finishes. The model view follows a job it saw training to its end, even when the polled runs show the end first.
   - A failed mutation shows a toast from the mutation cache. A form that shows its own error opts out with `meta: { silent: true }`.
   - A job followed on its page (an import, a training) toasts how it ended, and a failure says why. The activation toast offers to make the plan, and the decision pages say when their decision was already approved, with the way to the reports.
 - **Session** (`api/session.ts`, `api/auth.tsx`):

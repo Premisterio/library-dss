@@ -1,11 +1,12 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
 
 import { api } from "@/api/client"
 import { useJob } from "@/api/jobs"
 import { keys } from "@/api/keys"
 import { expectOk, unwrap } from "@/api/problem"
 import type { ChurnRun, Job } from "@/api/types"
-import { isTraining } from "@/lib/churn"
+import { isTraining, jobToFollow } from "@/lib/churn"
 
 const POLL_MS = 2000
 export const SCORES_PAGE_SIZE = 50
@@ -47,10 +48,15 @@ export function useChurnRun(runId: number, enabled = true) {
   })
 }
 
-/** Follow a run's training job; every churn query is refreshed once it finishes. */
+/**
+ * Follow a run's training job; every churn query is refreshed once it finishes. A job seen
+ * training when the hook mounts is followed to its end, even when the polled runs list shows
+ * the end first. The caller is keyed by run.
+ */
 export function useTrainingJob(run: ChurnRun, onFinished?: (job: Job) => void) {
   const queryClient = useQueryClient()
-  return useJob(isTraining(run) ? run.job_id : undefined, (job) => {
+  const [followed] = useState(() => jobToFollow(run, undefined))
+  return useJob(jobToFollow(run, followed), (job) => {
     void queryClient.invalidateQueries({ queryKey: keys.churn })
     onFinished?.(job)
   })

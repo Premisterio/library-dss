@@ -7,6 +7,7 @@ import {
   calibrationOf,
   featureValueText,
   isTraining,
+  jobToFollow,
   metricText,
   reasonText,
   selectRun,
@@ -74,6 +75,23 @@ describe("selectRun", () => {
     expect(isTraining(run(1, { status: "running" }))).toBe(true)
     expect(isTraining(run(1))).toBe(false)
     expect(isTraining(undefined)).toBe(false)
+  })
+})
+
+describe("jobToFollow", () => {
+  it("follows a training job to its end when the runs list sees the end first", () => {
+    // Regression: following stopped as soon as the polled run had finished, so the end of the
+    // job (its toast, the refresh of the churn queries) was missed.
+    expect(jobToFollow(run(1, { status: "queued" }), undefined)).toBe("job-1")
+    expect(jobToFollow(run(1, { status: "running" }), "job-1")).toBe("job-1")
+    expect(jobToFollow(run(1, { status: "succeeded" }), "job-1")).toBe("job-1")
+    expect(jobToFollow(run(1, { status: "failed" }), "job-1")).toBe("job-1")
+  })
+
+  it("follows nothing for a run that had finished before", () => {
+    expect(jobToFollow(run(1), undefined)).toBeUndefined()
+    expect(jobToFollow(run(1, { status: "failed" }), undefined)).toBeUndefined()
+    expect(jobToFollow(run(1), "job-2")).toBeUndefined()
   })
 })
 

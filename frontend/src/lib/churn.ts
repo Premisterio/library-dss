@@ -19,6 +19,16 @@ export function isTraining(run: ChurnRun | undefined): boolean {
   return run !== undefined && TRAINING.has(run.status)
 }
 
+/**
+ * The training job to follow: the run's while it trains, and still after that when it was
+ * already followed (`followed`), because the runs list can learn of the end before the job
+ * stream does. A run that had finished before it was followed gets nothing, so no old job is
+ * announced.
+ */
+export function jobToFollow(run: ChurnRun, followed: string | undefined): string | undefined {
+  return isTraining(run) || followed === run.job_id ? run.job_id : undefined
+}
+
 /** The run asked for in the URL, else the active one, else the newest. */
 export function selectRun(runs: ChurnRun[], requested?: number): ChurnRun | undefined {
   return runs.find((run) => run.id === requested) ?? runs.find((run) => run.active) ?? runs.at(0)
