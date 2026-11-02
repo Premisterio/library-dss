@@ -213,6 +213,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Compose.** `docker-compose.prod.yml` with Caddy (automatic HTTPS, the frontend's static files, `/api` proxy, upload size limit), api, a worker with its own health check, and PostgreSQL 18.
 - **Images and deploys.** CI builds images and pushes them to GHCR, tagged by SHA. Deploys go over SSH with a health check and roll back to the previous SHA.
 - **Backups and accounts.** A nightly `pg_dump` to S3-compatible storage. Registration is off; accounts are made with `dss create-user`.
+- **Dependencies.** Dependabot's version PRs are frozen (`open-pull-requests-limit: 0`) since 2026-11-02, so the stack holds still while the thesis is written. Unfreeze them and update the stack before the deployment.
 - **Needed from the author:**
   - a VPS with Ubuntu, ≥ 4 GB RAM and 2 vCPU;
   - a domain with an A record pointing to it;

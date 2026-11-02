@@ -35,7 +35,7 @@ Keep this file general: rules, stack, commands, conventions. Progress and the ro
 | Frontend   | TypeScript 7, React 19, Vite 8, Tailwind 4, shadcn/ui (radix, Nova preset), TanStack Query, Vitest                                                                              |
 | JS tooling | **oxlint** (type-aware via `oxlint-tsgolint`) + **oxfmt**. Not ESLint/Prettier: `typescript-eslint` does not support TS 7                                                       |
 | API client | `packages/api-client`: types generated from OpenAPI by `tools/api-codegen`, which is isolated on TS 5.9 because TS 7 has no JS compiler API. Never edit `src/schema.ts` by hand |
-| Infra      | Docker (multi-stage, non-root prod), docker compose (dev), GitHub Actions (SHA-pinned), Dependabot (7-day cooldown), prek hooks                                                 |
+| Infra      | Docker (multi-stage, non-root prod), docker compose (dev), GitHub Actions (SHA-pinned), Dependabot (7-day cooldown; version PRs frozen), prek hooks                             |
 
 ## Commands
 

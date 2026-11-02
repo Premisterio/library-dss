@@ -676,7 +676,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
 - **Images.** The `prod` target is non-root. Its HEALTHCHECK probes HTTP, so a production worker service needs its own check.
 - **CI.**
   - Jobs: Python (ruff, ty, pytest with coverage, generator tests), frontend (format, types, lint, tests, build), API contract drift, Docker prod image, workflow lint (actionlint, zizmor).
-  - Actions are pinned by SHA. Dependabot waits 7 days before proposing a version.
+  - Actions are pinned by SHA. Dependabot waits 7 days before proposing a version, and its version PRs are frozen (`open-pull-requests-limit: 0`) until the production deployment (M8).
   - prek hooks run ruff, oxfmt and oxlint.
 
 ## 6. Experiment harness
