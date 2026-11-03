@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { useActiveChurnRun } from "@/api/churn"
+import { useReports } from "@/api/reports"
 import { useRetentionPlan } from "@/api/retention"
 import type { ChurnRun, PlanIn } from "@/api/types"
 import { ChurnNav } from "@/components/churn/churn-nav"
@@ -8,17 +9,22 @@ import { NoActiveRun } from "@/components/churn/no-active-run"
 import { NoRetention } from "@/components/churn/no-retention"
 import { PanelCard } from "@/components/common/panel-card"
 import { QueryView } from "@/components/common/query-view"
+import { ApprovedDecision } from "@/components/reports/approved-decision"
 import { ApprovePlan } from "@/components/retention/approve-plan"
 import { PlanForm } from "@/components/retention/plan-form"
 import { PlanView } from "@/components/retention/plan-view"
 import { supportsRetention } from "@/lib/status"
+import { retentionRunId } from "@/lib/steps"
 import { useCurrentDataset } from "@/pages/dataset-layout"
 
 function Planner({ run }: { run: ChurnRun }) {
   const [plan, setPlan] = useState<PlanIn>()
   const preview = useRetentionPlan(run.id, plan)
+  const reports = useReports(run.dataset_id)
+  const approved = reports.data?.find((report) => retentionRunId(report) === run.id)
   return (
     <>
+      {approved && <ApprovedDecision report={approved} />}
       <PlanForm busy={preview.isFetching} onSubmit={setPlan} />
       {plan && (
         <QueryView query={preview} skeletonClassName="h-64">

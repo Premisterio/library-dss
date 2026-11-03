@@ -11,12 +11,17 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { formText } from "@/lib/forms"
+import { messageFor } from "@/lib/messages"
 
 /** Upload a dataset file and follow its import live. */
 export function UploadPanel() {
   const form = useRef<HTMLFormElement>(null)
   const { upload, datasetId, jobId, job, jobError, running } = useDatasetImport((finished) => {
     if (finished.status === "succeeded") toast.success("Датасет імпортовано")
+    else if (finished.error) {
+      const { code, detail } = finished.error
+      toast.error("Імпорт не вдався", { description: messageFor(code, detail) })
+    }
   })
 
   function submit(event: FormEvent<HTMLFormElement>) {

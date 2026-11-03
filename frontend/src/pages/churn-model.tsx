@@ -17,12 +17,17 @@ import { PanelCard } from "@/components/common/panel-card"
 import { ProblemList } from "@/components/common/problem-list"
 import { QueryView } from "@/components/common/query-view"
 import { isTraining, selectRun } from "@/lib/churn"
+import { messageFor } from "@/lib/messages"
 import { supportsRetention } from "@/lib/status"
 import { useCurrentDataset } from "@/pages/dataset-layout"
 
 function SelectedRun({ run }: { run: ChurnRun }) {
   const job = useTrainingJob(run, (finished) => {
     if (finished.status === "succeeded") toast.success("Модель навчено")
+    else if (finished.error) {
+      const { code, detail } = finished.error
+      toast.error("Навчання не вдалося", { description: messageFor(code, detail) })
+    }
   })
   const detail = useChurnRun(run.id, run.status === "succeeded")
   return (

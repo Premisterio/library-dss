@@ -39,6 +39,12 @@ describe("dates and times", () => {
     expect(formatLocalDay("2026-10-04T21:00:00Z", "UTC")).toBe("04.10.26")
   })
 
+  it("shows an instant as the viewer's local date, shaped like a day", () => {
+    // mid-day UTC is the same date in the viewer's zone wherever the tests run
+    expect(formatLocalDay("2026-11-02T12:00:00Z")).toBe(formatDay("2026-11-02"))
+    expect(formatLocalDay("2026-11-02T13:00:00+01:00")).toBe("02.11.26")
+  })
+
   it("formats days, months and hours, and a missing date as a dash", () => {
     expect(formatDay("2026-09-30")).toBe("30.09.26")
     expect(formatDay(null)).toBe(EMPTY)
