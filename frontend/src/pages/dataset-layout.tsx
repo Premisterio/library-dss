@@ -5,8 +5,6 @@ import type { Dataset } from "@/api/types"
 import { paths, useDatasetId } from "@/app/paths"
 import { QueryView } from "@/components/common/query-view"
 import { DatasetNotReady } from "@/components/datasets/dataset-not-ready"
-import { ToolbarSlot } from "@/components/glass/toolbar"
-import { SnapshotCapsule } from "@/components/shell/snapshot-capsule"
 import { NotFound } from "@/pages/not-found"
 
 function ReadyDataset({ id }: { id: number }) {
@@ -22,16 +20,7 @@ function ReadyDataset({ id }: { id: number }) {
       }
     >
       {(data) =>
-        data.status === "ready" ? (
-          <>
-            <ToolbarSlot side="trailing">
-              <SnapshotCapsule dataset={data} />
-            </ToolbarSlot>
-            <Outlet context={data} />
-          </>
-        ) : (
-          <DatasetNotReady dataset={data} />
-        )
+        data.status === "ready" ? <Outlet context={data} /> : <DatasetNotReady dataset={data} />
       }
     </QueryView>
   )

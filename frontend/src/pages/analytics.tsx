@@ -20,7 +20,7 @@ export function AnalyticsPage() {
   }
   return (
     <>
-      <ToolbarSlot side="center">
+      <ToolbarSlot>
         <SegmentedNav
           label="Секції аналітики"
           items={ANALYTICS_TABS.map((key) => ({
