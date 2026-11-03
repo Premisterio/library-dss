@@ -69,7 +69,7 @@ def cell_text(column: Column, value: Any) -> str:
 
 
 def created_text(created_at: datetime) -> str:
-    # The database session's time zone may not be UTC, so convert before labelling it UTC.
+    # A document may come in any zone (the service builds it in UTC); the text says UTC.
     return f"{created_at.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
 
 

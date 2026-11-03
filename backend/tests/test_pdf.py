@@ -3,26 +3,40 @@ section, the footer, a decision's parameters and the forms of decision charts; a
 and JSON exports of the same documents add."""
 
 import io
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import openpyxl
 import orjson
+import pytest
 from pypdf import PdfReader
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.platypus import Frame, Spacer
 
-from app.domain.analytics.model import Chart, Dimension, Kpi, Measure, Note, Section
+from app.domain.analytics.model import Chart, Dimension, Kpi, Measure, Note, Section, Unit
 from app.domain.content.decision import COMPARED, CRITERIA, CRITERION
 from app.domain.enums import ENUMS
 from app.domain.retention.report import ACTION, EFFECT_SEGMENT, SEGMENT
-from app.exports import ReportDocument
-from app.exports.pdf import form_of, render_pdf
+from app.exports import ExportFormat, ReportDocument, render
+from app.exports.pdf import (
+    CELL_PADDING,
+    MIN_COLUMN,
+    WIDTH,
+    column_widths,
+    data_table,
+    form_of,
+    render_pdf,
+)
 from app.exports.tables import render_json
 from app.exports.xlsx import render_xlsx
+from app.models import Report
+from app.services import reports
 
 TITLE = "Перевірка звіту"
 CREATED = datetime(2026, 11, 2, 14, 19, tzinfo=timezone(timedelta(hours=1)))  # 13:19 UTC
 SECTION = ENUMS["analytics_section"]
 CHART = ENUMS["chart"]
+FORMATS: tuple[ExportFormat, ...] = ("pdf", "xlsx", "csv", "json")
 
 USAGE = Section(
     "usage",
@@ -332,3 +346,199 @@ def test_xlsx_and_json_name_the_kind() -> None:
     assert summary_value(render_xlsx(decision), "Вид звіту") == "План утримання"
     body = orjson.loads(render_json(decision))
     assert (body["kind"], body["params"]) == ("retention", RETENTION_PARAMS)
+
+
+def ranking(titles: list[str]) -> Chart:
+    """A content decision's title ranking with every column it has, a row per title."""
+    measures: tuple[tuple[str, Unit], ...] = (
+        ("rank_topsis", "count"),
+        ("topsis", "ratio"),
+        ("rank_saw", "count"),
+        ("saw", "ratio"),
+        ("stability", "ratio"),
+        ("demand_searches", "count"),
+        ("license_cost", "UAH"),
+    )
+    return Chart(
+        "title_ranking",
+        (Dimension("title", "category"),),
+        tuple(Measure(key, unit) for key, unit in measures),
+        [
+            {
+                "title": title,
+                "authors": "Автор Один, Автор Два",
+                "genre": "fantasy",
+                "candidate_id": f"c{i:03}",
+                "choice": "licensed",
+                **{key: i + 1 if unit == "count" else 0.5 for key, unit in measures},
+            }
+            for i, title in enumerate(titles)
+        ],
+        attributes=(
+            Dimension("authors", "category"),
+            Dimension("genre", "category", enum="genre"),
+            Dimension("candidate_id", "category"),
+            Dimension("choice", "category", enum="content_choice"),
+        ),
+    )
+
+
+def test_a_long_word_never_squeezes_the_columns() -> None:
+    """Regression: one long word (a URL-like search query, a title without spaces) shrank every
+    column below its padding, and the export failed."""
+    word = "https://example.org/?" + "q" * 1000
+    for header, body, numeric in (
+        (["Запит", "Пошуки", "Читачі, що шукали"], [[word, "3", "2"]], {1, 2}),
+        (
+            ["Назва", *(f"Число {i}" for i in range(11))],
+            [[word] + ["1 880,00 грн"] * 11],
+            set(range(1, 12)),
+        ),
+    ):
+        widths = column_widths(header, body, numeric)
+        assert min(widths) >= MIN_COLUMN + CELL_PADDING
+        assert sum(widths) <= WIDTH + 1e-6
+    queries = Chart(
+        "zero_result_queries",
+        (Dimension("query", "category"),),
+        (Measure("searches", "count"), Measure("searchers", "count")),
+        [{"query": word, "searches": 3, "searchers": 2}],
+        window_days=90,
+    )
+    for section in (
+        Section("search", kpis=[], charts=[queries]),
+        Section("content_portfolio", kpis=[], charts=[ranking([word, "Тигролови"])]),
+    ):
+        assert len(pages(render_pdf(document(section)))) >= 2
+
+
+def test_judgements_list_the_one_that_counts_for_each_pair() -> None:
+    """Regression: each judgement took a line of one table cell, so 47 of them (the API takes
+    50) made the cover taller than a page and the export failed; the cover also listed the
+    judgements that later ones replaced."""
+    final = [
+        ("demand_searches", "author_loans", 3.0),
+        ("genre_loans", "demand_searches", 5.0),
+        ("demand_searches", "genre_holds_per_copy", 1 / 3),
+        ("author_loans", "genre_loans", 7.0),
+        ("author_loans", "genre_holds_per_copy", 1.0),
+        ("genre_loans", "genre_holds_per_copy", 1 / 9),
+    ]
+    replaced = [(a, b, 9.0) for a, b, _ in final] * 7 + [
+        ("author_loans", "demand_searches", 2.0)
+    ] * 2
+    judgements = [{"criterion": a, "compared_with": b, "value": v} for a, b, v in replaced + final]
+    assert len(judgements) == 50
+    report = document(
+        PORTFOLIO, kind="content", params={"budget": 1000.0, "judgements": judgements}
+    )
+    for fmt in FORMATS:
+        render(report, fmt)
+    cover = pages(render_pdf(report))[0]
+    assert after(cover, "Порівняння критеріїв", 6) == [
+        "Пошуки без результату проти Позичення книг автора: ×3",
+        "Позичення в жанрі проти Пошуки без результату: ×5",
+        "Пошуки без результату проти Бронювань на копію в жанрі: ×1/3",
+        "Позичення книг автора проти Позичення в жанрі: ×7",
+        "Позичення книг автора проти Бронювань на копію в жанрі: ×1",
+        "Позичення в жанрі проти Бронювань на копію в жанрі: ×1/9",
+    ]
+    assert sum("проти" in line for line in cover) == 6
+
+
+def test_a_table_starts_under_its_heading() -> None:
+    """Regression: a chart's heading could end a page alone when its table moved on (an 8-row
+    ranking with long titles left "Рейтинг кандидатів" by itself)."""
+    words = " ".join(f"слово{i}" for i in range(60))
+    section = Section(
+        "content_portfolio",
+        kpis=[Kpi("portfolio_titles", 8, "count")],
+        charts=[ranking([f"Назва {i} {words}" for i in range(8)])],
+    )
+    texts = ["\n".join(lines) for lines in pages(render_pdf(document(section, kind="content")))]
+    with_heading = [text for text in texts if CHART["title_ranking"] in text]
+    assert len(with_heading) == 1  # not repeated where the table goes on
+    assert "Назва 0" in with_heading[0]
+
+
+def test_a_table_that_comes_first_starts_on_the_page_of_the_kpis() -> None:
+    """Regression: a table that came first never split, so it left most of a page blank and
+    moved to the next one whole."""
+    queries = Chart(
+        "top_queries",
+        (Dimension("query", "category"),),
+        (Measure("searches", "count"), Measure("searchers", "count")),
+        [{"query": f"запит{i:02}", "searches": 100 - i, "searchers": 50} for i in range(30)],
+        window_days=90,
+    )
+    kpis = [Kpi("searches", 1000 + i, "count") for i in range(15)]
+    first = "\n".join(
+        pages(render_pdf(document(Section("search", kpis=kpis, charts=[queries]))))[1]
+    )
+    assert CHART["top_queries"] in first
+    assert sum(f"запит{i:02}" in first for i in range(30)) >= 5
+
+
+def test_every_format_gives_the_same_bytes_in_any_session_zone() -> None:
+    """Regression: the JSON and CSV exports carried the creation time in the database
+    session's time zone, so the same report gave other bytes in another zone."""
+    instant = datetime(2026, 11, 2, 13, 19, tzinfo=UTC)
+    files = []
+    for hours in (0, 1):
+        report = Report(
+            id=1,
+            kind="analytics",
+            title=TITLE,
+            params=None,
+            created_at=instant.astimezone(timezone(timedelta(hours=hours))),
+            content={
+                "dataset_name": "Демо-бібліотека",
+                "as_of": "2026-09-30",
+                "timezone": "Europe/Kyiv",
+                "sections": [stored(USAGE)],
+            },
+        )
+        files.append({fmt: render(reports.document(report), fmt) for fmt in FORMATS})
+    assert files[0] == files[1]
+
+
+def split_rows(rows: int, room: float, *, at_top: bool) -> list[int]:
+    """The body rows of each part when a table of `rows` rows meets a page with room for `room`
+    of its rows (its header included), at the top of the page or under something else."""
+    table = data_table(["Назва", "Число"], [[f"рядок {i}", str(i)] for i in range(rows)], {1})
+    row = table.wrap(WIDTH, 10_000)[1] / (rows + 1)  # every row is one line here
+    above = 0.0 if at_top else 100.0
+    frame = Frame(0, 0, WIDTH, above + room * row, 0, 0, 0, 0)
+    canvas = Canvas(io.BytesIO())
+    if above:
+        frame.add(Spacer(1, above), canvas)
+    return [round(part.wrap(WIDTH, 10_000)[1] / row) - 1 for part in frame.split(table, canvas)]
+
+
+@pytest.mark.parametrize(
+    ("rows", "room", "at_top", "parts"),
+    [
+        (20, 3.5, False, []),  # fewer than five would stay: the table moves on whole
+        (20, 13.5, False, [12, 8]),
+        (20, 18.5, False, [15, 5]),  # fewer than five would go: it splits earlier
+        (10, 8.5, False, []),  # ten rows or fewer never split
+        (8, 6.5, True, [5, 3]),  # taller than a page: at its top, it splits as it can
+    ],
+)
+def test_tables_split_with_at_least_five_rows_on_each_side(
+    rows: int, room: float, at_top: bool, parts: list[int]
+) -> None:
+    assert split_rows(rows, room, at_top=at_top) == parts
+
+
+def test_campaign_effects_and_the_legend_only_with_judgements() -> None:
+    campaign = RETENTION_PARAMS | {"assumed": None}
+    cover = pages(render_pdf(document(PLAN, kind="retention", params=campaign)))[0]
+    assert after(cover, "Припущені ефекти") == ["ні, ефекти кампанії"]
+    assert not any(line.startswith("×n") for line in cover)
+    equal = CONTENT_PARAMS | {"judgements": []}
+    cover = pages(render_pdf(document(PORTFOLIO, kind="content", params=equal)))[0]
+    assert after(cover, "Порівняння критеріїв") == ["усі критерії однаково важливі"]
+    assert not any(line.startswith("×n") for line in cover)
+    cover = pages(render_pdf(document(PORTFOLIO, kind="content", params=CONTENT_PARAMS)))[0]
+    assert any(line.startswith("×n:") for line in cover)

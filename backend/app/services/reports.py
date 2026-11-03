@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Sequence
+from datetime import UTC
 from typing import Any
 from urllib.parse import quote
 
@@ -101,7 +102,8 @@ def document(report: Report) -> ReportDocument:
         dataset_name=content["dataset_name"],
         as_of=content["as_of"],
         timezone=content["timezone"],
-        created_at=report.created_at,
+        # In UTC whatever the database session's time zone, so every export has the same bytes.
+        created_at=report.created_at.astimezone(UTC),
         sections=content["sections"],
         kind=report.kind,
         params=report.params,
