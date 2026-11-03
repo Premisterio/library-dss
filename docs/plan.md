@@ -25,7 +25,7 @@ The quality of decisions is measured on `libsim`, a library simulator that plant
 | M4b       | Action effects, optimal action plan under a budget, what-if, decision log                | done (PRs #17–#20) |
 | M5        | Content acquisition: AHP, TOPSIS/SAW, sensitivity, budget portfolio                      | done (PRs #21–#24) |
 | M6        | Thesis experiment harness                                                                | done (PRs #30–#32) |
-| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | —                  |
+| M7        | Local finish: end-to-end tests, backup drill, user docs, guide for the frontend redesign | in progress        |
 | M8        | Production deployment on a VPS (after the supervisor's approval)                         | —                  |
 
 If time runs short, cut in this order: `libsim continue` → Monte Carlo sensitivity → T-learner → the "more copies" content preset.
@@ -203,6 +203,14 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 
 ### M7. Local finish
 
+- **Progress.**
+  - Done: a pass over the UI after the author's review (2026-11-02), PRs #33–#37:
+    - Dependabot's version PRs are frozen until M8 (#33).
+    - The shell: the account menu in the sidebar footer, one dataset switch in the sidebar with the as-of date, and a toolbar of the toggle, the title and the view switcher, so the analytics tabs no longer clip. Sections a ready dataset can't use are hidden (#34).
+    - The overview opens with the steps to a decision (data → model → plan → content) and the next step's action; decision pages name the approved decision; toasts for activation and failed jobs (#35).
+    - Database sessions run in UTC, so the API answers UTC timestamps on any server (#36).
+    - The PDF report: a cover with the kind, metadata, contents and a decision's parameters, a page per section, a footer "N з M", and decision charts in forms that fit them (#37).
+  - Each PR had an implementer and a reviewer agent; a final review of the four merged together found nothing to fix.
 - A Playwright end-to-end test: sign in → upload → analytics → train → scenario → approve. It also checks that no page scrolls sideways beside the open sidebar at 1024 and 1280 px.
 - A backup and restore drill on the local stack.
 - User documentation.
