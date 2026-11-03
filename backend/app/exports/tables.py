@@ -52,10 +52,12 @@ def render_json(document: ReportDocument) -> bytes:
     return orjson.dumps(
         {
             "title": document.title,
+            "kind": document.kind,
             "dataset": document.dataset_name,
             "as_of": document.as_of,
             "timezone": document.timezone,
             "created_at": document.created_at,
+            "params": document.params,
             "sections": document.sections,
         },
         option=orjson.OPT_INDENT_2,

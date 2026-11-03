@@ -1,11 +1,13 @@
 """Retention plans through the API: the preview, its modes, and approval as a decision (a report
 of kind `retention`) that exports like any report."""
 
+import io
 from collections.abc import Callable
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pypdf import PdfReader
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
@@ -161,6 +163,10 @@ def test_approval_freezes_a_decision(
             params={"format": fmt},
         )
         assert export.status_code == 200, (fmt, export.text)
+    pdf = client.get(f"/api/v1/reports/{report['id']}/export", headers=auth_headers)
+    cover = PdfReader(io.BytesIO(pdf.content)).pages[0].extract_text()
+    assert "Параметри рішення" in cover
+    assert "3 000,00 грн" in cover.replace("\xa0", " ")  # the budget
 
 
 def test_a_run_without_scores_has_nobody_to_plan_for(

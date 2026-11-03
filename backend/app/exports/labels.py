@@ -1,6 +1,7 @@
 """Ukrainian labels and value texts for exported reports (labels come from the enums)."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from app.domain.enums import ENUMS
@@ -62,7 +63,14 @@ def cell_text(column: Column, value: Any) -> str:
         return EMPTY
     if column.kind == "time" and column.key in MONTHLY:
         return str(value)[:7]
+    if column.kind == "number":
+        return value_text(value, "count")
     return label(column.enum, value) if column.enum else str(value)
+
+
+def created_text(created_at: datetime) -> str:
+    # A document may come in any zone (the service builds it in UTC); the text says UTC.
+    return f"{created_at.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
 
 
 def window_text(days: int | None) -> str:
