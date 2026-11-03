@@ -48,7 +48,7 @@ tools/api-codegen/      isolated client generator
 - **Config.** Settings come only from environment variables (`app.core.config.Settings`).
   - `SECRET_KEY` has no default, so the app refuses to start without it.
   - Each app instance keeps its settings in `app.state.settings`, which lets tests build apps with overrides.
-- **Database.** The engine and sessionmaker are created lazily, never at import time. The connect timeout is 5 s, so health probes and tests fail fast.
+- **Database.** The engine and sessionmaker are created lazily, never at import time. The connect timeout is 5 s, so health probes and tests fail fast. Every session runs in UTC (`TimeZone=UTC` sent at connect), so timestamps read back in UTC whatever the server's default zone; a local PostgreSQL takes the machine's.
 - **Errors** follow RFC 9457 Problem Details.
   - Raise `ApiError(status, "area.reason", detail)` from any layer. The stable `code` is what clients rely on.
   - Request validation errors become `request.invalid` with `errors[]` (field paths).

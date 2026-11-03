@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 
 CONNECT_TIMEOUT_SECONDS = 5  # fail fast (readiness probe, tests) instead of hanging
+SESSION_OPTIONS = "-c TimeZone=UTC"  # timestamps read back in UTC, whatever the server's zone
 
 
 @lru_cache
@@ -18,7 +19,7 @@ def get_engine() -> Engine:
     return create_engine(
         get_settings().database_url,
         pool_pre_ping=True,
-        connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS},
+        connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS, "options": SESSION_OPTIONS},
     )
 
 
