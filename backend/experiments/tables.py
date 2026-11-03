@@ -1,6 +1,7 @@
 """The thesis tables from a run's results: the mean over seeds ± the half-width of its 95%
 t-interval, labelled in Ukrainian for the thesis text (DESIGN.md §6)."""
 
+import json
 import math
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +11,9 @@ import polars as pl
 import xlsxwriter
 from scipy import stats
 
-from experiments.retention import POLICIES
+from experiments import content as content_policies
+from experiments import retention as retention_policies
+from experiments.config import CAMPAIGN_MONTHS
 
 WORKBOOK = "tables.xlsx"
 CREATED = datetime(2026, 9, 30)  # fixed, so the same results give the same file
@@ -21,7 +24,7 @@ PRESET_LABELS = {
     "misspecified": "Прихований чинник",
     "high-scarcity": "Дефіцит ліцензій",
 }
-POLICY_LABELS = {
+RETENTION_LABELS = {
     "random": "Знижки випадковим",
     "inactive": "Знижки неактивним 14+ днів",
     "risk": "Знижки за ризиком",
@@ -29,6 +32,17 @@ POLICY_LABELS = {
     "dss": "СППР",
     "dss_segments": "СППР, ефекти сегментів",
     "dss_cautious": "СППР, обережна межа",
+    "oracle": "Оракул",
+}
+CONTENT_LABELS = {
+    "random": "Випадкові назви",
+    "cheapest": "Найдешевші",
+    "most_searched": "Найшукаваніші",
+    "searches_per_uah": "Пошуки на гривню",
+    "top_genre": "Найпопулярніший жанр",
+    "saw": "SAW, рівні ваги",
+    "dss": "СППР: TOPSIS, рівні ваги",
+    "dss_searches": "СППР: TOPSIS, пошуки ×3",
     "oracle": "Оракул",
 }
 
@@ -41,25 +55,40 @@ def number(value: float, digits: int = 0) -> str:
     return f"{rounded:,.{digits}f}".replace(",", " ").replace(".", ",").replace("-", "−")
 
 
+def interval(values: np.ndarray) -> tuple[float, float | None]:
+    """The mean and the half-width of its 95% t-interval (None for one value)."""
+    mean = float(values.mean())
+    if values.size == 1:
+        return mean, None
+    half = stats.t.ppf(0.975, values.size - 1) * values.std(ddof=1) / math.sqrt(values.size)
+    return mean, float(half)
+
+
 def summary(values: np.ndarray, digits: int = 0) -> str:
     """The mean ± the half-width of its 95% t-interval; the mean alone for one value."""
     if values.size == 0:
         return "—"
-    mean = float(values.mean())
-    if values.size == 1:
-        return number(mean, digits)
-    half = stats.t.ppf(0.975, values.size - 1) * values.std(ddof=1) / math.sqrt(values.size)
-    return f"{number(mean, digits)} ± {number(float(half), digits)}"
+    mean, half = interval(values)
+    return (
+        number(mean, digits) if half is None else f"{number(mean, digits)} ± {number(half, digits)}"
+    )
 
 
-def by_budget(frame: pl.DataFrame, column: str, *, scale: float = 1.0, digits: int = 0) -> Table:
-    """One row per preset and policy, one column per budget."""
+def by_budget(
+    frame: pl.DataFrame,
+    column: str,
+    labels: dict[str, str],
+    *,
+    scale: float = 1.0,
+    digits: int = 0,
+) -> Table:
+    """One row per preset and policy (in the order of `labels`), one column per budget."""
     shares = sorted(frame["budget_share"].unique().to_list())
     header = ["Сценарій", "Політика", *(f"Бюджет {number(100 * s)} %" for s in shares)]
     rows = []
     for preset in frame["preset"].unique(maintain_order=True).to_list():
         label = PRESET_LABELS.get(preset, preset)
-        for policy in POLICIES:
+        for policy, policy_label in labels.items():
             mine = frame.filter((pl.col("preset") == preset) & (pl.col("policy") == policy))
             if mine.is_empty():
                 continue
@@ -71,23 +100,89 @@ def by_budget(frame: pl.DataFrame, column: str, *, scale: float = 1.0, digits: i
                 )
                 for s in shares
             ]
-            rows.append([label, POLICY_LABELS[policy], *cells])
+            rows.append([label, policy_label, *cells])
             label = ""
     return header, rows
 
 
+def p_value(value: float | None) -> str:
+    if value is None or math.isnan(value):
+        return "—"
+    return "< 0,001" if value < 0.001 else number(value, 3)
+
+
+def wilcoxon_table(
+    frame: pl.DataFrame,
+    column: str,
+    labels: dict[str, str],
+    baselines: tuple[str, ...],
+    unit: str,
+) -> Table:
+    """The DSS against the best baseline (by its mean) at each preset and budget: their paired
+    difference over seeds and the two-sided p-value of the Wilcoxon signed-rank test."""
+    header = [
+        "Сценарій",
+        "Бюджет",
+        "Найкраща базова політика",
+        f"СППР мінус базова, {unit}",
+        f"p, тест Вілкоксона (n = {frame['seed'].n_unique()})",
+    ]
+    rows = []
+    for preset in frame["preset"].unique(maintain_order=True).to_list():
+        label = PRESET_LABELS.get(preset, preset)
+        for share in sorted(frame["budget_share"].unique().to_list()):
+            wide = (
+                frame.filter((pl.col("preset") == preset) & (pl.col("budget_share") == share))
+                .pivot(on="policy", index="seed", values=column)
+                .sort("seed")
+            )
+            means = {b: wide.select(pl.col(b).mean()).item() for b in baselines}
+            best = max(means, key=means.__getitem__)
+            difference = (wide["dss"] - wide[best]).drop_nulls().to_numpy()
+            p = None
+            if difference.size > 1 and difference.any():
+                result = stats.wilcoxon(difference)
+                p = float(result.pvalue)  # pyright: ignore[reportAttributeAccessIssue]  (SciPy's stub)
+            rows.append(
+                [label, f"{number(100 * share)} %", labels[best], summary(difference), p_value(p)]
+            )
+            label = ""
+    return header, rows
+
+
+def share_of_oracle(frame: pl.DataFrame, column: str) -> pl.DataFrame:
+    """`share`: each row's `column` over the oracle's for the same library and budget."""
+    library = ["preset", "seed", "campaign_months", "budget_share"]
+    oracle = frame.filter(pl.col("policy") == "oracle").select(*library, oracle=column)
+    return frame.join(oracle, on=library).with_columns(
+        share=pl.when(pl.col("oracle") > 0).then(pl.col(column) / pl.col("oracle"))
+    )
+
+
 def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
     """The true net gain, its share of the oracle's and the share of actions that pay off."""
-    oracle = retention.filter(pl.col("policy") == "oracle").select(
-        "preset", "seed", "budget_share", oracle="value"
-    )
-    shared = retention.join(oracle, on=["preset", "seed", "budget_share"]).with_columns(
-        share=pl.when(pl.col("oracle") > 0).then(pl.col("value") / pl.col("oracle"))
-    )
+    shared = share_of_oracle(retention, "value")
     return {
-        "Виграш, грн": by_budget(retention, "value"),
-        "Частка оракула, %": by_budget(shared, "share", scale=100),
-        "Точність дій, %": by_budget(retention, "precision", scale=100),
+        "Утримання, виграш, грн": by_budget(retention, "value", RETENTION_LABELS),
+        "Утримання, частка оракула, %": by_budget(shared, "share", RETENTION_LABELS, scale=100),
+        "Утримання, точність дій, %": by_budget(
+            retention, "precision", RETENTION_LABELS, scale=100
+        ),
+        "Утримання, тест Вілкоксона": wilcoxon_table(
+            retention, "value", RETENTION_LABELS, retention_policies.BASELINES, "грн"
+        ),
+    }
+
+
+def content_tables(content: pl.DataFrame) -> dict[str, Table]:
+    """The true demand the licensed titles meet, and its share of the oracle's."""
+    shared = share_of_oracle(content, "demand")
+    return {
+        "Закупівля, обслужений попит": by_budget(content, "demand", CONTENT_LABELS),
+        "Закупівля, частка оракула, %": by_budget(shared, "share", CONTENT_LABELS, scale=100),
+        "Закупівля, тест Вілкоксона": wilcoxon_table(
+            content, "demand", CONTENT_LABELS, content_policies.BASELINES, "запитів"
+        ),
     }
 
 
@@ -130,10 +225,66 @@ def model_table(models: pl.DataFrame) -> Table:
     return header, rows
 
 
+def campaign_table(
+    retention: pl.DataFrame, models: pl.DataFrame, preset: str, budget_share: float
+) -> Table:
+    """The campaign-size experiment: the members who took part, the width of each effect's 95%
+    interval, and the DSS's share of the oracle at one budget, next to the DSS with assumptions,
+    which does not use the campaign."""
+    shared = share_of_oracle(retention.filter(pl.col("preset") == preset), "value").filter(
+        pl.col("budget_share") == budget_share
+    )
+    budget = f"бюджет {number(100 * budget_share)} %"
+    header = [
+        "Кампанія, місяців",
+        "Учасників",
+        "Інтервал ефекту e-mail, п. п.",
+        "Інтервал ефекту знижки, п. п.",
+        f"СППР, % від оракула ({budget})",
+        f"СППР із припущеннями, % від оракула ({budget})",
+    ]
+    rows = []
+    mine = models.filter(pl.col("preset") == preset)
+    for months in sorted(mine["campaign_months"].unique().to_list()):
+        these = mine.filter(pl.col("campaign_months") == months)
+        judged = shared.filter(pl.col("campaign_months") == months)
+
+        def width(action: str, frame: pl.DataFrame = these) -> np.ndarray:
+            spread = (frame[f"{action}_high"] - frame[f"{action}_low"]) * 100
+            return spread.drop_nulls().to_numpy()
+
+        def share(policy: str, frame: pl.DataFrame = judged) -> np.ndarray:
+            return frame.filter(pl.col("policy") == policy)["share"].drop_nulls().to_numpy() * 100
+
+        rows.append(
+            [
+                str(months),
+                summary(these["participants"].to_numpy()),
+                summary(width("email"), 1),
+                summary(width("discount"), 1),
+                summary(share("dss")),
+                summary(share("dss_assumed")),
+            ]
+        )
+    return header, rows
+
+
+def campaign_of(out: Path) -> tuple[str, float]:
+    """The campaign-size experiment's preset and budget share, from the run's `config.json`."""
+    campaign = json.loads((out / "config.json").read_text(encoding="utf-8"))["campaign"]
+    return campaign["preset"], campaign["budget_share"]
+
+
 def write(out: Path) -> dict[str, Table]:
-    """Every table from the results in `out`, also written to `out/tables.xlsx`, one sheet each."""
-    tables = retention_tables(pl.read_csv(out / "retention.csv"))
-    tables["Модель і ефекти"] = model_table(pl.read_csv(out / "models.csv"))
+    """Every table from the results in `out`, also written to `out/tables.xlsx`, one sheet each.
+    All but the campaign-size table use the libraries with libsim's own campaign."""
+    retention = pl.read_csv(out / "retention.csv")
+    models = pl.read_csv(out / "models.csv")
+    usual = pl.col("campaign_months") == CAMPAIGN_MONTHS
+    tables = retention_tables(retention.filter(usual))
+    tables |= content_tables(pl.read_csv(out / "content.csv"))
+    tables["Модель і ефекти"] = model_table(models.filter(usual))
+    tables["Розмір кампанії"] = campaign_table(retention, models, *campaign_of(out))
     workbook = xlsxwriter.Workbook(str(out / WORKBOOK))
     workbook.set_properties({"created": CREATED})
     bold = workbook.add_format({"bold": True})

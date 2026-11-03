@@ -1,6 +1,6 @@
-"""The experiment harness: true gains by hand, the baselines' order and budget, the oracle
-against brute force, the tables' number style, and a small grid end to end, serial and in
-parallel (DESIGN.md §6)."""
+"""The experiment harness: true gains by hand, the baselines' order and budget, the oracles
+against brute force, the content policies, the tables' number style and Wilcoxon test, the
+figures, and a small grid end to end, serial and in parallel (DESIGN.md §6)."""
 
 import itertools
 import json
@@ -14,11 +14,19 @@ import polars as pl
 import pytest
 from typer.testing import CliRunner
 
+from app.domain.content import ahp
 from app.domain.optimize import MIP_GAP
 from app.ingest import IngestError
-from experiments import grid, tables
+from experiments import content, figures, grid, retention, tables
 from experiments.__main__ import app
-from experiments.config import Config, RetentionConfig, load
+from experiments.config import (
+    CAMPAIGN_MONTHS,
+    CampaignConfig,
+    Config,
+    ContentConfig,
+    RetentionConfig,
+    load,
+)
 from experiments.retention import (
     POLICIES,
     RiskGroup,
@@ -49,7 +57,27 @@ RETENTION = RetentionConfig(
     email_cost=2.0,
     assumed={"email": -0.02, "discount": -0.05},
 )
-SMALL_GRID = Config(seeds=2, presets=("demo",), members=800, months=10, retention=RETENTION)
+CONTENT = ContentConfig(budget_shares=(0.1, 0.4), max_per_genre=5)
+SMALL_GRID = Config(
+    seeds=2,
+    presets=("demo",),
+    members=800,
+    months=10,
+    horizon_days=180,
+    retention=RETENTION,
+    content=CONTENT,
+    campaign=CampaignConfig(preset="demo", months=(2, CAMPAIGN_MONTHS), budget_share=0.1),
+)
+TITLE_SCHEMA = {
+    "candidate_id": pl.String,
+    "genre": pl.String,
+    "license_cost": pl.Float64,
+    "demand_searches": pl.Int64,
+    "author_loans": pl.Int64,
+    "genre_loans": pl.Int64,
+    "genre_holds_per_copy": pl.Float64,
+    "demand": pl.Int64,
+}
 
 
 def group(*rows: dict[str, Any]) -> RiskGroup:
@@ -192,6 +220,103 @@ def test_the_oracle_equals_brute_force_on_small_problems() -> None:
         assert value == pytest.approx(best, rel=MIP_GAP, abs=1e-6)
 
 
+def offer(*rows: dict[str, Any]) -> pl.DataFrame:
+    defaults = {
+        "genre": "fantasy",
+        "license_cost": 100.0,
+        "demand_searches": 0,
+        "author_loans": 0,
+        "genre_loans": 0,
+        "genre_holds_per_copy": 0.0,
+        "demand": 0,
+    }
+    return pl.DataFrame([{**defaults, **row} for row in rows], schema=TITLE_SCHEMA)
+
+
+def licensed(titles: pl.DataFrame, policy: str, budget: float) -> set[str]:
+    chosen = content.choose_titles(titles, policy, budget, CONTENT)
+    return set(titles.filter(pl.Series(chosen))["candidate_id"].to_list())
+
+
+def test_content_baselines_take_titles_in_their_order_while_they_fit() -> None:
+    four = offer(
+        {"candidate_id": "c1", "license_cost": 100.0, "demand_searches": 5, "genre_loans": 10},
+        {
+            "candidate_id": "c2",
+            "genre": "history",
+            "license_cost": 300.0,
+            "demand_searches": 9,
+            "genre_loans": 50,
+        },
+        {"candidate_id": "c3", "genre": "history", "license_cost": 50.0, "genre_loans": 50},
+        {"candidate_id": "c4", "license_cost": 200.0, "demand_searches": 2, "genre_loans": 10},
+    )
+    # cheapest: 50 + 100 + 200; the 300 no longer fits 350
+    assert licensed(four, "cheapest", 350.0) == {"c3", "c1", "c4"}
+    # most searched: 300, then only the 50 still fits
+    assert licensed(four, "most_searched", 350.0) == {"c2", "c3"}
+    # searches per hryvnia: 0.05 (100), 0.03 (300 no longer fits), 0.01 (200), 0 (50)
+    assert licensed(four, "searches_per_uah", 350.0) == {"c1", "c4", "c3"}
+    # the genre with the most loans first, its most searched title first
+    assert licensed(four, "top_genre", 350.0) == {"c2", "c3"}
+
+
+def test_the_content_oracle_equals_brute_force_on_small_offers() -> None:
+    rng = np.random.default_rng(3)
+    for _ in range(30):
+        titles = offer(
+            *(
+                {
+                    "candidate_id": f"c{i}",
+                    "license_cost": float(rng.integers(50, 400)),
+                    "demand": int(rng.integers(0, 40)),
+                }
+                for i in range(8)
+            )
+        )
+        cost, demand = titles["license_cost"].to_numpy(), titles["demand"].to_numpy()
+        budget = float(rng.uniform(100, 1500))
+        best = max(
+            demand[list(subset)].sum()
+            for size in range(len(cost) + 1)
+            for subset in itertools.combinations(range(len(cost)), size)
+            if cost[list(subset)].sum() <= budget
+        )
+        chosen = content.choose_titles(titles, "oracle", budget, CONTENT)
+        assert demand[chosen].sum() == pytest.approx(best, rel=MIP_GAP)
+
+
+def test_the_dss_portfolio_keeps_the_cap_per_genre() -> None:
+    titles = offer(
+        *({"candidate_id": f"a{i}", "demand_searches": 10 + i} for i in range(4)),
+        {"candidate_id": "b", "genre": "history", "demand_searches": 2},
+        {"candidate_id": "z", "genre": "poetry"},  # the worst title: a TOPSIS score of 0
+    )
+    two = ContentConfig(budget_shares=(0.1,), max_per_genre=2)
+    chosen = content.choose_titles(titles, "dss", 10_000.0, two)
+    assert set(titles.filter(pl.Series(chosen))["candidate_id"].to_list()) == {"a3", "a2", "b"}
+
+
+def test_searches_first_gives_the_searches_half_the_weight() -> None:
+    weights = ahp.weigh(ahp.comparisons(len(content.KEYS), content.SEARCHES_FIRST))
+    assert content.KEYS[0] == "demand_searches"
+    assert weights.weights == pytest.approx([0.5, 1 / 6, 1 / 6, 1 / 6])
+    assert weights.cr == pytest.approx(0.0, abs=1e-9)
+
+
+def test_random_titles_are_judged_by_their_mean_over_many_orders() -> None:
+    titles = offer(*({"candidate_id": f"c{i}", "demand": i} for i in range(10)))
+
+    def random_rows() -> list[dict[str, Any]]:
+        rows = content.evaluate_policies(titles, CONTENT, seed=1)
+        return [row for row in rows if row["policy"] == "random"]
+
+    first = random_rows()
+    assert [row["titles"] for row in first] == [1.0, 4.0]  # 10% and 40% of 1,000 UAH
+    assert 0 < first[0]["demand"] < 9  # a mean over orders, not one draw's titles
+    assert first == random_rows()
+
+
 def test_numbers_in_ukrainian_style() -> None:
     assert tables.number(19872.4) == "19 872"
     assert tables.number(-1234.56, 1) == "−1 234,6"
@@ -214,17 +339,62 @@ def test_a_failing_library_is_named_in_an_error_a_worker_can_send_back(
 
     monkeypatch.setattr(grid.engine, "simulate", invalid)
     with pytest.raises(RuntimeError) as caught:
-        grid.library("high-scarcity", 9, SMALL_GRID)
+        grid.library("high-scarcity", 9, CAMPAIGN_MONTHS, SMALL_GRID)
     sent = pickle.loads(pickle.dumps(caught.value))  # noqa: S301 - what a worker sends back
     assert str(sent).startswith("high-scarcity seed 9: IngestError: The dataset has 1 problem(s)")
     assert problem in str(sent)
+
+
+def test_the_wilcoxon_table_compares_the_dss_with_the_best_baseline() -> None:
+    def row(seed: int, share: float, policy: str, value: float) -> dict[str, Any]:
+        return {
+            "preset": "demo",
+            "seed": seed,
+            "budget_share": share,
+            "policy": policy,
+            "value": value,
+        }
+
+    frame = pl.DataFrame(
+        [
+            line
+            for seed in range(1, 7)
+            for line in (
+                row(seed, 0.1, "dss", 100.0 + seed),
+                row(seed, 0.1, "random", 10.0),
+                row(seed, 0.1, "inactive", 50.0),
+                row(seed, 0.1, "risk", 40.0),
+                row(seed, 0.4, "dss", 70.0),
+                row(seed, 0.4, "random", 10.0),
+                row(seed, 0.4, "inactive", 70.0),
+                row(seed, 0.4, "risk", 0.0),
+            )
+        ]
+    )
+    header, rows = tables.wilcoxon_table(
+        frame, "value", tables.RETENTION_LABELS, retention.BASELINES, "грн"
+    )
+    assert header[-1] == "p, тест Вілкоксона (n = 6)"
+    # differences 51…56: mean 53.5, half-width 2.571·1.871/√6 = 1.96; all six positive, so the
+    # exact two-sided p = 2 / 2⁶
+    assert rows == [
+        ["Базовий", "10 %", "Знижки неактивним 14+ днів", "54 ± 2", "0,031"],
+        ["", "40 %", "Знижки неактивним 14+ днів", "0 ± 0", "—"],
+    ]
 
 
 def test_the_committed_grid_loads() -> None:
     config = load()
     assert config.seeds == 20
     assert config.members == 5000
+    assert config.horizon_days == 180
     assert set(config.retention.assumed) == {"email", "discount"}
+    assert config.content.max_per_genre == 5
+    assert CAMPAIGN_MONTHS in config.campaign.months
+
+
+def test_the_campaign_lengths_add_libraries_after_the_grid() -> None:
+    assert SMALL_GRID.cases() == [("demo", 1, 4), ("demo", 2, 4), ("demo", 1, 2), ("demo", 2, 2)]
 
 
 @pytest.fixture(scope="module")
@@ -236,37 +406,76 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def test_a_small_grid_writes_every_policy_and_budget(results: Path) -> None:
     retention = pl.read_csv(results / "retention.csv")
-    assert retention.height == 2 * 2 * len(POLICIES)
+    assert retention.height == 2 * 2 * 2 * len(POLICIES)  # campaigns × seeds × budgets × policies
     assert retention["policy"].unique(maintain_order=True).to_list() == list(POLICIES)
     oracle = retention.filter(pl.col("policy") == "oracle")
     assert (oracle["spend"] <= oracle["budget"] + 1e-6).all()
     assert (oracle["precision"] == 1.0).all()
     models = pl.read_csv(results / "models.csv")
-    assert models["seed"].to_list() == [1, 2]
-    assert (models["unmatched"] == 0).all()  # the risk group is libsim's renewals
+    assert models.select("seed", "campaign_months").rows() == [
+        (seed, months) for _, seed, months in SMALL_GRID.cases()
+    ]
+    # the risk group is libsim's next renewals, though the truth runs 180 days past as_of
+    assert (models["unmatched"] == 0).all()
     assert ((models["roc_auc_best"] > 0.5) & (models["roc_auc_best"] <= 1)).all()
     assert models["discount_covered"].dtype == pl.Boolean
     assert json.loads((results / "config.json").read_text())["presets"] == ["demo"]
 
 
-def test_tables_go_to_a_workbook_and_the_terminal(results: Path) -> None:
-    outcome = CliRunner().invoke(app, ["tables", "--out", str(results)])
+def test_a_small_grid_judges_every_content_policy_within_its_budget(results: Path) -> None:
+    offers = pl.read_csv(results / "content.csv")
+    assert offers.height == 2 * 2 * len(content.POLICIES)
+    assert offers["policy"].unique(maintain_order=True).to_list() == list(content.POLICIES)
+    assert (offers["spend"] <= offers["budget"] + 1e-6).all()
+    best = offers.group_by("seed", "budget_share").agg(best=pl.col("demand").max())
+    oracle = offers.filter(pl.col("policy") == "oracle").join(best, on=["seed", "budget_share"])
+    assert (oracle["demand"] >= oracle["best"] * (1 - MIP_GAP)).all()
+
+
+def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -> None:
+    outcome = CliRunner().invoke(app, ["report", "--out", str(results)])
     assert outcome.exit_code == 0, outcome.output
     assert "Оракул" in outcome.output
+    for name in [*figures.FIGURES, "campaign.png"]:
+        png = (results / figures.FOLDER / name).read_bytes()
+        assert png.startswith(b"\x89PNG\r\n\x1a\n")
+        assert str(results / figures.FOLDER / name) in outcome.output
+    first = {path: path.read_bytes() for path in figures.write(results)}
+    assert first == {path: path.read_bytes() for path in figures.write(results)}
     workbook = openpyxl.load_workbook(results / tables.WORKBOOK)
     assert workbook.sheetnames == [
-        "Виграш, грн",
-        "Частка оракула, %",
-        "Точність дій, %",
+        "Утримання, виграш, грн",
+        "Утримання, частка оракула, %",
+        "Утримання, точність дій, %",
+        "Утримання, тест Вілкоксона",
+        "Закупівля, обслужений попит",
+        "Закупівля, частка оракула, %",
+        "Закупівля, тест Вілкоксона",
         "Модель і ефекти",
+        "Розмір кампанії",
     ]
-    sheet = workbook["Частка оракула, %"]
+    sheet = workbook["Утримання, частка оракула, %"]
     assert sheet.max_row == 1 + len(POLICIES)
     assert sheet.cell(row=9, column=2).value == "Оракул"
     assert sheet.cell(row=9, column=3).value == "100 ± 0"
 
 
+def test_a_longer_campaign_has_more_participants_and_narrower_intervals(results: Path) -> None:
+    header, rows = tables.campaign_table(
+        pl.read_csv(results / "retention.csv"), pl.read_csv(results / "models.csv"), "demo", 0.1
+    )
+    assert header[0] == "Кампанія, місяців"
+    assert [row[0] for row in rows] == ["2", "4"]
+    models = pl.read_csv(results / "models.csv")
+    by_length = models.group_by("campaign_months").agg(
+        pl.col("participants").mean(), (pl.col("discount_high") - pl.col("discount_low")).mean()
+    )
+    short, usual = by_length.sort("campaign_months").rows()
+    assert short[1] < usual[1]  # more members took part
+    assert short[2] > usual[2]  # and the discount's interval is narrower
+
+
 def test_a_parallel_run_gives_the_same_results(results: Path, tmp_path: Path) -> None:
     grid.run(SMALL_GRID, tmp_path, workers=2, echo=lambda _: None)
-    for name in ("retention.csv", "models.csv"):
+    for name in ("retention.csv", "models.csv", "content.csv"):
         assert (tmp_path / name).read_text() == (results / name).read_text()

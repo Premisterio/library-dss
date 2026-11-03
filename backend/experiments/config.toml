@@ -5,6 +5,9 @@ seeds = 20 # seeds 1, 2, …, 20 of each preset
 presets = ["demo", "weak-signal", "misspecified", "high-scarcity"]
 members = 5000
 months = 24
+# Days simulated past as_of: the window of the titles' true demand. Retention judges each member's
+# next renewal, which falls in the first 30 days.
+horizon_days = 180
 
 [retention]
 # Budgets as shares of what a discount for every member at risk would cost if they all renewed.
@@ -13,3 +16,15 @@ horizon_months = 12
 email_cost = 2.0
 # "DSS with assumptions" plans with the plan form's default effects (differences of churn rates).
 assumed = { email = -0.02, discount = -0.05 }
+
+[content]
+# Budgets as shares of the licence cost of every title on offer.
+budget_shares = [0.05, 0.10, 0.20, 0.40]
+max_per_genre = 5 # the DSS portfolios' cap per genre
+
+[campaign]
+# The campaign-size experiment: this preset's seeds again, with past campaigns of these lengths
+# (libsim's campaign lasts 4 months, about 900 participants), judged at one budget share.
+preset = "demo"
+months = [1, 2, 4, 8]
+budget_share = 0.10

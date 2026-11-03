@@ -17,32 +17,48 @@ from app.domain.churn.scoring import score
 from app.domain.churn.training import train
 from app.domain.retention.effects import estimate, participants
 from app.ingest import reader
-from experiments import retention
-from experiments.config import Config
+from experiments import content, retention
+from experiments.config import CAMPAIGN_MONTHS, Config
 from libsim import engine, writer
+from libsim.params import CampaignParams
 from libsim.params import preset as make_params
 
 Rows = dict[str, list[dict[str, Any]]]  # results table → its rows
+Case = tuple[str, int, int]  # preset, seed, campaign months
 
 
-def library(preset: str, seed: int, config: Config) -> Rows:
+def library(preset: str, seed: int, campaign_months: int, config: Config) -> Rows:
     """The rows of every results table for one library (`_judge`). A failure comes as a plain
     RuntimeError naming the library, which a worker process can send back: an exception with
     its own constructor arguments, such as `IngestError`, cannot be unpickled and would break the
     whole pool without saying which library failed."""
     try:
-        return _judge(preset, seed, config)
+        return _judge(preset, seed, campaign_months, config)
     except Exception as exc:
+        name = _name((preset, seed, campaign_months))
         detail = f" {vars(exc)}" if vars(exc) else ""
-        raise RuntimeError(f"{preset} seed {seed}: {type(exc).__name__}: {exc}{detail}") from exc
+        raise RuntimeError(f"{name}: {type(exc).__name__}: {exc}{detail}") from exc
 
 
-def _judge(preset: str, seed: int, config: Config) -> Rows:
-    """Simulate one library, import it, train and score a churn model, estimate the campaign's
-    effects like a churn run does, then judge every retention policy against the truth."""
-    simulated = engine.simulate(
-        make_params(preset, seed=seed, users=config.members, months=config.months)
+def _name(case: Case) -> str:
+    preset, seed, months = case
+    campaign = f", campaign {months} months" if months != CAMPAIGN_MONTHS else ""
+    return f"{preset} seed {seed}{campaign}"
+
+
+def _judge(preset: str, seed: int, campaign_months: int, config: Config) -> Rows:
+    """Simulate one library, import it, train and score a churn model and estimate the campaign's
+    effects like a churn run does, read the offer like the `candidates` section does, then judge
+    every retention and content policy against the truth."""
+    params = make_params(
+        preset,
+        seed=seed,
+        users=config.members,
+        months=config.months,
+        horizon_days=config.horizon_days,
+        campaign=CampaignParams(months=campaign_months),
     )
+    simulated = engine.simulate(params)
     truth = writer.build_ground_truth(simulated)
     parsed = reader.parse(writer.build_dataset(simulated))
     del simulated  # the simulation's event lists are large; free them before training
@@ -57,9 +73,10 @@ def _judge(preset: str, seed: int, config: Config) -> Rows:
         discount_pct=float(discounts.select(pl.col("discount_pct").median()).item()),
         seed=seed,
     )
-    key = {"preset": preset, "seed": seed}
+    key = {"preset": preset, "seed": seed, "campaign_months": campaign_months}
     model = {
         **key,
+        "participants": campaign.height,
         "model": training.chosen,
         "unmatched": len(scores) - group.people.height,  # scored but not at risk in the truth
         **retention.model_quality(group, rows.select(pl.col("churned").mean()).item()),
@@ -68,6 +85,16 @@ def _judge(preset: str, seed: int, config: Config) -> Rows:
     return {
         "retention": [key | row for row in retention.evaluate_policies(group, config.retention)],
         "models": [model],
+        "content": [
+            key | row
+            for row in content.evaluate_policies(
+                content.offer(parsed.frames, parsed.as_of, parsed.timezone, truth),
+                config.content,
+                seed,
+            )
+        ]
+        if campaign_months == CAMPAIGN_MONTHS  # the campaign-size experiment is retention's
+        else [],
     }
 
 
@@ -75,13 +102,13 @@ def run(config: Config, out: Path, *, workers: int, echo: Callable[[str], object
     """Every library of the grid, `workers` at a time, into one CSV per results table, in the
     grid's order whatever the order they finish in. The grid used goes to `config.json`."""
     cases = config.cases()
-    results: dict[tuple[str, int], Rows] = {}
+    results: dict[Case, Rows] = {}
     started = time.perf_counter()
 
-    def finished(case: tuple[str, int], rows: Rows) -> None:
+    def finished(case: Case, rows: Rows) -> None:
         results[case] = rows
         elapsed = time.perf_counter() - started
-        echo(f"{len(results)}/{len(cases)}  {case[0]} seed {case[1]}  ({elapsed:.0f} s)")
+        echo(f"{len(results)}/{len(cases)}  {_name(case)}  ({elapsed:.0f} s)")
 
     if workers == 1:
         for case in cases:

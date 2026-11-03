@@ -23,6 +23,7 @@ POLICIES = (
     "dss_cautious",
     "oracle",
 )
+BASELINES = ("random", "inactive", "risk")  # what a library might do without the DSS
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,8 @@ class RiskGroup:
 def people_at_risk(scores: list[Score], truth: dict[str, Any]) -> pl.DataFrame:
     """The members at risk as the plan sees them (`members`), with the two features the
     inactivity rule reads, libsim's true churn probabilities under each action (`true_none`,
-    `true_email`, `true_discount`) and whether they churned without an action (`churned`)."""
+    `true_email`, `true_discount`) and whether they churned without an action (`churned`), all at
+    their next renewal: a truth that runs past the 30-day window holds later ones too."""
     scored = pl.DataFrame(
         [
             {
@@ -51,15 +53,21 @@ def people_at_risk(scores: list[Score], truth: dict[str, Any]) -> pl.DataFrame:
         ],
         infer_schema_length=None,
     )
-    true = pl.DataFrame(
-        [
-            {
-                "user_id": row["user_id"],
-                **{f"true_{action}": p for action, p in row["p_true"].items()},
-                "churned": row["outcome"]["none"],
-            }
-            for row in truth["at_risk"]
-        ]
+    true = (
+        pl.DataFrame(
+            [
+                {
+                    "user_id": row["user_id"],
+                    **{f"true_{action}": p for action, p in row["p_true"].items()},
+                    "churned": row["outcome"]["none"],
+                    "period_end_day": row["period_end_day"],
+                }
+                for row in truth["at_risk"]
+            ]
+        )
+        .sort("period_end_day")
+        .unique("user_id", keep="first")
+        .drop("period_end_day")
     )
     return (
         members(scored)
