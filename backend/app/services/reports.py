@@ -103,6 +103,8 @@ def document(report: Report) -> ReportDocument:
         timezone=content["timezone"],
         created_at=report.created_at,
         sections=content["sections"],
+        kind=report.kind,
+        params=report.params,
     )
 
 

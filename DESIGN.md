@@ -463,15 +463,23 @@ There are two file formats, detected by content:
   - `GET /reports` and `GET /reports/{id}` return the frozen sections in the same shape as the analytics API.
   - `GET /reports/{id}/export?format=pdf|xlsx|csv|json` downloads the file.
 - **File names** come from the title: characters other than letters, digits, spaces, `.`, `-` and `_` become `-` (so `Q1/2025` gives `Q1-2025.pdf`), with `filename*` (RFC 6266, UTF-8) and an ASCII fallback `report-<id>.<ext>`.
-- **Formats** (`app/exports`, pure functions of a `ReportDocument`):
+- **Formats** (`app/exports`, pure functions of a `ReportDocument`, which carries the report's `kind` and `params` too). The creation time is shown in UTC, converted from whatever time zone the database session uses.
   - **PDF** (ReportLab, A4 landscape). Text uses DejaVu Sans, embedded from `app/exports/fonts` (free licence alongside), so Ukrainian renders everywhere.
-    - Each section shows its notes and a KPI table.
-    - Charts with one dimension are drawn: bars for categories, a line for time.
-    - Charts with two dimensions become a pivot table of one measure, the first `ratio` measure if there is one. The smaller dimension goes across.
-    - Tables show at most 30 rows, or the 12 most recent rows of a time series, and say that the full data is in XLSX/CSV.
-  - **XLSX** (XlsxWriter): a summary sheet with every KPI, then one sheet per chart. Headers and category values are Ukrainian labels; numbers stay numbers, with formats.
+    - **Cover page:** the kind and the title; a table of the dataset, its as-of date ("—" when it has none), time zone and creation time; the contents (the sections in order); and, for a decision, its parameters in Ukrainian. Parameters keep a fixed order (JSONB keeps none), and one the export does not know yet is shown as it is. An empty limit reads "без обмеження"; a content decision's judgements read "A проти B: ×3", with a line on how to read them.
+    - **Sections:** each starts on a new page with its notes, a KPI table and its charts.
+    - **Footer** on every page: the title and "N з M". A numbering canvas holds the pages back until the last one, then draws the footers, so the document is built in one pass and stays invariant.
+    - **Charts, generic rule:** one dimension is drawn above its table (a line for time, bars for up to 25 categories); two dimensions become a pivot table of one measure, the first `ratio` measure if there is one, the smaller dimension across.
+    - **Charts of decisions** take forms that fit them:
+      - the budget curve is a line over the budgets: its dimension is a number, and bars would treat each budget as a category;
+      - the action effects, the planned members and the title ranking are tables: a bar of a rank, or of one of the effects' seven measures, misleads;
+      - actions by segment is a pivot table; the criterion weights are bars;
+      - the inconsistent judgements are left out when empty, which they always are in an approved decision.
+    - Number dimensions read like counts ("3 000"); monthly time dimensions read as months.
+    - **Layout:** a chart's heading stays on the page of its drawing, or of its table when the table comes first. A table splits across pages only where at least five of its rows stay on the first page, and never when it has ten rows or fewer: it moves to the next page whole. A split table repeats its header row there.
+    - **Tables:** column widths follow the content, so a number never wraps and a word never breaks; the longer texts share what width is left. A table shows at most 30 rows, or the 12 most recent rows of a time series; a caption above it says so and that the full data is in XLSX/CSV.
+  - **XLSX** (XlsxWriter): a summary sheet with the kind, the dataset, its as-of date ("—" when it has none), time zone and creation time, and every KPI; then one sheet per chart. Headers and category values are Ukrainian labels; numbers stay numbers, with formats.
   - **CSV**: a zip of `kpis.csv` and `<section>-<chart>.csv`, with codes and raw numbers, UTF-8 with a BOM (Excel).
-  - **JSON**: the report as stored.
+  - **JSON**: the report as stored, with `kind` and `params`.
 - **Determinism.** Every format is deterministic: no timestamps or random ids beyond the report's `created_at`. The same report always gives the same bytes.
 
 ### 2.11 CLI

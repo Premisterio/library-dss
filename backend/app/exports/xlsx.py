@@ -62,6 +62,7 @@ def _summary(workbook: Workbook, document: ReportDocument, formats: dict[str, An
     sheet = workbook.add_worksheet("Звіт")
     sheet.write_string(0, 0, document.title, formats["title"])
     details = [
+        ("Вид звіту", label("report_kind", document.kind)),
         ("Датасет", document.dataset_name),
         ("Дата зрізу", document.as_of or EMPTY),
         ("Часовий пояс", document.timezone),

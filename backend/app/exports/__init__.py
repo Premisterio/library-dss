@@ -23,6 +23,8 @@ class ReportDocument:
     timezone: str
     created_at: datetime
     sections: list[dict[str, Any]]  # stored analytics section payloads
+    kind: str = "analytics"  # report_kind
+    params: dict[str, Any] | None = None  # what a decision was made with
 
 
 def render(document: ReportDocument, fmt: ExportFormat) -> bytes:

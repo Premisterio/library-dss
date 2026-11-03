@@ -1,15 +1,16 @@
-"""PDF report: title page block, then every section with its KPIs, charts and tables.
+"""PDF report: a cover page, then every section from a new page with its notes, KPIs, charts and
+tables; each page has a footer with the title and "N з M".
 
-Text is set in DejaVu Sans (embedded), which covers Ukrainian. A chart with one dimension is
-drawn (bars for categories, a line for time); a chart with two dimensions becomes a pivot table.
-Long tables are cut; the XLSX and CSV exports carry every row.
+Text is set in DejaVu Sans (embedded), which covers Ukrainian. How the cover is laid out and how
+each chart is shown is in DESIGN.md §2.10. Long tables are cut; the XLSX and CSV exports carry
+every row.
 """
 
 import io
 from collections.abc import Callable
-from functools import cache
+from functools import cache, partial
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 from xml.sax.saxutils import escape
 
 from reportlab.graphics.charts.barcharts import HorizontalBarChart
@@ -25,10 +26,13 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import (
+    BaseDocTemplate,
     Flowable,
+    Frame,
     KeepTogether,
+    PageBreak,
+    PageTemplate,
     Paragraph,
-    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
@@ -46,20 +50,74 @@ from app.exports.labels import (
     value_text,
     window_text,
 )
+from app.utils.format import decimals_for, number, percent
 
 FONTS = Path(__file__).parent / "fonts"
 FONT, BOLD = "DejaVuSans", "DejaVuSans-Bold"
 PAGE = landscape(A4)
 MARGIN = 14 * mm
+BOTTOM = 18 * mm  # the bottom margin leaves room for the footer
+FOOTER_Y = 8 * mm
 WIDTH = PAGE[0] - 2 * MARGIN
+HEIGHT = PAGE[1] - MARGIN - BOTTOM
+FOOTER_TITLE = 120  # characters of the title in the footer
 MAX_ROWS = 30  # rows of a table in the PDF
 MAX_TIME_ROWS = 12  # the most recent rows of a time series (the line shows the rest)
 MAX_BARS = 25
 MAX_PIVOT_COLUMNS = 24
 MAX_PIVOT_ROWS = 60
+MIN_SPLIT_ROWS = 5
+KEY_WIDTH, VALUE_WIDTH = 170, 400  # the cover's key/value tables
+CELL_SIZE = 7  # font size of table cells
+CELL_PADDING = 13  # a cell's left and right padding (6 each) and a point against rounding
+MIN_COLUMN = 28  # the narrowest text a column holds
 ACCENT = colors.HexColor("#3B6EA5")
 HEADER_FILL = colors.HexColor("#EDF1F6")
 GRID = colors.HexColor("#C8CED6")
+MUTED = colors.HexColor("#666666")
+FAINT = colors.HexColor("#888888")
+
+# How the charts of decisions are shown; every other chart follows the generic rules.
+DECISION_FORMS = {
+    "budget_curve": "line",
+    "actions_by_segment": "pivot",
+    "action_effects": "table",
+    "planned_members": "table",
+    "criterion_weights": "bars",
+    "title_ranking": "table",
+    "inconsistent_judgements": "table",
+}
+OMIT_WHEN_EMPTY = {"inconsistent_judgements"}
+
+# A decision's parameters (`reports.params`) in the order the cover lists them.
+PARAM_LABELS = {
+    "run_id": "Модель (запуск №)",
+    "budget": "Бюджет",
+    "horizon_months": "Горизонт, місяців",
+    "email_cost": "Вартість листа",
+    "max_emails": "Найбільше листів",
+    "max_discounts": "Найбільше знижок",
+    "cautious": "Обережний режим",
+    "by_segment": "Ефекти за сегментами",
+    "assumed": "Припущені ефекти",
+    "discount_pct": "Знижка",
+    "max_per_genre": "Найбільше назв одного жанру",
+    "judgements": "Порівняння критеріїв",
+}
+PARAM_UNITS = {
+    "budget": "UAH",
+    "email_cost": "UAH",
+    "discount_pct": "ratio",
+    "horizon_months": "count",
+    "max_emails": "count",
+    "max_discounts": "count",
+    "max_per_genre": "count",
+}
+LIMITS = {"max_emails", "max_discounts", "max_per_genre"}  # None: no limit
+JUDGEMENTS_NOTE = (
+    "×n: перший критерій пари важливіший за другий у n разів, ×1/n — навпаки. "
+    "Пари, яких немає в списку, однаково важливі."
+)
 
 
 @cache
@@ -75,46 +133,212 @@ def _style(name: str, size: float, *, bold: bool = False, **extra: Any) -> Parag
     )
 
 
-TITLE = _style("title", 18, bold=True, spaceAfter=4)
-META = _style("meta", 9, textColor=colors.HexColor("#555555"), spaceAfter=10)
-H1 = _style("h1", 14, bold=True, spaceBefore=10, spaceAfter=6, textColor=ACCENT, keepWithNext=1)
-H2 = _style("h2", 10.5, bold=True, spaceBefore=8, spaceAfter=4, keepWithNext=1)
-NOTE = _style("note", 7.5, textColor=colors.HexColor("#666666"), spaceAfter=3)
-CAPTION = _style("caption", 7.5, textColor=colors.HexColor("#666666"), spaceAfter=3, keepWithNext=1)
-CELL = _style("cell", 7)
-CELL_NUMBER = _style("cell-number", 7, alignment=TA_RIGHT)
-CELL_HEADER = _style("cell-header", 7, bold=True)
+KIND = _style("kind", 10, bold=True, textColor=ACCENT, spaceAfter=6)
+TITLE = _style("title", 22, bold=True, spaceAfter=18)
+COVER_HEADING = _style("cover-heading", 11, bold=True, spaceBefore=20, spaceAfter=7)
+CONTENTS = _style("contents", 9.5, spaceAfter=3)
+KEY = _style("key", 8.5, bold=True)
+VALUE = _style("value", 8.5)
+H1 = _style("h1", 16, bold=True, spaceAfter=8, textColor=ACCENT, keepWithNext=1)
+H2 = _style("h2", 10.5, bold=True, spaceBefore=14, spaceAfter=5, keepWithNext=1)
+NOTE = _style("note", 7.5, textColor=MUTED, spaceAfter=3)
+CAPTION = _style("caption", 7.5, textColor=MUTED)
+CELL = _style("cell", CELL_SIZE)
+CELL_NUMBER = _style("cell-number", CELL_SIZE, alignment=TA_RIGHT)
+CELL_HEADER = _style("cell-header", CELL_SIZE, bold=True)
+
+
+class _NumberedCanvas(Canvas):
+    """Holds every page back until the document ends and the page count is known, then draws
+    each page's footer: the report's title and "N з M"."""
+
+    def __init__(self, *args: Any, footer: str, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._footer = footer
+        self._pages: list[dict[str, Any]] = []
+
+    @override
+    def showPage(self) -> None:
+        self._pages.append(dict(self.__dict__))
+        self._startPage()  # pyright: ignore[reportAttributeAccessIssue]  (private, not in the stubs)
+
+    @override
+    def save(self) -> None:
+        total = len(self._pages)
+        for page_number, page in enumerate(self._pages, start=1):
+            self.__dict__.update(page)
+            self._draw_footer(f"{page_number} з {total}")
+            super().showPage()
+        super().save()
+
+    def _draw_footer(self, page_text: str) -> None:
+        self.saveState()
+        self.setStrokeColor(GRID)
+        self.setLineWidth(0.4)
+        self.line(MARGIN, BOTTOM - 5 * mm, PAGE[0] - MARGIN, BOTTOM - 5 * mm)
+        self.setFont(FONT, 7)
+        self.setFillColor(FAINT)
+        self.drawString(MARGIN, FOOTER_Y, self._footer)
+        self.drawRightString(PAGE[0] - MARGIN, FOOTER_Y, page_text)
+        self.restoreState()
 
 
 def _p(text: str, style: ParagraphStyle) -> Paragraph:
     return Paragraph(escape(text), style)
 
 
+def _shorten(text: str, limit: int) -> str:
+    return text if len(text) <= limit else f"{text[: limit - 1]}…"
+
+
+def _text_width(text: str, font: str) -> float:
+    return pdfmetrics.stringWidth(text, font, CELL_SIZE)
+
+
+def _fit(header: list[str], body: list[list[str]], numeric: set[int]) -> list[float]:
+    """Column widths: a number never wraps and a word never breaks; the room that is left
+    goes to the columns that would wrap, each as far as it would grow."""
+    low: list[float] = []
+    high: list[float] = []
+    for i, title in enumerate(header):
+        cells = [row[i] for row in body]
+        head_word = max((_text_width(word, BOLD) for word in title.split()), default=0)
+        whole = max((_text_width(cell, FONT) for cell in cells), default=0)
+        word = max((_text_width(w, FONT) for cell in cells for w in cell.split()), default=0)
+        low.append(max(head_word, whole if i in numeric else word, MIN_COLUMN) + CELL_PADDING)
+        high.append(max(_text_width(title, BOLD), whole, MIN_COLUMN) + CELL_PADDING)
+    if sum(high) <= WIDTH:
+        return high
+    if sum(low) >= WIDTH:
+        return [w * WIDTH / sum(low) for w in low]
+    share = (WIDTH - sum(low)) / (sum(high) - sum(low))
+    return [lo + (hi - lo) * share for lo, hi in zip(low, high, strict=True)]
+
+
+class _Table(Table):
+    """A table that splits across pages only where at least MIN_SPLIT_ROWS of its rows stay on
+    the first page, and never when it has at most twice as many: it moves to the next page
+    whole instead. At the top of a page it splits as usual."""
+
+    @override
+    def split(self, availWidth: float, availHeight: float) -> list[Any]:
+        parts: list[Any] = super().split(availWidth, availHeight)
+        frame = getattr(self, "_frame", None)  # set by the frame that asks for the split
+        if len(parts) < 2 or frame is None or frame._atTop:
+            return parts
+        stays, moves = (len(part._cellvalues) - self.repeatRows for part in parts)
+        return [] if stays + moves <= 2 * MIN_SPLIT_ROWS or stays < MIN_SPLIT_ROWS else parts
+
+
 def _table(
-    header: list[str], body: list[list[str]], widths: list[float], numeric: set[int]
+    header: list[str], body: list[list[str]], numeric: set[int], caption: str | None = None
 ) -> Table:
+    """A table with a header row; a caption above it is a row of the table, so it stays with
+    the table's first rows and comes again with the header on every page."""
     cells = [[_p(h, CELL_HEADER) for h in header]] + [
         [_p(v, CELL_NUMBER if i in numeric else CELL) for i, v in enumerate(row)] for row in body
     ]
-    table = Table(cells, colWidths=widths, repeatRows=1, hAlign="LEFT")
+    top = 0 if caption is None else 1
+    commands: list[tuple[Any, ...]] = [
+        ("GRID", (0, top), (-1, -1), 0.3, GRID),
+        ("BACKGROUND", (0, top), (-1, top), HEADER_FILL),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, top), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, top), (-1, -1), 2),
+    ]
+    if caption is not None:
+        cells.insert(0, [_p(caption, CAPTION)] + [_p("", CAPTION) for _ in header[1:]])
+        commands += [
+            ("SPAN", (0, 0), (-1, 0)),
+            ("LEFTPADDING", (0, 0), (-1, 0), 0),
+            ("TOPPADDING", (0, 0), (-1, 0), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+        ]
+    widths = _fit(header, body, numeric)
+    table = _Table(cells, colWidths=widths, repeatRows=top + 1, hAlign="LEFT")
+    table.setStyle(TableStyle(commands))
+    return table
+
+
+def _pairs(rows: list[tuple[str, list[str]]]) -> Table:
+    """A key/value table without a header; a value may take several lines."""
+    cells = [
+        [_p(key, KEY), Paragraph("<br/>".join(escape(line) for line in lines), VALUE)]
+        for key, lines in rows
+    ]
+    table = Table(cells, colWidths=[KEY_WIDTH, VALUE_WIDTH], hAlign="LEFT")
     table.setStyle(
         TableStyle(
             [
                 ("GRID", (0, 0), (-1, -1), 0.3, GRID),
-                ("BACKGROUND", (0, 0), (-1, 0), HEADER_FILL),
+                ("BACKGROUND", (0, 0), (0, -1), HEADER_FILL),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 3.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
     return table
 
 
-def _widths(cols: list[Column]) -> list[float]:
-    weights = [1.0 if c.unit else (3.0 if c.key in {"title", "query"} else 1.8) for c in cols]
-    scale = min(WIDTH / sum(weights), 120)
-    return [w * scale for w in weights]
+def _times(value: float) -> str:
+    """A judgement as how many times the first criterion outweighs the second: ×3, or ×1/3."""
+    ratio = round(value if value >= 1 else 1 / value, 1)
+    text = number(ratio, decimals_for(ratio))
+    return f"×{text}" if value >= 1 else f"×1/{text}"
+
+
+def _param_lines(key: str, value: Any) -> list[str]:
+    if value is None:
+        return ["без обмеження" if key in LIMITS else EMPTY]
+    if isinstance(value, bool):
+        return ["так" if value else "ні"]
+    if key in PARAM_UNITS and isinstance(value, int | float):
+        return [value_text(value, PARAM_UNITS[key])]
+    if key == "assumed" and isinstance(value, dict):
+        lines = [f"{label('retention_action', a)}: {percent(v)}" for a, v in value.items()]
+        return lines or [EMPTY]
+    if key == "judgements" and isinstance(value, list):
+        lines = [
+            f"{label('content_criterion', j['criterion'])} проти "
+            f"{label('content_criterion', j['compared_with'])}: {_times(j['value'])}"
+            for j in value
+        ]
+        return lines or ["усі критерії однаково важливі"]
+    return [str(value)]
+
+
+def _params(params: dict[str, Any]) -> list[tuple[str, list[str]]]:
+    """The known parameters in their order (JSONB keeps no key order), then any others as
+    they are, so a new parameter never breaks the export."""
+    keys = [k for k in PARAM_LABELS if k in params] + sorted(set(params) - set(PARAM_LABELS))
+    return [(PARAM_LABELS.get(k, k), _param_lines(k, params[k])) for k in keys]
+
+
+def _cover(document: ReportDocument) -> list[Flowable]:
+    details = [
+        ("Датасет", [document.dataset_name]),
+        ("Дата зрізу", [document.as_of or EMPTY]),
+        ("Часовий пояс", [document.timezone]),
+        ("Створено", [created_text(document.created_at)]),
+    ]
+    parts: list[Flowable] = [
+        _p(label("report_kind", document.kind), KIND),
+        _p(document.title, TITLE),
+        _pairs(details),
+        _p("Зміст", COVER_HEADING),
+    ]
+    parts += [
+        _p(f"{i}. {label('analytics_section', section['key'])}", CONTENTS)
+        for i, section in enumerate(document.sections, start=1)
+    ]
+    if document.params:
+        parts += [_p("Параметри рішення", COVER_HEADING), _pairs(_params(document.params))]
+        if "judgements" in document.params:
+            parts += [Spacer(1, 4), _p(JUDGEMENTS_NOTE, NOTE)]
+    return parts
 
 
 def _kpis(kpis: list[dict[str, Any]]) -> Table:
@@ -126,7 +350,7 @@ def _kpis(kpis: list[dict[str, Any]]) -> Table:
         ]
         for k in kpis
     ]
-    return _table(["Показник", "Значення", "Період"], body, [260, 120, 120], {1})
+    return _table(["Показник", "Значення", "Період"], body, {1})
 
 
 def _axis_text(unit: str) -> Callable[[float], str]:
@@ -163,12 +387,12 @@ def _line(chart: dict[str, Any], cols: list[Column]) -> Drawing:
     dim, measure = cols[0], next(c for c in cols if c.unit)
     rows = chart["rows"]
     step = max(1, len(rows) // 12)
-    names = [str(r.get(dim.key)) if i % step == 0 else "" for i, r in enumerate(rows)]
+    names = [cell_text(dim, r.get(dim.key)) if i % step == 0 else "" for i, r in enumerate(rows)]
     values = [r.get(measure.key) or 0 for r in rows]
-    drawing = Drawing(WIDTH, 170)
+    drawing = Drawing(WIDTH, 150)
     drawing.hAlign = "LEFT"
     line: Any = HorizontalLineChart()  # reportlab is untyped
-    line.x, line.y, line.width, line.height = 60, 40, WIDTH - 90, 120
+    line.x, line.y, line.width, line.height = 60, 40, WIDTH - 90, 100
     line.data = [values]
     line.lines[0].strokeColor = ACCENT
     line.lines[0].strokeWidth = 1.4
@@ -193,7 +417,7 @@ def _ordered(values: list[Any], order: list[str] | None) -> list[Any]:
     return known + [v for v in seen if v not in known]
 
 
-def _pivot(chart: dict[str, Any], cols: list[Column]) -> list[Flowable] | None:
+def _pivot(chart: dict[str, Any], cols: list[Column]) -> Table | None:
     """Two dimensions → rows × columns of one measure (a ratio when there is one)."""
     dims = chart["dimensions"]
     first, second = (c for c in cols if c.key in {dims[0]["key"], dims[1]["key"]})
@@ -214,92 +438,102 @@ def _pivot(chart: dict[str, Any], cols: list[Column]) -> list[Flowable] | None:
         + [value_text(cells.get((d, a)), measure.unit or "count") for a in values[across.key]]
         for d in values[down.key]
     ]
-    first_width = 110.0
-    rest = min((WIDTH - first_width) / len(values[across.key]), 80)
-    widths = [first_width] + [rest] * len(values[across.key])
-    return [
-        _p(f"Значення: {measure.title}", CAPTION),
-        _table(header, body, widths, set(range(1, len(header)))),
-    ]
+    return _table(header, body, set(range(1, len(header))), f"Значення: {measure.title}")
 
 
-def _long(chart: dict[str, Any], cols: list[Column]) -> list[Flowable]:
+def _long(chart: dict[str, Any], cols: list[Column]) -> Table:
     rows = chart["rows"]
     time_series = chart["dimensions"] and chart["dimensions"][0]["kind"] == "time"
     shown = rows[-MAX_TIME_ROWS:] if time_series else rows[:MAX_ROWS]
     body = [[cell_text(c, r.get(c.key)) for c in cols] for r in shown]
     numeric = {i for i, c in enumerate(cols) if c.unit}
-    parts: list[Flowable] = [_table([c.title for c in cols], body, _widths(cols), numeric)]
-    if len(shown) < len(rows):
-        which = "останні" if time_series else "перші"
-        parts.append(
-            _p(
-                f"Показано {which} {len(shown)} з {len(rows)} рядків; усі рядки є в XLSX і CSV.",
-                NOTE,
-            )
-        )
-    return parts
+    header = [c.title for c in cols]
+    if len(shown) == len(rows):
+        return _table(header, body, numeric)
+    which = "останні" if time_series else "перші"
+    cut = f"Показано {which} {len(shown)} з {len(rows)} рядків; усі рядки є в XLSX і CSV."
+    return _table(header, body, numeric, cut)
+
+
+def form_of(chart: dict[str, Any]) -> str:
+    """How a chart is shown: "line" or "bars" above its table, "pivot" (a pivot table) or a
+    "table" alone. A decision chart has a form of its own (DESIGN.md §2.10)."""
+    dims, rows = chart["dimensions"], chart["rows"]
+    if (form := DECISION_FORMS.get(chart["key"])) is not None:
+        return "table" if form == "line" and len(rows) <= 2 else form
+    if len(dims) == 2:
+        return "pivot"
+    if len(dims) == 1 and dims[0]["kind"] == "time" and len(rows) > 2:
+        return "line"
+    if len(dims) == 1 and len(rows) <= MAX_BARS:
+        return "bars"
+    return "table"
+
+
+def _shown(chart: dict[str, Any], cols: list[Column]) -> list[Flowable]:
+    match form_of(chart):
+        case "line":
+            return [_line(chart, cols), _long(chart, cols)]
+        case "bars":
+            return [_bars(chart, cols), _long(chart, cols)]
+        case "pivot":
+            return [_pivot(chart, cols) or _long(chart, cols)]  # too large: the long table
+        case _:
+            return [_long(chart, cols)]
 
 
 def _chart(chart: dict[str, Any]) -> list[Flowable]:
     heading = _p(chart_title(chart), H2)
-    rows, dims = chart["rows"], chart["dimensions"]
-    if not rows:
+    if not chart["rows"]:
+        if chart["key"] in OMIT_WHEN_EMPTY:
+            return []
         return [KeepTogether([heading, _p("Немає даних.", NOTE)])]
-    cols = columns(chart)
-    if len(dims) == 2 and (pivot := _pivot(chart, cols)):
-        return [heading, *pivot]
-    parts: list[Flowable] = [heading]
-    if len(dims) == 1 and dims[0]["kind"] == "time" and len(rows) > 2:
-        parts.append(_line(chart, cols))
-    elif len(dims) == 1 and len(rows) <= MAX_BARS:
-        parts.append(_bars(chart, cols))
-    return parts + _long(chart, cols)
+    first, *rest = _shown(chart, columns(chart))
+    return [KeepTogether([heading, first]), *rest]
 
 
-def _footer(title: str) -> Callable[[Canvas, Any], None]:
-    def draw(canvas: Canvas, doc: Any) -> None:
-        canvas.saveState()
-        canvas.setFont(FONT, 7)
-        canvas.setFillColor(colors.HexColor("#888888"))
-        canvas.drawString(MARGIN, 8 * mm, title[:120])
-        canvas.drawRightString(PAGE[0] - MARGIN, 8 * mm, str(doc.page))
-        canvas.restoreState()
-
-    return draw
+def _section(section: dict[str, Any]) -> list[Flowable]:
+    parts: list[Flowable] = [PageBreak(), _p(label("analytics_section", section["key"]), H1)]
+    parts += [_p(note["message_uk"], NOTE) for note in section["notes"]]
+    if section["kpis"]:
+        parts += [_kpis(section["kpis"]), Spacer(1, 4)]
+    for chart in section["charts"]:
+        parts += _chart(chart)
+    return parts
 
 
 def render_pdf(document: ReportDocument) -> bytes:
     _register_fonts()
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
+    doc = BaseDocTemplate(
         buffer,
         pagesize=PAGE,
         leftMargin=MARGIN,
         rightMargin=MARGIN,
         topMargin=MARGIN,
-        bottomMargin=MARGIN + 4 * mm,
+        bottomMargin=BOTTOM,
         title=document.title,
         author="library-dss",
         creator="library-dss",
         lang="uk",
         invariant=True,  # no timestamps or random ids: the same report gives the same bytes
     )
-    story: list[Flowable] = [
-        _p(document.title, TITLE),
-        _p(
-            f"Датасет: {document.dataset_name} · дата зрізу: {document.as_of or EMPTY} "
-            f"({document.timezone}) · створено: {created_text(document.created_at)}",
-            META,
-        ),
-    ]
+    # Without the frame's default padding, the content lines up with the footer.
+    body = Frame(
+        MARGIN,
+        BOTTOM,
+        WIDTH,
+        HEIGHT,
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+        id="body",
+    )
+    doc.addPageTemplates([PageTemplate(id="page", frames=[body])])
+    story = _cover(document)
     for section in document.sections:
-        story.append(_p(label("analytics_section", section["key"]), H1))
-        story.extend(_p(note["message_uk"], NOTE) for note in section["notes"])
-        if section["kpis"]:
-            story += [_kpis(section["kpis"]), Spacer(1, 4)]
-        for chart in section["charts"]:
-            story.extend(_chart(chart))
-    footer = _footer(document.title)
-    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+        story += _section(section)
+    footer = _shorten(document.title, FOOTER_TITLE)
+    doc.build(story, canvasmaker=partial(_NumberedCanvas, footer=footer))
     return buffer.getvalue()

@@ -2,12 +2,14 @@
 judgements, and approval as a decision (a report of kind `content`) that exports like any
 report."""
 
+import io
 from collections import Counter
 from collections.abc import Callable
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pypdf import PdfReader
 from sqlalchemy.orm import Session
 
 from app.domain.enums import ENUMS
@@ -126,6 +128,10 @@ def test_approval_freezes_a_decision(
             params={"format": fmt},
         )
         assert export.status_code == 200, (fmt, export.text)
+    pdf = client.get(f"/api/v1/reports/{report['id']}/export", headers=auth_headers)
+    cover = PdfReader(io.BytesIO(pdf.content)).pages[0].extract_text()
+    assert "Параметри рішення" in cover
+    assert "Пошуки без результату проти Позичення в жанрі: ×3" in cover
 
 
 def test_every_code_of_the_decision_has_a_label(
