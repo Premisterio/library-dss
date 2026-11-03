@@ -2,7 +2,7 @@
 
 import io
 import re
-from datetime import date
+from datetime import UTC, datetime
 from typing import Any
 
 import xlsxwriter
@@ -10,7 +10,15 @@ from xlsxwriter.workbook import Workbook
 from xlsxwriter.worksheet import Worksheet
 
 from app.exports import ReportDocument
-from app.exports.labels import Column, chart_title, columns, label, window_text
+from app.exports.labels import (
+    EMPTY,
+    Column,
+    chart_title,
+    columns,
+    created_text,
+    label,
+    window_text,
+)
 
 NUMBER_FORMATS = {
     "count": "#,##0.##",
@@ -41,7 +49,7 @@ def _write_cell(
     if column.unit is not None:
         sheet.write_number(row, col, value, formats[column.unit])
     elif column.kind == "time":
-        sheet.write_datetime(row, col, date.fromisoformat(value), formats["date"])
+        sheet.write_datetime(row, col, datetime.fromisoformat(value), formats["date"])
     elif column.enum:
         sheet.write_string(row, col, label(column.enum, value))
     elif isinstance(value, int | float):
@@ -55,9 +63,9 @@ def _summary(workbook: Workbook, document: ReportDocument, formats: dict[str, An
     sheet.write_string(0, 0, document.title, formats["title"])
     details = [
         ("Датасет", document.dataset_name),
-        ("Дата зрізу", document.as_of),
+        ("Дата зрізу", document.as_of or EMPTY),
         ("Часовий пояс", document.timezone),
-        ("Створено", document.created_at.strftime("%Y-%m-%d %H:%M UTC")),
+        ("Створено", created_text(document.created_at)),
     ]
     for i, (name, value) in enumerate(details, start=2):
         sheet.write_string(i, 0, name, formats["bold"])
@@ -82,7 +90,9 @@ def _summary(workbook: Workbook, document: ReportDocument, formats: dict[str, An
 def render_xlsx(document: ReportDocument) -> bytes:
     buffer = io.BytesIO()
     workbook = xlsxwriter.Workbook(buffer, {"in_memory": True})
-    workbook.set_properties({"title": document.title, "created": document.created_at})
+    # XlsxWriter writes the creation time as UTC without converting it.
+    created = document.created_at.astimezone(UTC)
+    workbook.set_properties({"title": document.title, "created": created})
     formats: dict[str, Any] = {
         unit: workbook.add_format({"num_format": f}) for unit, f in NUMBER_FORMATS.items()
     }

@@ -36,10 +36,12 @@ from reportlab.platypus import (
 
 from app.exports import ReportDocument
 from app.exports.labels import (
+    EMPTY,
     Column,
     cell_text,
     chart_title,
     columns,
+    created_text,
     label,
     value_text,
     window_text,
@@ -286,8 +288,8 @@ def render_pdf(document: ReportDocument) -> bytes:
     story: list[Flowable] = [
         _p(document.title, TITLE),
         _p(
-            f"Датасет: {document.dataset_name} · дата зрізу: {document.as_of} "
-            f"({document.timezone}) · створено: {document.created_at:%Y-%m-%d %H:%M} UTC",
+            f"Датасет: {document.dataset_name} · дата зрізу: {document.as_of or EMPTY} "
+            f"({document.timezone}) · створено: {created_text(document.created_at)}",
             META,
         ),
     ]

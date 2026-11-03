@@ -19,7 +19,7 @@ EXTENSIONS: dict[ExportFormat, str] = {"pdf": "pdf", "xlsx": "xlsx", "csv": "zip
 class ReportDocument:
     title: str
     dataset_name: str
-    as_of: str  # ISO date
+    as_of: str | None  # ISO date; None for a dataset without one
     timezone: str
     created_at: datetime
     sections: list[dict[str, Any]]  # stored analytics section payloads
