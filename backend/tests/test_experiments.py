@@ -284,23 +284,24 @@ def test_with_the_true_risk_the_dss_plans_on_libsim_s_probabilities() -> None:
     assert decide(exact, "dss_true_risk", budget, RETENTION, truth).equals(dss)
 
 
-def test_with_the_true_effects_the_dss_plans_as_with_them_assumed() -> None:
+def test_with_the_true_effects_the_dss_plans_as_on_a_campaign_that_found_them() -> None:
     at_risk = replace(random_group(seed=5), true_effects={"email": -0.01, "discount": -0.04})
-    assumed = replace(RETENTION, assumed={"email": -0.01, "discount": -0.04})
+    found = replace(at_risk, effects=campaign(email=-0.01, discount=-0.04))
     truth = true_options(at_risk, RETENTION)
     budget = 0.2 * discount_for_all(at_risk)
-    with_assumed = decide(at_risk, "dss_assumed", budget, assumed, truth)
-    assert with_assumed.height > 0
-    assert not with_assumed.equals(decide(at_risk, "dss", budget, RETENTION, truth))
-    assert decide(at_risk, "dss_true_effects", budget, RETENTION, truth).equals(with_assumed)
+    on_found = decide(found, "dss", budget, RETENTION, truth)
+    assert on_found.height > 0
+    assert not on_found.equals(decide(at_risk, "dss", budget, RETENTION, truth))
+    # the truth takes the estimate's place at the same control rate, not at the members' risk
+    assert decide(at_risk, "dss_true_effects", budget, RETENTION, truth).equals(on_found)
     # both: the true average effects on the true probabilities
     both = decide(at_risk, "dss_true_both", budget, RETENTION, truth)
-    assert both.equals(decide(exact_model(at_risk), "dss_assumed", budget, assumed, truth))
+    assert both.equals(decide(exact_model(found), "dss", budget, RETENTION, truth))
     # an action without a true effect (nobody it compares took part) has none
     no_email = replace(at_risk, true_effects={"discount": -0.04})
-    only_discount = replace(RETENTION, assumed={"discount": -0.04})
+    without = replace(at_risk, effects=campaign(email=0.0, discount=-0.04))
     assert decide(no_email, "dss_true_effects", budget, RETENTION, truth).equals(
-        decide(no_email, "dss_assumed", budget, only_discount, truth)
+        decide(without, "dss", budget, RETENTION, truth)
     )
 
 
@@ -560,10 +561,11 @@ def test_a_small_grid_writes_every_policy_and_budget(results: Path) -> None:
     assert (oracle["precision"] == 1.0).all()
     # Policies count the spend with their own probabilities, so only a choice whose true spend
     # fits the budget is one the oracle could make; none of those gains more.
-    library = ["seed", "campaign_months", "budget_share"]
+    library = ["preset", "seed", "campaign_months", "budget_share"]
     fits = retention.filter(pl.col("spend") <= pl.col("budget") + 1e-6).join(
         oracle.select(*library, best="value"), on=library
     )
+    assert fits.height > 0
     assert (fits["value"] * (1 - MIP_GAP) <= fits["best"] + 1e-6).all()
     models = pl.read_csv(results / "models.csv")
     assert models.select("seed", "campaign_months").rows() == [
@@ -602,7 +604,7 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
         "Утримання, частка оракула, %",
         "Утримання, точність дій, %",
         "Утримання, тест Вілкоксона",
-        "Утримання, розклад відставання",
+        "Утримання, джерела відставання",
         "Закупівля, обслужений попит",
         "Закупівля, частка оракула, %",
         "Закупівля, тест Вілкоксона",
@@ -613,7 +615,7 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
     assert sheet.max_row == 1 + len(tables.RETENTION_LABELS)  # the decomposition is not here
     assert sheet.cell(row=9, column=2).value == "Оракул"
     assert sheet.cell(row=9, column=3).value == "100 ± 0"
-    gap = [[cell.value for cell in row] for row in workbook["Утримання, розклад відставання"]]
+    gap = [[cell.value for cell in row] for row in workbook["Утримання, джерела відставання"]]
     assert [line[:2] for line in gap] == [
         ["Сценарій", "Бюджет"],
         ["Базовий", "10 %"],
