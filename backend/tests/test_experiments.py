@@ -1,11 +1,12 @@
 """The experiment harness: true gains by hand, the baselines' order and budget, the oracles
 against brute force, the DSS with the truth in place of its estimates, the content policies, the
-tables' number style and Wilcoxon test, the figures, and a small grid end to end, serial and in
-parallel (DESIGN.md §6)."""
+tables' number style, Wilcoxon test and gap decomposition, the figures, and a small grid end to
+end, serial and in parallel (DESIGN.md §6)."""
 
 import itertools
 import json
 import pickle
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -490,6 +491,45 @@ def test_the_wilcoxon_table_compares_the_dss_with_the_best_baseline() -> None:
     ]
 
 
+def test_the_gap_table_puts_the_dss_next_to_its_plans_with_the_truth() -> None:
+    def row(seed: int, policy: str, value: float) -> dict[str, Any]:
+        return {
+            "preset": "demo",
+            "seed": seed,
+            "campaign_months": CAMPAIGN_MONTHS,
+            "budget_share": 0.1,
+            "policy": policy,
+            "value": value,
+        }
+
+    shares = {  # % of the oracle's 200 UAH in seeds 1, 2 and 3
+        "dss": (40, 50, 60),
+        "dss_true_risk": (55, 60, 65),
+        "dss_true_effects": (60, 60, 60),
+        "dss_true_both": (70, 75, 80),
+        "dss_assumed": (90, 90, 90),  # not in this table
+    }
+    frame = pl.DataFrame(
+        [row(seed, "oracle", 200.0) for seed in (1, 2, 3)]
+        + [
+            row(seed, policy, 2.0 * share)
+            for policy, values in shares.items()
+            for seed, share in zip((1, 2, 3), values, strict=True)
+        ]
+    )
+    header, rows = tables.gap_table(frame)
+    assert header == [
+        "Сценарій",
+        "Бюджет",
+        "СППР, % від оракула",
+        "З істинним ризиком, % від оракула",
+        "З істинними середніми ефектами, % від оракула",
+        "З обома, % від оракула",
+    ]
+    # half-widths t(0.975, 2) · sd / √3: 4.303 · 10 / √3 = 25 and 4.303 · 5 / √3 = 12
+    assert rows == [["Базовий", "10 %", "50 ± 25", "60 ± 12", "60 ± 0", "75 ± 12"]]
+
+
 def test_the_committed_grid_loads() -> None:
     config = load()
     assert config.seeds == 20
@@ -562,6 +602,7 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
         "Утримання, частка оракула, %",
         "Утримання, точність дій, %",
         "Утримання, тест Вілкоксона",
+        "Утримання, розклад відставання",
         "Закупівля, обслужений попит",
         "Закупівля, частка оракула, %",
         "Закупівля, тест Вілкоксона",
@@ -572,6 +613,15 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
     assert sheet.max_row == 1 + len(tables.RETENTION_LABELS)  # the decomposition is not here
     assert sheet.cell(row=9, column=2).value == "Оракул"
     assert sheet.cell(row=9, column=3).value == "100 ± 0"
+    gap = [[cell.value for cell in row] for row in workbook["Утримання, розклад відставання"]]
+    assert [line[:2] for line in gap] == [
+        ["Сценарій", "Бюджет"],
+        ["Базовий", "10 %"],
+        [None, "40 %"],
+    ]
+    assert gap[0][2:] == [f"{label}, % від оракула" for label in tables.GAP_LABELS.values()]
+    shares = [cell for line in gap[1:] for cell in line[2:]]
+    assert all(isinstance(cell, str) and re.fullmatch(r"−?\d+ ± \d+", cell) for cell in shares)
 
 
 def test_a_longer_campaign_has_more_participants_and_narrower_intervals(results: Path) -> None:

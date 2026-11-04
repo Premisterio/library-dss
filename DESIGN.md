@@ -744,6 +744,9 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - The churn model's ROC-AUC and Brier score on the members at risk, against libsim's outcome without an action, next to the best achievable: the true probabilities.
   - Each action's 95% campaign interval is checked against its true average effect on the participants it compares: e-mail among the members who agreed to e-mails, the discount among everyone.
   - These true average effects are computed once per library from the ground truth and kept in its risk group, next to the members at risk and the campaign's estimates. The risk group is the one place the policies read from, so this check and `dss_true_effects` use the same numbers.
+- **Where the gap comes from.** The sheet "Утримання, розклад відставання" gives, at each preset and budget, the share of the oracle of `dss`, `dss_true_risk`, `dss_true_effects` and `dss_true_both`.
+  - The step from `dss` to `dss_true_risk` is what the churn model's errors cost, the step to `dss_true_effects` what the errors of the campaign's estimates cost. The two steps need not add up to the step to `dss_true_both`.
+  - No library could follow these three policies, so they appear in no other table or figure.
 - **Statistics.**
   - Every table cell is the mean over seeds ± the half-width of its 95% t-interval.
   - At each preset and budget, the DSS (`dss`) is compared with the best baseline, the one with the highest mean. The table gives their mean paired difference over the seeds and the two-sided p-value of the Wilcoxon signed-rank test.
@@ -760,6 +763,6 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - `retention.csv` and `content.csv` (one row per library, budget and policy) and `models.csv` (one row per library) hold the raw numbers. A library is a preset, a seed and the length of its campaign in months. `config.json` is the grid they come from.
   - `tables.xlsx` holds the thesis tables, labelled in Ukrainian and formatted for pasting into the text, and `figures/` the figures.
   - Rows are written in the grid's order, whichever worker finishes first, so a parallel run writes the same files as a serial one.
-- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; both oracles against brute force; the DSS with the true risk and the true average effects against `dss` and `dss_assumed`, and those effects by hand; the content portfolio's cap per genre; the number style; the Wilcoxon table by hand; the campaign lengths in the grid; and a small grid end to end, serial and in parallel.
+- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; both oracles against brute force; the DSS with the true risk and the true average effects against `dss` and `dss_assumed`, and those effects by hand; the content portfolio's cap per genre; the number style; the Wilcoxon and gap tables by hand; the campaign lengths in the grid; and a small grid end to end, serial and in parallel.
   - In the small grid no content policy beats the oracle or exceeds its budget.
   - No retention policy whose true spend fits the budget beats the oracle beyond the solver's gap. The others count the spend with their own probabilities, so their true spend can exceed the budget, and the oracle bounds only the choices it could make.
