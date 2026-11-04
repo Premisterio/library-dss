@@ -197,7 +197,7 @@ def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
         "Утримання, тест Вілкоксона": wilcoxon_table(
             retention, "value", RETENTION_LABELS, retention_policies.BASELINES, "грн"
         ),
-        "Утримання, розклад відставання": gap_table(retention),
+        "Утримання, джерела відставання": gap_table(retention),
     }
 
 

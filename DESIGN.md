@@ -715,11 +715,11 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - `dss_assumed` plans with assumed effects instead of the campaign's: the plan form's defaults, −2 percentage points for e-mail and −5 for the discount.
   - `dss_true_risk`, `dss_true_effects` and `dss_true_both` split the DSS's gap to the oracle by where it comes from. Each is `dss` with libsim's truth in place of what the DSS estimates:
     - `dss_true_risk`: each member's true probability of churn without an action instead of the churn model's;
-    - `dss_true_effects`: each action's true average effect on the campaign participants it compares (see "Model and effects") instead of the campaign's estimate. The plan gets it as it gets an assumed effect, at the members' mean risk, with the campaign's discount;
+    - `dss_true_effects`: each action's true average effect on the campaign participants it compares (see "Model and effects") in place of the campaign's overall estimate. The plan turns it into a logit shift exactly as it turns the estimate, at the action's control churn rate, and offers the campaign's discount;
     - `dss_true_both`: both.
-  - What `dss_true_both` still misses is what one effect per action cannot capture, since the true effects differ between members, plus the solver's gap.
+  - What `dss_true_both` still misses is what one effect per action cannot capture, since the true effects differ between members, plus the solver's gap. The true average effects are over the campaign's participants, not over the members at risk, so the difference between those two populations stays in this remainder too.
   - `oracle` runs the plan's solver on the true gains: the best any policy could do with the budget.
-  - Every policy except the oracle counts the spend as the plan does, with the churn model's probability of renewing, or the true one where it plans with the true risk. Doing nothing gains 0, so every gain is measured against doing nothing.
+  - Every policy except the oracle counts the spend as the plan does: with the probability of renewing it plans with (the churn model's, or libsim's where it plans with the true risk) after the action's effect. Doing nothing gains 0, so every gain is measured against doing nothing.
 - **Judged by the truth.** libsim records each member's true churn probability under every action. A choice is judged by the plan's own formula on those probabilities:
   - true gain = (p_none − p_action) · monthly list price · 12 − spend, where a discount's spend is its share of the renewal price times the true probability of renewing;
   - **value** is the sum over the members acted on; **share of the oracle** is the value over the oracle's at the same budget; **precision** is the share of actions whose true gain is positive.
@@ -744,7 +744,7 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - The churn model's ROC-AUC and Brier score on the members at risk, against libsim's outcome without an action, next to the best achievable: the true probabilities.
   - Each action's 95% campaign interval is checked against its true average effect on the participants it compares: e-mail among the members who agreed to e-mails, the discount among everyone.
   - These true average effects are computed once per library from the ground truth and kept in its risk group, next to the members at risk and the campaign's estimates. The risk group is the one place the policies read from, so this check and `dss_true_effects` use the same numbers.
-- **Where the gap comes from.** The sheet "Утримання, розклад відставання" gives, at each preset and budget, the share of the oracle of `dss`, `dss_true_risk`, `dss_true_effects` and `dss_true_both`.
+- **Where the gap comes from.** The sheet "Утримання, джерела відставання" gives, at each preset and budget, the share of the oracle of `dss`, `dss_true_risk`, `dss_true_effects` and `dss_true_both`.
   - The step from `dss` to `dss_true_risk` is what the churn model's errors cost, the step to `dss_true_effects` what the errors of the campaign's estimates cost. The two steps need not add up to the step to `dss_true_both`.
   - No library could follow these three policies, so they appear in no other table or figure.
 - **Statistics.**
