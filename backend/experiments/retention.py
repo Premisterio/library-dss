@@ -21,6 +21,9 @@ POLICIES = (
     "dss",
     "dss_segments",
     "dss_cautious",
+    "dss_true_risk",
+    "dss_true_effects",
+    "dss_true_both",
     "oracle",
 )
 BASELINES = ("random", "inactive", "risk")  # what a library might do without the DSS
@@ -32,6 +35,7 @@ class RiskGroup:
 
     people: pl.DataFrame  # see `people_at_risk`
     effects: list[Effect]  # estimated from the library's campaign
+    true_effects: dict[Action, float]  # see `true_effects`
     discount_pct: float  # the campaign's discount, the one its effect was measured for
     seed: int  # the library's, for the random policy
 
@@ -176,12 +180,10 @@ def model_quality(group: RiskGroup, base_rate: float) -> dict[str, Any]:
     }
 
 
-def effect_coverage(
-    effects: list[Effect], participants: pl.DataFrame, truth: dict[str, Any]
-) -> dict[str, Any]:
-    """Each action's estimated effect with its 95% interval, the true average effect on the
-    campaign participants it compares (e-mail: those who agreed to e-mails), and whether the
-    interval contains it."""
+def true_effects(participants: pl.DataFrame, truth: dict[str, Any]) -> dict[Action, float]:
+    """Each action's true average effect on the campaign participants it compares (e-mail: those
+    who agreed to e-mails), as a difference of churn rates like the campaign's estimate. An
+    action that compares nobody is left out."""
     true = pl.DataFrame(
         [
             {"user_id": row["user_id"], **{f"true_{a}": p for a, p in row["p_true"].items()}}
@@ -189,15 +191,26 @@ def effect_coverage(
         ]
     )
     joined = participants.join(true, on="user_id")
+    found: dict[Action, float] = {}
+    for action in ACTIONS:
+        compared = joined.filter(pl.col("email_opt_in")) if action == "email" else joined
+        actual = compared.select((pl.col(f"true_{action}") - pl.col("true_none")).mean()).item()
+        if actual is not None:
+            found[action] = actual
+    return found
+
+
+def effect_coverage(group: RiskGroup) -> dict[str, Any]:
+    """Each action's estimated effect with its 95% interval, its true average effect
+    (`true_effects`), and whether the interval contains it."""
     row: dict[str, Any] = {}
-    for effect in effects:
+    for effect in group.effects:
         if effect.segment is not None:
             continue
         action = effect.action
-        compared = joined.filter(pl.col("email_opt_in")) if action == "email" else joined
-        actual = compared.select((pl.col(f"true_{action}") - pl.col("true_none")).mean()).item()
+        actual = group.true_effects.get(action)
         covered = None
-        if effect.low is not None and effect.high is not None:
+        if effect.low is not None and effect.high is not None and actual is not None:
             covered = effect.low <= actual <= effect.high
         row |= {
             f"{action}_estimate": effect.difference,
@@ -226,8 +239,16 @@ def _discounts(order: pl.DataFrame, budget: float, discount_pct: float) -> pl.Da
 
 def _dss(group: RiskGroup, policy: str, budget: float, config: RetentionConfig) -> pl.DataFrame:
     """The DSS's plan: with the campaign's effects (as the plan form's switches choose them) or,
-    for `dss_assumed`, with the analyst's assumed effects."""
-    assumed: dict[Action, float] = {a: config.assumed.get(a, 0.0) for a in ACTIONS}
+    for `dss_assumed`, with the analyst's assumed effects. The `dss_true_*` plans take the truth
+    in place of the churn model's probabilities, of the campaign's effects, or of both."""
+    people = group.people
+    if policy in ("dss_true_risk", "dss_true_both"):
+        people = people.with_columns(probability=pl.col("true_none"))
+    assumed: dict[Action, float] | None = None
+    if policy == "dss_assumed":
+        assumed = {a: config.assumed.get(a, 0.0) for a in ACTIONS}
+    elif policy in ("dss_true_effects", "dss_true_both"):
+        assumed = {a: group.true_effects.get(a, 0.0) for a in ACTIONS}
     scenario = Scenario(
         budget=budget,
         discount_pct=group.discount_pct,
@@ -235,11 +256,11 @@ def _dss(group: RiskGroup, policy: str, budget: float, config: RetentionConfig) 
         email_cost=config.email_cost,
         cautious=policy == "dss_cautious",
         by_segment=policy == "dss_segments",
-        assumed=assumed if policy == "dss_assumed" else None,
+        assumed=assumed,
     )
-    base_rate = group.people.select(pl.col("probability").mean()).item()
+    base_rate = people.select(pl.col("probability").mean()).item()
     table = effect_table(group.effects, scenario, base_rate=base_rate)
-    return plan(group.people, table, scenario).chosen.select("user_id", "action")
+    return plan(people, table, scenario).chosen.select("user_id", "action")
 
 
 def _oracle(truth: pl.DataFrame, budget: float) -> pl.DataFrame:
