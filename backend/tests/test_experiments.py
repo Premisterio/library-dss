@@ -1,10 +1,13 @@
 """The experiment harness: true gains by hand, the baselines' order and budget, the oracles
-against brute force, the content policies, the tables' number style and Wilcoxon test, the
-figures, and a small grid end to end, serial and in parallel (DESIGN.md §6)."""
+against brute force, the DSS with the truth in place of its estimates, the content policies, the
+tables' number style, Wilcoxon test and gap decomposition, the figures, and a small grid end to
+end, serial and in parallel (DESIGN.md §6)."""
 
 import itertools
 import json
 import pickle
+import re
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +19,7 @@ from typer.testing import CliRunner
 
 from app.domain.content import ahp
 from app.domain.optimize import MIP_GAP
+from app.domain.retention.effects import ACTIONS, SEGMENTS, Effect
 from app.ingest import IngestError
 from experiments import content, figures, grid, retention, tables
 from experiments.__main__ import app
@@ -96,7 +100,45 @@ def group(*rows: dict[str, Any]) -> RiskGroup:
         "churned": False,
     }
     people = pl.DataFrame([{**defaults, **row} for row in rows], schema=PEOPLE_SCHEMA)
-    return RiskGroup(people=people, effects=[], discount_pct=0.2, seed=1)
+    return RiskGroup(people=people, effects=[], true_effects={}, discount_pct=0.2, seed=1)
+
+
+def random_group(seed: int) -> RiskGroup:
+    """30 random members whose predicted risk is not their true one, and a campaign that found
+    −2 percentage points for e-mail and −8 for the discount."""
+    rng = np.random.default_rng(seed)
+    at_risk = group(
+        *(
+            {
+                "user_id": f"u{i}",
+                "probability": float(rng.uniform(0.02, 0.5)),
+                "email_opt_in": bool(rng.random() < 0.7),
+                "discounted": bool(rng.random() < 0.15),
+                "period_price": float(rng.choice([79.0, 149.0, 1290.0])),
+                "true_none": float(rng.uniform(0.02, 0.5)),
+            }
+            for i in range(30)
+        )
+    )
+    return replace(at_risk, effects=campaign(email=-0.02, discount=-0.08))
+
+
+def exact_model(at_risk: RiskGroup) -> RiskGroup:
+    """The group as a churn model that predicts the true risk would score it."""
+    return replace(at_risk, people=at_risk.people.with_columns(probability=pl.col("true_none")))
+
+
+def campaign(email: float, discount: float) -> list[Effect]:
+    """Each action's campaign effect on everyone and in every segment, against a control churn
+    rate of 30%."""
+    effects = []
+    for action, value in zip(ACTIONS, (email, discount), strict=True):
+        churned = round(100 * (0.3 + value))
+        for segment in (None, *SEGMENTS):
+            effects.append(
+                Effect(action, segment, 100, 100, churned, 30, value, None, None, value, value)
+            )
+    return effects
 
 
 def chosen(*pairs: tuple[str, str]) -> pl.DataFrame:
@@ -218,6 +260,72 @@ def test_the_oracle_equals_brute_force_on_small_problems() -> None:
         )
         value = judge(decide(people, "oracle", budget, RETENTION, truth), truth)["value"]
         assert value == pytest.approx(best, rel=MIP_GAP, abs=1e-6)
+
+
+def test_with_the_true_risk_the_dss_plans_on_libsim_s_probabilities() -> None:
+    # The model takes b for the riskier member, the truth a. A discount's expected spend is
+    # about 10 UAH at a risk of 0.6 and 19 at 0.05, so 15 UAH buy only the riskier one's.
+    two = replace(
+        group(
+            {"user_id": "a", "email_opt_in": False, "probability": 0.05, "true_none": 0.6},
+            {"user_id": "b", "email_opt_in": False, "probability": 0.6, "true_none": 0.05},
+        ),
+        effects=campaign(email=-0.02, discount=-0.08),
+    )
+    truth = true_options(two, RETENTION)
+    assert decide(two, "dss", 15.0, RETENTION, truth).rows() == [("b", "discount")]
+    assert decide(two, "dss_true_risk", 15.0, RETENTION, truth).rows() == [("a", "discount")]
+    # a model as good as the truth: the same plan
+    exact = exact_model(random_group(seed=4))
+    truth = true_options(exact, RETENTION)
+    budget = 0.2 * discount_for_all(exact)
+    dss = decide(exact, "dss", budget, RETENTION, truth)
+    assert dss.height > 0
+    assert decide(exact, "dss_true_risk", budget, RETENTION, truth).equals(dss)
+
+
+def test_with_the_true_effects_the_dss_plans_as_with_them_assumed() -> None:
+    at_risk = replace(random_group(seed=5), true_effects={"email": -0.01, "discount": -0.04})
+    assumed = replace(RETENTION, assumed={"email": -0.01, "discount": -0.04})
+    truth = true_options(at_risk, RETENTION)
+    budget = 0.2 * discount_for_all(at_risk)
+    with_assumed = decide(at_risk, "dss_assumed", budget, assumed, truth)
+    assert with_assumed.height > 0
+    assert not with_assumed.equals(decide(at_risk, "dss", budget, RETENTION, truth))
+    assert decide(at_risk, "dss_true_effects", budget, RETENTION, truth).equals(with_assumed)
+    # both: the true average effects on the true probabilities
+    both = decide(at_risk, "dss_true_both", budget, RETENTION, truth)
+    assert both.equals(decide(exact_model(at_risk), "dss_assumed", budget, assumed, truth))
+    # an action without a true effect (nobody it compares took part) has none
+    no_email = replace(at_risk, true_effects={"discount": -0.04})
+    only_discount = replace(RETENTION, assumed={"discount": -0.04})
+    assert decide(no_email, "dss_true_effects", budget, RETENTION, truth).equals(
+        decide(no_email, "dss_assumed", budget, only_discount, truth)
+    )
+
+
+def test_the_true_average_effects_are_over_the_participants_each_action_compares() -> None:
+    participants = pl.DataFrame(
+        {
+            "user_id": ["a", "b", "c"],
+            "arm": ["email", "control", "discount"],
+            "email_opt_in": [True, True, False],
+        }
+    )
+    truth = {
+        "campaign": [
+            {"user_id": "a", "p_true": {"none": 0.30, "email": 0.28, "discount": 0.20}},
+            {"user_id": "b", "p_true": {"none": 0.20, "email": 0.16, "discount": 0.10}},
+            {"user_id": "c", "p_true": {"none": 0.40, "email": 0.40, "discount": 0.34}},
+        ]
+    }
+    # e-mail among a and b, who agreed to e-mails; the discount among all three
+    assert retention.true_effects(participants, truth) == {
+        "email": pytest.approx((-0.02 - 0.04) / 2),
+        "discount": pytest.approx((-0.10 - 0.10 - 0.06) / 3),
+    }
+    nobody_agreed = participants.with_columns(email_opt_in=pl.lit(False))
+    assert set(retention.true_effects(nobody_agreed, truth)) == {"discount"}
 
 
 def offer(*rows: dict[str, Any]) -> pl.DataFrame:
@@ -383,6 +491,45 @@ def test_the_wilcoxon_table_compares_the_dss_with_the_best_baseline() -> None:
     ]
 
 
+def test_the_gap_table_puts_the_dss_next_to_its_plans_with_the_truth() -> None:
+    def row(seed: int, policy: str, value: float) -> dict[str, Any]:
+        return {
+            "preset": "demo",
+            "seed": seed,
+            "campaign_months": CAMPAIGN_MONTHS,
+            "budget_share": 0.1,
+            "policy": policy,
+            "value": value,
+        }
+
+    shares = {  # % of the oracle's 200 UAH in seeds 1, 2 and 3
+        "dss": (40, 50, 60),
+        "dss_true_risk": (55, 60, 65),
+        "dss_true_effects": (60, 60, 60),
+        "dss_true_both": (70, 75, 80),
+        "dss_assumed": (90, 90, 90),  # not in this table
+    }
+    frame = pl.DataFrame(
+        [row(seed, "oracle", 200.0) for seed in (1, 2, 3)]
+        + [
+            row(seed, policy, 2.0 * share)
+            for policy, values in shares.items()
+            for seed, share in zip((1, 2, 3), values, strict=True)
+        ]
+    )
+    header, rows = tables.gap_table(frame)
+    assert header == [
+        "Сценарій",
+        "Бюджет",
+        "СППР, % від оракула",
+        "З істинним ризиком, % від оракула",
+        "З істинними середніми ефектами, % від оракула",
+        "З обома, % від оракула",
+    ]
+    # half-widths t(0.975, 2) · sd / √3: 4.303 · 10 / √3 = 25 and 4.303 · 5 / √3 = 12
+    assert rows == [["Базовий", "10 %", "50 ± 25", "60 ± 12", "60 ± 0", "75 ± 12"]]
+
+
 def test_the_committed_grid_loads() -> None:
     config = load()
     assert config.seeds == 20
@@ -411,6 +558,13 @@ def test_a_small_grid_writes_every_policy_and_budget(results: Path) -> None:
     oracle = retention.filter(pl.col("policy") == "oracle")
     assert (oracle["spend"] <= oracle["budget"] + 1e-6).all()
     assert (oracle["precision"] == 1.0).all()
+    # Policies count the spend with their own probabilities, so only a choice whose true spend
+    # fits the budget is one the oracle could make; none of those gains more.
+    library = ["seed", "campaign_months", "budget_share"]
+    fits = retention.filter(pl.col("spend") <= pl.col("budget") + 1e-6).join(
+        oracle.select(*library, best="value"), on=library
+    )
+    assert (fits["value"] * (1 - MIP_GAP) <= fits["best"] + 1e-6).all()
     models = pl.read_csv(results / "models.csv")
     assert models.select("seed", "campaign_months").rows() == [
         (seed, months) for _, seed, months in SMALL_GRID.cases()
@@ -448,6 +602,7 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
         "Утримання, частка оракула, %",
         "Утримання, точність дій, %",
         "Утримання, тест Вілкоксона",
+        "Утримання, розклад відставання",
         "Закупівля, обслужений попит",
         "Закупівля, частка оракула, %",
         "Закупівля, тест Вілкоксона",
@@ -455,9 +610,18 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
         "Розмір кампанії",
     ]
     sheet = workbook["Утримання, частка оракула, %"]
-    assert sheet.max_row == 1 + len(POLICIES)
+    assert sheet.max_row == 1 + len(tables.RETENTION_LABELS)  # the decomposition is not here
     assert sheet.cell(row=9, column=2).value == "Оракул"
     assert sheet.cell(row=9, column=3).value == "100 ± 0"
+    gap = [[cell.value for cell in row] for row in workbook["Утримання, розклад відставання"]]
+    assert [line[:2] for line in gap] == [
+        ["Сценарій", "Бюджет"],
+        ["Базовий", "10 %"],
+        [None, "40 %"],
+    ]
+    assert gap[0][2:] == [f"{label}, % від оракула" for label in tables.GAP_LABELS.values()]
+    shares = [cell for line in gap[1:] for cell in line[2:]]
+    assert all(isinstance(cell, str) and re.fullmatch(r"−?\d+ ± \d+", cell) for cell in shares)
 
 
 def test_a_longer_campaign_has_more_participants_and_narrower_intervals(results: Path) -> None:

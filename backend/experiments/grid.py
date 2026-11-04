@@ -70,6 +70,7 @@ def _judge(preset: str, seed: int, campaign_months: int, config: Config) -> Rows
     group = retention.RiskGroup(
         people=retention.people_at_risk(scores, truth),
         effects=estimate(campaign),
+        true_effects=retention.true_effects(campaign, truth),
         discount_pct=float(discounts.select(pl.col("discount_pct").median()).item()),
         seed=seed,
     )
@@ -80,7 +81,7 @@ def _judge(preset: str, seed: int, campaign_months: int, config: Config) -> Rows
         "model": training.chosen,
         "unmatched": len(scores) - group.people.height,  # scored but not at risk in the truth
         **retention.model_quality(group, rows.select(pl.col("churned").mean()).item()),
-        **retention.effect_coverage(group.effects, campaign, truth),
+        **retention.effect_coverage(group),
     }
     return {
         "retention": [key | row for row in retention.evaluate_policies(group, config.retention)],

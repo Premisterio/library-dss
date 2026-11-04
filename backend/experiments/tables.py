@@ -34,6 +34,12 @@ RETENTION_LABELS = {
     "dss_cautious": "СППР, обережна межа",
     "oracle": "Оракул",
 }
+GAP_LABELS = {  # the DSS, then with the truth in place of its estimates; only in `gap_table`
+    "dss": "СППР",
+    "dss_true_risk": "З істинним ризиком",
+    "dss_true_effects": "З істинними середніми ефектами",
+    "dss_true_both": "З обома",
+}
 CONTENT_LABELS = {
     "random": "Випадкові назви",
     "cheapest": "Найдешевші",
@@ -159,8 +165,28 @@ def share_of_oracle(frame: pl.DataFrame, column: str) -> pl.DataFrame:
     )
 
 
+def gap_table(retention: pl.DataFrame) -> Table:
+    """Where the DSS's gap to the oracle comes from: at each preset and budget, its share of the
+    oracle next to the shares of the DSS with the true risk, the true average effects and both."""
+    shared = share_of_oracle(retention, "value")
+    header = ["Сценарій", "Бюджет", *(f"{label}, % від оракула" for label in GAP_LABELS.values())]
+    rows = []
+    for preset in shared["preset"].unique(maintain_order=True).to_list():
+        label = PRESET_LABELS.get(preset, preset)
+        for share in sorted(shared["budget_share"].unique().to_list()):
+            mine = shared.filter((pl.col("preset") == preset) & (pl.col("budget_share") == share))
+            cells = [
+                summary(mine.filter(pl.col("policy") == p)["share"].drop_nulls().to_numpy() * 100)
+                for p in GAP_LABELS
+            ]
+            rows.append([label, f"{number(100 * share)} %", *cells])
+            label = ""
+    return header, rows
+
+
 def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
-    """The true net gain, its share of the oracle's and the share of actions that pay off."""
+    """The true net gain, its share of the oracle's, the share of actions that pay off, the test
+    against the best baseline and where the DSS's gap to the oracle comes from."""
     shared = share_of_oracle(retention, "value")
     return {
         "Утримання, виграш, грн": by_budget(retention, "value", RETENTION_LABELS),
@@ -171,6 +197,7 @@ def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
         "Утримання, тест Вілкоксона": wilcoxon_table(
             retention, "value", RETENTION_LABELS, retention_policies.BASELINES, "грн"
         ),
+        "Утримання, розклад відставання": gap_table(retention),
     }
 
 
