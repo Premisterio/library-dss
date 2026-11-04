@@ -211,6 +211,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
     - Database sessions run in UTC, so the API answers UTC timestamps on any server (#36).
     - The PDF report: a cover with the kind, metadata, contents and a decision's parameters, a page per section, a footer "N з M", and decision charts in forms that fit them (#37).
   - Each PR had an implementer and a reviewer agent; a final review of the four merged together found nothing to fix.
+  - Done: where the retention DSS's gap to the oracle comes from (DESIGN §6), in a sheet of its own: at a 10% budget the DSS reaches 32–45% of the oracle, with libsim's true risk 39–64%, with the true average effects 48–60% and with both 62–79%. The rest is what one effect per action misses, since effects differ between members.
 - A Playwright end-to-end test: sign in → upload → analytics → train → scenario → approve. It also checks that no page scrolls sideways beside the open sidebar at 1024 and 1280 px.
 - A backup and restore drill on the local stack.
 - User documentation.
