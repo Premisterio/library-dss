@@ -51,7 +51,7 @@ FIGURES = {
     "retention.png": Spec(
         "retention.csv",
         "value",
-        ("dss", "dss_assumed", "inactive"),
+        ("dss", "dss_assumed", "inactive_emails"),
         RETENTION_LABELS,
         "Виграш, % від виграшу оракула",
         "Бюджет, % від вартості знижки для всіх у групі ризику",

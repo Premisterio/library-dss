@@ -28,6 +28,8 @@ RETENTION_LABELS = {
     "random": "Знижки випадковим",
     "inactive": "Знижки неактивним 14+ днів",
     "risk": "Знижки за ризиком",
+    "emails": "Листи всім, хто погодився",
+    "inactive_emails": "Знижки неактивним, листи решті",
     "dss_assumed": "СППР із припущеннями",
     "dss": "СППР",
     "dss_segments": "СППР, ефекти сегментів",
@@ -123,14 +125,16 @@ def wilcoxon_table(
     labels: dict[str, str],
     baselines: tuple[str, ...],
     unit: str,
+    policy: str = "dss",
 ) -> Table:
-    """The DSS against the best baseline (by its mean) at each preset and budget: their paired
-    difference over seeds and the two-sided p-value of the Wilcoxon signed-rank test."""
+    """A policy (the DSS unless another is named) against the best baseline (by its mean) at
+    each preset and budget: their paired difference over seeds and the two-sided p-value of the
+    Wilcoxon signed-rank test."""
     header = [
         "Сценарій",
         "Бюджет",
         "Найкраща базова політика",
-        f"СППР мінус базова, {unit}",
+        f"{labels[policy]} мінус базова, {unit}",
         f"p, тест Вілкоксона (n = {frame['seed'].n_unique()})",
     ]
     rows = []
@@ -144,7 +148,7 @@ def wilcoxon_table(
             )
             means = {b: wide.select(pl.col(b).mean()).item() for b in baselines}
             best = max(means, key=means.__getitem__)
-            difference = (wide["dss"] - wide[best]).drop_nulls().to_numpy()
+            difference = (wide[policy] - wide[best]).drop_nulls().to_numpy()
             p = None
             if difference.size > 1 and difference.any():
                 result = stats.wilcoxon(difference)
@@ -185,8 +189,9 @@ def gap_table(retention: pl.DataFrame) -> Table:
 
 
 def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
-    """The true net gain, its share of the oracle's, the share of actions that pay off, the test
-    against the best baseline and where the DSS's gap to the oracle comes from."""
+    """The true net gain, its share of the oracle's, the share of actions that pay off, the tests
+    against the best rule with discounts alone and the best rule that also sends e-mails (the
+    DSS, and the DSS with assumptions), and where the DSS's gap to the oracle comes from."""
     shared = share_of_oracle(retention, "value")
     return {
         "Утримання, виграш, грн": by_budget(retention, "value", RETENTION_LABELS),
@@ -195,7 +200,18 @@ def retention_tables(retention: pl.DataFrame) -> dict[str, Table]:
             retention, "precision", RETENTION_LABELS, scale=100
         ),
         "Утримання, тест Вілкоксона": wilcoxon_table(
-            retention, "value", RETENTION_LABELS, retention_policies.BASELINES, "грн"
+            retention, "value", RETENTION_LABELS, retention_policies.DISCOUNT_RULES, "грн"
+        ),
+        "Утримання, тест (з листами)": wilcoxon_table(
+            retention, "value", RETENTION_LABELS, retention_policies.EMAIL_RULES, "грн"
+        ),
+        "Утримання, тест (припущення)": wilcoxon_table(
+            retention,
+            "value",
+            RETENTION_LABELS,
+            retention_policies.EMAIL_RULES,
+            "грн",
+            policy="dss_assumed",
         ),
         "Утримання, джерела відставання": gap_table(retention),
     }

@@ -711,6 +711,10 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
     - `random`: a random order;
     - `inactive`: members without a session for 14 days or more, the longest idle first (the churn baseline's rule);
     - `risk`: the highest predicted risk first.
+  - `emails` and `inactive_emails` are rules that also send e-mails. The plan has two actions, and the e-mail is the cheap one, so a rule with discounts alone is not a fair rival:
+    - `emails`: an e-mail to every member at risk who agreed to e-mails, and no discounts;
+    - `inactive_emails`: the discounts of `inactive`, and an e-mail to every other member who agreed to e-mails. The e-mails count in the spend, so they leave less for discounts. A member gets one action, as in the plan.
+    - A budget below the price of the e-mails alone buys as many of them as it can.
   - `dss` is the plan with its defaults: each action's overall campaign effect. `dss_segments` and `dss_cautious` turn on the plan form's switches: segment effects and the cautious bound.
   - `dss_assumed` plans with assumed effects instead of the campaign's: the plan form's defaults, −2 percentage points for e-mail and −5 for the discount.
   - `dss_true_risk`, `dss_true_effects` and `dss_true_both` split the DSS's gap to the oracle by where it comes from. Each is `dss` with libsim's truth in place of what the DSS estimates:
@@ -719,7 +723,11 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
     - `dss_true_both`: both.
   - What `dss_true_both` still misses is what one effect per action cannot capture, since the true effects differ between members, plus the solver's gap. The true average effects are over the campaign's participants, not over the members at risk, so the difference between those two populations stays in this remainder too.
   - `oracle` runs the plan's solver on the true gains: the best any policy could do with the budget.
-  - Every policy except the oracle counts the spend as the plan does: with the probability of renewing it plans with (the churn model's, or libsim's where it plans with the true risk) after the action's effect. Doing nothing gains 0, so every gain is measured against doing nothing.
+  - The budget limits the expected spend, and each kind of policy counts it with what it knows:
+    - the DSS's plans with the probability of renewing after the action's effect, from the churn model's probability, or from libsim's where the plan takes the true risk;
+    - the rules with the churn model's probability of renewing without an action, since a rule knows no effects;
+    - the oracle with the true probability of renewing after the action.
+  - Doing nothing gains 0, so every gain is measured against doing nothing.
 - **Judged by the truth.** libsim records each member's true churn probability under every action. A choice is judged by the plan's own formula on those probabilities:
   - true gain = (p_none − p_action) · monthly list price · 12 − spend, where a discount's spend is its share of the renewal price times the true probability of renewing;
   - **value** is the sum over the members acted on; **share of the oracle** is the value over the oracle's at the same budget; **precision** is the share of actions whose true gain is positive.
@@ -750,8 +758,9 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
 - **Statistics.**
   - Every table cell is the mean over seeds ± the half-width of its 95% t-interval.
   - At each preset and budget, the DSS (`dss`) is compared with the best baseline, the one with the highest mean. The table gives their mean paired difference over the seeds and the two-sided p-value of the Wilcoxon signed-rank test.
+  - Retention has three such tables: the DSS against the best rule with discounts alone, the DSS against the best rule that also sends e-mails, and the DSS with assumptions against the best rule that also sends e-mails.
 - **Figures** (`figures/`, PNG at 200 dpi, 6.3 inches wide: the text width of an A4 page). Each shows the share of the oracle for three policies as the budget grows, one panel per preset, with the 95% interval as a band.
-  - Retention: the DSS, the DSS with assumptions, and the inactivity rule, the best baseline on most presets.
+  - Retention: the DSS, the DSS with assumptions, and `inactive_emails`, the best baseline at most presets and budgets. The rules with discounts alone are in the tables.
   - Content: the DSS (TOPSIS, equal weights), searches per hryvnia, and random titles.
   - Campaign size: the DSS and the DSS with assumptions, by the campaign's length.
   - They follow the data-viz method:
@@ -763,6 +772,6 @@ Grounded in Apple's Human Interface Guidelines and the Liquid Glass material, tr
   - `retention.csv` and `content.csv` (one row per library, budget and policy) and `models.csv` (one row per library) hold the raw numbers. A library is a preset, a seed and the length of its campaign in months. `config.json` is the grid they come from.
   - `tables.xlsx` holds the thesis tables, labelled in Ukrainian and formatted for pasting into the text, and `figures/` the figures.
   - Rows are written in the grid's order, whichever worker finishes first, so a parallel run writes the same files as a serial one.
-- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; both oracles against brute force; the DSS with the true risk and the true average effects against `dss` and `dss_assumed`, and those effects by hand; the content portfolio's cap per genre; the number style; the Wilcoxon and gap tables by hand; the campaign lengths in the grid; and a small grid end to end, serial and in parallel.
+- **Tests** (`test_experiments.py`): true gains by hand; the baselines' order and budget, for retention and content; the rules with e-mails, which write to every other member who agreed and count the e-mails in the budget; both oracles against brute force; the DSS with the true risk and the true average effects against `dss` and `dss_assumed`, and those effects by hand; the content portfolio's cap per genre; the number style; the Wilcoxon and gap tables by hand; the campaign lengths in the grid; and a small grid end to end, serial and in parallel.
   - In the small grid no content policy beats the oracle or exceeds its budget.
   - No retention policy whose true spend fits the budget beats the oracle beyond the solver's gap. The others count the spend with their own probabilities, so their true spend can exceed the budget, and the oracle bounds only the choices it could make.
