@@ -216,8 +216,8 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
     - e-mails to every member at risk who agreed reach 4–35% of the oracle;
     - discounts for the inactive with e-mails for the rest reach 33–44%, level with the DSS on the campaign's estimates (32–45%). Over the 16 presets and budgets, the DSS is ahead of the best such rule in 2 after the Holm correction (the hidden factor at 20% and 40%) and behind in none;
     - the DSS with assumptions (48–60%) is ahead of both rules at budgets of 10% and 20% on every preset.
-    - So most of the DSS's lead over the discount rules comes from using the cheap action at all, and the rest depends on how well the effects are known.
-  - Done: the user guide, [docs/user-guide.md](user-guide.md): the analyst's path from a dataset to an approved decision.
+    - So most of the DSS's lead over the discount rules comes from using the cheap action at all, and the rest depends on how well the effects are known (#40).
+  - Done: the user guide, [docs/user-guide.md](user-guide.md): the analyst's path from a dataset to an approved decision (#40).
 - A Playwright end-to-end test: sign in → upload → analytics → train → scenario → approve. It also checks that no page scrolls sideways beside the open sidebar at 1024 and 1280 px.
 - A backup and restore drill on the local stack.
 - A guide for the frontend redesign: flows, error codes, chart formats.
