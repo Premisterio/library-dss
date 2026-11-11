@@ -212,6 +212,53 @@ def test_the_inactivity_rule_discounts_inactive_members_longest_idle_first() -> 
     assert taken["user_id"].to_list() == ["never-read", "idle-40", "idle-20"]
 
 
+def test_a_rule_with_emails_writes_to_every_other_member_who_agreed() -> None:
+    people = group(  # a discount is expected to cost 0.9·0.2·100 = 18 UAH, an e-mail costs 2
+        {"user_id": "idle-30", "inactive_14d": True, "days_since_last_session": 30.0},
+        {
+            "user_id": "idle-20-refused",
+            "inactive_14d": True,
+            "days_since_last_session": 20.0,
+            "email_opt_in": False,
+        },
+        {"user_id": "idle-15", "inactive_14d": True, "days_since_last_session": 15.0},
+        {"user_id": "active"},
+        {"user_id": "active-refused", "email_opt_in": False},
+    )
+    truth = true_options(people, RETENTION)
+
+    def taken(policy: str, budget: float) -> list[tuple[str, str]]:
+        return decide(people, policy, budget, RETENTION, truth).rows()
+
+    # two discounts and the two e-mails left cost 36 + 4; a third discount would not fit
+    assert taken("inactive_emails", 41.0) == [
+        ("idle-30", "discount"),
+        ("idle-20-refused", "discount"),
+        ("idle-15", "email"),
+        ("active", "email"),
+    ]
+    # the e-mails count in the budget: 38 UAH buy the rule alone two discounts, but with the
+    # e-mails only one, since a second would make 36 + 4
+    assert taken("inactive", 38.0) == [("idle-30", "discount"), ("idle-20-refused", "discount")]
+    assert taken("inactive_emails", 38.0) == [
+        ("idle-30", "discount"),
+        ("idle-15", "email"),
+        ("active", "email"),
+    ]
+    # e-mails alone go to everyone who agreed; a budget below them buys as many as it can
+    assert taken("emails", 41.0) == [
+        ("idle-30", "email"),
+        ("idle-15", "email"),
+        ("active", "email"),
+    ]
+    assert taken("emails", 5.0) == [("idle-30", "email"), ("idle-15", "email")]
+    assert taken("inactive_emails", 5.0) == taken("emails", 5.0)
+    for policy in retention.EMAIL_RULES:  # one action per member, each one the member can get
+        chosen = decide(people, policy, 41.0, RETENTION, truth)
+        assert chosen["user_id"].is_unique().all()
+        assert judge(chosen, truth)["emails"] > 0
+
+
 def test_random_discounts_fit_the_budget_and_repeat_with_the_seed() -> None:
     people = group(*({"user_id": f"u{i}", "probability": 0.5} for i in range(20)))
     truth = true_options(people, RETENTION)
@@ -284,23 +331,24 @@ def test_with_the_true_risk_the_dss_plans_on_libsim_s_probabilities() -> None:
     assert decide(exact, "dss_true_risk", budget, RETENTION, truth).equals(dss)
 
 
-def test_with_the_true_effects_the_dss_plans_as_with_them_assumed() -> None:
+def test_with_the_true_effects_the_dss_plans_as_on_a_campaign_that_found_them() -> None:
     at_risk = replace(random_group(seed=5), true_effects={"email": -0.01, "discount": -0.04})
-    assumed = replace(RETENTION, assumed={"email": -0.01, "discount": -0.04})
+    found = replace(at_risk, effects=campaign(email=-0.01, discount=-0.04))
     truth = true_options(at_risk, RETENTION)
     budget = 0.2 * discount_for_all(at_risk)
-    with_assumed = decide(at_risk, "dss_assumed", budget, assumed, truth)
-    assert with_assumed.height > 0
-    assert not with_assumed.equals(decide(at_risk, "dss", budget, RETENTION, truth))
-    assert decide(at_risk, "dss_true_effects", budget, RETENTION, truth).equals(with_assumed)
+    on_found = decide(found, "dss", budget, RETENTION, truth)
+    assert on_found.height > 0
+    assert not on_found.equals(decide(at_risk, "dss", budget, RETENTION, truth))
+    # the truth takes the estimate's place at the same control rate, not at the members' risk
+    assert decide(at_risk, "dss_true_effects", budget, RETENTION, truth).equals(on_found)
     # both: the true average effects on the true probabilities
     both = decide(at_risk, "dss_true_both", budget, RETENTION, truth)
-    assert both.equals(decide(exact_model(at_risk), "dss_assumed", budget, assumed, truth))
+    assert both.equals(decide(exact_model(found), "dss", budget, RETENTION, truth))
     # an action without a true effect (nobody it compares took part) has none
     no_email = replace(at_risk, true_effects={"discount": -0.04})
-    only_discount = replace(RETENTION, assumed={"discount": -0.04})
+    without = replace(at_risk, effects=campaign(email=0.0, discount=-0.04))
     assert decide(no_email, "dss_true_effects", budget, RETENTION, truth).equals(
-        decide(no_email, "dss_assumed", budget, only_discount, truth)
+        decide(without, "dss", budget, RETENTION, truth)
     )
 
 
@@ -476,11 +524,17 @@ def test_the_wilcoxon_table_compares_the_dss_with_the_best_baseline() -> None:
                 row(seed, 0.4, "random", 10.0),
                 row(seed, 0.4, "inactive", 70.0),
                 row(seed, 0.4, "risk", 0.0),
+                row(seed, 0.1, "dss_assumed", 90.0 + 2 * seed),
+                row(seed, 0.1, "emails", 30.0),
+                row(seed, 0.1, "inactive_emails", 60.0),
+                row(seed, 0.4, "dss_assumed", 40.0),
+                row(seed, 0.4, "emails", 40.0),
+                row(seed, 0.4, "inactive_emails", 20.0),
             )
         ]
     )
     header, rows = tables.wilcoxon_table(
-        frame, "value", tables.RETENTION_LABELS, retention.BASELINES, "грн"
+        frame, "value", tables.RETENTION_LABELS, retention.DISCOUNT_RULES, "грн"
     )
     assert header[-1] == "p, тест Вілкоксона (n = 6)"
     # differences 51…56: mean 53.5, half-width 2.571·1.871/√6 = 1.96; all six positive, so the
@@ -488,6 +542,16 @@ def test_the_wilcoxon_table_compares_the_dss_with_the_best_baseline() -> None:
     assert rows == [
         ["Базовий", "10 %", "Знижки неактивним 14+ днів", "54 ± 2", "0,031"],
         ["", "40 %", "Знижки неактивним 14+ днів", "0 ± 0", "—"],
+    ]
+    # another policy against the best of other baselines: differences 32…42, mean 37,
+    # half-width 2.571·3.742/√6 = 3.93; then a tie with the e-mails alone
+    header, rows = tables.wilcoxon_table(
+        frame, "value", tables.RETENTION_LABELS, retention.EMAIL_RULES, "грн", policy="dss_assumed"
+    )
+    assert header[3] == "СППР із припущеннями мінус базова, грн"
+    assert rows == [
+        ["Базовий", "10 %", "Знижки неактивним, листи решті", "37 ± 4", "0,031"],
+        ["", "40 %", "Листи всім, хто погодився", "0 ± 0", "—"],
     ]
 
 
@@ -560,10 +624,11 @@ def test_a_small_grid_writes_every_policy_and_budget(results: Path) -> None:
     assert (oracle["precision"] == 1.0).all()
     # Policies count the spend with their own probabilities, so only a choice whose true spend
     # fits the budget is one the oracle could make; none of those gains more.
-    library = ["seed", "campaign_months", "budget_share"]
+    library = ["preset", "seed", "campaign_months", "budget_share"]
     fits = retention.filter(pl.col("spend") <= pl.col("budget") + 1e-6).join(
         oracle.select(*library, best="value"), on=library
     )
+    assert fits.height > 0
     assert (fits["value"] * (1 - MIP_GAP) <= fits["best"] + 1e-6).all()
     models = pl.read_csv(results / "models.csv")
     assert models.select("seed", "campaign_months").rows() == [
@@ -602,7 +667,9 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
         "Утримання, частка оракула, %",
         "Утримання, точність дій, %",
         "Утримання, тест Вілкоксона",
-        "Утримання, розклад відставання",
+        "Утримання, тест (з листами)",
+        "Утримання, тест (припущення)",
+        "Утримання, джерела відставання",
         "Закупівля, обслужений попит",
         "Закупівля, частка оракула, %",
         "Закупівля, тест Вілкоксона",
@@ -611,9 +678,11 @@ def test_the_report_goes_to_a_workbook_figures_and_the_terminal(results: Path) -
     ]
     sheet = workbook["Утримання, частка оракула, %"]
     assert sheet.max_row == 1 + len(tables.RETENTION_LABELS)  # the decomposition is not here
-    assert sheet.cell(row=9, column=2).value == "Оракул"
-    assert sheet.cell(row=9, column=3).value == "100 ± 0"
-    gap = [[cell.value for cell in row] for row in workbook["Утримання, розклад відставання"]]
+    assert sheet.cell(row=11, column=2).value == "Оракул"
+    assert sheet.cell(row=11, column=3).value == "100 ± 0"
+    rivals = {row[2].value for row in workbook["Утримання, тест (з листами)"].iter_rows(min_row=2)}
+    assert rivals <= {tables.RETENTION_LABELS[rule] for rule in retention.EMAIL_RULES}
+    gap = [[cell.value for cell in row] for row in workbook["Утримання, джерела відставання"]]
     assert [line[:2] for line in gap] == [
         ["Сценарій", "Бюджет"],
         ["Базовий", "10 %"],

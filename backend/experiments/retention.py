@@ -1,7 +1,7 @@
 """Retention policies on a simulated library, judged by libsim's true churn probabilities
 (DESIGN.md §6)."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import polars as pl
@@ -17,6 +17,8 @@ POLICIES = (
     "random",
     "inactive",
     "risk",
+    "emails",
+    "inactive_emails",
     "dss_assumed",
     "dss",
     "dss_segments",
@@ -26,7 +28,9 @@ POLICIES = (
     "dss_true_both",
     "oracle",
 )
-BASELINES = ("random", "inactive", "risk")  # what a library might do without the DSS
+# What a library might do without the DSS: discounts by a rule, or a rule that also sends e-mails.
+DISCOUNT_RULES = ("random", "inactive", "risk")
+EMAIL_RULES = ("emails", "inactive_emails")
 
 
 @dataclass(frozen=True)
@@ -94,7 +98,7 @@ def true_options(group: RiskGroup, config: RetentionConfig) -> pl.DataFrame:
     for action in ACTIONS:
         p_action = pl.col(f"true_{action}")
         if action == "email":
-            eligible, spend = pl.col("email_opt_in").fill_null(False), pl.lit(config.email_cost)
+            eligible, spend = _agreed(), pl.lit(config.email_cost)
         else:
             eligible = _discountable()
             spend = (1 - p_action) * group.discount_pct * pl.col("period_price")
@@ -120,17 +124,20 @@ def decide(
     match policy:
         case "random":
             order = people.sample(fraction=1.0, shuffle=True, seed=group.seed)
-        case "inactive":
+        case "inactive" | "inactive_emails":
             order = people.filter("inactive_14d").sort(
                 ["days_since_last_session", "user_id"], descending=[True, False], nulls_last=False
             )
         case "risk":
             order = people.sort(["probability", "user_id"], descending=[True, False])
+        case "emails":
+            order = people.clear()
         case "oracle":
             return _oracle(truth, budget)
         case _:
             return _dss(group, policy, budget, config)
-    return _discounts(order, budget, group.discount_pct)
+    email_cost = config.email_cost if policy in EMAIL_RULES else None
+    return _by_rule(people, order, budget, group.discount_pct, email_cost)
 
 
 def judge(chosen: pl.DataFrame, truth: pl.DataFrame) -> dict[str, Any]:
@@ -226,29 +233,50 @@ def _discountable() -> pl.Expr:
     return ~pl.col("discounted") & pl.col("period_price").is_not_null()
 
 
-def _discounts(order: pl.DataFrame, budget: float, discount_pct: float) -> pl.DataFrame:
-    """A discount for each member in this order while the expected spend fits the budget,
-    counted as the plan counts it: with the churn model's probability of renewing."""
-    spend = (1 - pl.col("probability")) * discount_pct * pl.col("period_price")
-    return (
+def _agreed() -> pl.Expr:
+    return pl.col("email_opt_in").fill_null(False)
+
+
+def _by_rule(
+    people: pl.DataFrame,
+    order: pl.DataFrame,
+    budget: float,
+    discount_pct: float,
+    email_cost: float | None,
+) -> pl.DataFrame:
+    """A discount for each member of `order` in turn while the expected spend fits the budget,
+    counted with the churn model's probability of renewing. With an `email_cost`, every other
+    member who agreed to e-mails gets one, and the spend counts those e-mails too; a budget
+    below the e-mails alone buys as many of them as it can."""
+    agreed = people.filter(_agreed())
+    spend = ((1 - pl.col("probability")) * discount_pct * pl.col("period_price")).cum_sum()
+    if email_cost is not None:
+        spend += email_cost * (agreed.height - _agreed().cast(pl.Int64).cum_sum())
+    discounts = (
         order.filter(_discountable())
-        .filter(spend.cum_sum() <= budget)
+        .filter(spend.cum_max() <= budget)
         .select("user_id", action=pl.lit("discount"))
     )
+    if email_cost is None:
+        return discounts
+    emails = agreed.join(discounts, on="user_id", how="anti")
+    if email_cost > 0:
+        emails = emails.head(int(budget // email_cost))
+    return pl.concat([discounts, emails.select("user_id", action=pl.lit("email"))])
 
 
 def _dss(group: RiskGroup, policy: str, budget: float, config: RetentionConfig) -> pl.DataFrame:
     """The DSS's plan: with the campaign's effects (as the plan form's switches choose them) or,
     for `dss_assumed`, with the analyst's assumed effects. The `dss_true_*` plans take the truth
     in place of the churn model's probabilities, of the campaign's effects, or of both."""
-    people = group.people
+    people, effects = group.people, group.effects
     if policy in ("dss_true_risk", "dss_true_both"):
         people = people.with_columns(probability=pl.col("true_none"))
+    if policy in ("dss_true_effects", "dss_true_both"):
+        effects = _with_true_effects(group)
     assumed: dict[Action, float] | None = None
     if policy == "dss_assumed":
         assumed = {a: config.assumed.get(a, 0.0) for a in ACTIONS}
-    elif policy in ("dss_true_effects", "dss_true_both"):
-        assumed = {a: group.true_effects.get(a, 0.0) for a in ACTIONS}
     scenario = Scenario(
         budget=budget,
         discount_pct=group.discount_pct,
@@ -259,8 +287,20 @@ def _dss(group: RiskGroup, policy: str, budget: float, config: RetentionConfig) 
         assumed=assumed,
     )
     base_rate = people.select(pl.col("probability").mean()).item()
-    table = effect_table(group.effects, scenario, base_rate=base_rate)
+    table = effect_table(effects, scenario, base_rate=base_rate)
     return plan(people, table, scenario).chosen.select("user_id", "action")
+
+
+def _with_true_effects(group: RiskGroup) -> list[Effect]:
+    """The campaign's effects with each action's overall estimate replaced by its true average
+    effect, so the plan turns the truth into a logit shift exactly as it turns the estimate: at
+    the action's control churn rate. An action without a true effect gets none."""
+
+    def true(effect: Effect) -> Effect:
+        value = group.true_effects.get(effect.action, 0.0)
+        return replace(effect, difference=value, shrunk=value)
+
+    return [true(e) if e.segment is None else e for e in group.effects]
 
 
 def _oracle(truth: pl.DataFrame, budget: float) -> pl.DataFrame:
