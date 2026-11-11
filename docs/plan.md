@@ -185,7 +185,7 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
 - **Scope, simplified on 2026-11-02.**
   - 20 seeds × 4 presets × budgets of 5/10/20/40%, in process, with 5k members: half the time of 10k, and the size of the demo.
   - Qini is cut, as in M4b. PEHE and Spearman for effects are cut, because the plan uses one overall effect per action; whether the campaign's intervals contain the true effects is checked instead.
-- **Retention policies:** random, the "inactive" rule and discount by risk (each gives the campaign's discount), the DSS with assumptions, the DSS with its segment and cautious switches, and the oracle. Doing nothing gains 0, the reference for every gain.
+- **Retention policies:** random, the "inactive" rule and discount by risk (each gives the campaign's discount), two rules that also send e-mails (added in M7), the DSS with assumptions, the DSS with its segment and cautious switches, and the oracle. Doing nothing gains 0, the reference for every gain.
 - **Retention metrics:**
   - net incremental gain and % of oracle;
   - precision (the share of actions that truly pay off) and spend;
@@ -211,10 +211,15 @@ If time runs short, cut in this order: `libsim continue` → Monte Carlo sensiti
     - Database sessions run in UTC, so the API answers UTC timestamps on any server (#36).
     - The PDF report: a cover with the kind, metadata, contents and a decision's parameters, a page per section, a footer "N з M", and decision charts in forms that fit them (#37).
   - Each PR had an implementer and a reviewer agent; a final review of the four merged together found nothing to fix.
-  - Done: where the retention DSS's gap to the oracle comes from (DESIGN §6), in a sheet of its own: at a 10% budget the DSS reaches 32–45% of the oracle, with libsim's true risk 39–64%, with the true average effects 48–60% and with both 62–79%. The rest is what one effect per action misses, since effects differ between members, plus the solver's gap (#39).
+  - Done: where the retention DSS's gap to the oracle comes from (DESIGN §6), in a sheet of its own: at a 10% budget the DSS reaches 32–45% of the oracle, with libsim's true risk 39–64%, with the true average effects 48–60% and with both 60–80%. The rest is what one effect per action misses, since effects differ between members, plus the solver's gap (#39).
+  - Done: rules that also send e-mails join the retention experiment, since the plan has two actions and the discount rules one (DESIGN §6). At a 10% budget:
+    - e-mails to every member at risk who agreed reach 4–35% of the oracle;
+    - discounts for the inactive with e-mails for the rest reach 33–44%, level with the DSS on the campaign's estimates (32–45%). Over the 16 presets and budgets, the DSS is ahead of the best such rule in 2 after the Holm correction (the hidden factor at 20% and 40%) and behind in none;
+    - the DSS with assumptions (48–60%) is ahead of both rules at budgets of 10% and 20% on every preset.
+    - So most of the DSS's lead over the discount rules comes from using the cheap action at all, and the rest depends on how well the effects are known.
+  - Done: the user guide, [docs/user-guide.md](user-guide.md): the analyst's path from a dataset to an approved decision.
 - A Playwright end-to-end test: sign in → upload → analytics → train → scenario → approve. It also checks that no page scrolls sideways beside the open sidebar at 1024 and 1280 px.
 - A backup and restore drill on the local stack.
-- User documentation.
 - A guide for the frontend redesign: flows, error codes, chart formats.
 
 ### M8. Production deployment (last, after the supervisor's approval)
