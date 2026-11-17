@@ -32,6 +32,9 @@ Thumbs.db
 # Local agent handoff notes (see AGENTS.md)
 HANDOFF.md
 
+# The author's local draft of the user guide; the published one is docs/user-guide.md
+/user-guide.md
+
 # Local data: generated datasets, downloaded source data, experiment outputs
 /data/
 backend/experiments/results/
